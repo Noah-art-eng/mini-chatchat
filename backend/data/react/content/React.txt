@@ -1,1 +1,0 @@
-React is a frontend library developed by Meta.

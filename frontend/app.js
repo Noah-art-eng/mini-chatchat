@@ -17,6 +17,15 @@ const btnUpload = document.getElementById("btn-upload");
 const btnClear = document.getElementById("btn-clear");
 const kbSelector = document.getElementById("kb-selector");
 const btnCreateKb = document.getElementById("btn-create-kb");
+const btnDeleteKb = document.getElementById("btn-delete-kb");
+const chunkSearchInput =
+    document.getElementById("chunk-search-input");
+
+const btnSearchChunks =
+    document.getElementById("btn-search-chunks");
+
+const chunkSearchResults =
+    document.getElementById("chunk-search-results");
 
 
 // =============================
@@ -295,6 +304,113 @@ async function createKnowledgeBase() {
     showToast("Knowledge base created.", "success");
 }
 
+async function deleteKnowledgeBase() {
+    const kbName = kbSelector.value;
+
+    if (!kbName) return;
+
+    if (kbName === "default") {
+        showToast(
+            "Default knowledge base cannot be deleted.",
+            "error"
+        );
+        return;
+    }
+
+    const confirmed = confirm(
+        `Delete knowledge base "${kbName}"?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch(
+            `${API_BASE}/knowledge_bases/${encodeURIComponent(kbName)}`,
+            {
+                method: "DELETE"
+            }
+        );
+
+        const data = await response.json();
+
+        if (data.error) {
+            showToast(data.error, "error");
+            return;
+        }
+
+        showToast(data.message, "success");
+
+        await loadKnowledgeBases();
+
+        kbSelector.value = "default";
+        await switchKnowledgeBase();
+
+        document.getElementById("chunk-viewer").innerHTML =
+            "Select a chunk to preview its content.";
+
+    } catch (error) {
+        console.error(error);
+        showToast(
+            "Failed to delete knowledge base.",
+            "error"
+        );
+    }
+}
+
+async function searchChunks() {
+
+    const query =
+        chunkSearchInput.value.trim();
+
+    if (!query) return;
+
+    try {
+
+        const response = await fetch(
+            `${API_BASE}/search_docs`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
+                body: JSON.stringify({
+                    query: query,
+                    top_k: 5
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        chunkSearchResults.innerHTML =
+            data.results.map(item => `
+                <div class="source-card">
+                    <strong>
+                        ${item.source}
+                        · chunk ${item.chunk_id}
+                    </strong>
+
+                    <p>
+                        Distance:
+                        ${item.distance.toFixed(2)}
+                    </p>
+
+                    <p>
+                        ${item.chunk}
+                    </p>
+                </div>
+            `).join("");
+
+    } catch (error) {
+
+        console.error(error);
+
+        chunkSearchResults.innerHTML =
+            "<p>Search failed.</p>";
+    }
+}
+
 
 // =============================
 // 5. Chat History Functions
@@ -424,6 +540,10 @@ documentSearch.addEventListener("input", function () {
 kbSelector.addEventListener("change", switchKnowledgeBase);
 
 btnCreateKb.addEventListener("click", createKnowledgeBase);
+
+btnDeleteKb.addEventListener("click", deleteKnowledgeBase);
+
+btnSearchChunks.addEventListener("click", searchChunks);
 
 // =============================
 // 7. Init

@@ -4,10 +4,19 @@ from pydantic import BaseModel
 from openai import OpenAI
 from dotenv import load_dotenv
 import os
-
+import shutil
 from rag import generate_answer, load_pdf
 from services.kb_service import MiniKBService
-from db import init_db, create_default_kb, list_kbs, list_file_docs, create_kb
+from db import (
+    init_db,
+    create_default_kb,
+    list_kbs,
+    list_file_docs,
+    create_kb,
+    delete_kb_record,
+    delete_files_by_kb,
+    delete_file_docs_by_kb
+)
 
 
 load_dotenv()
@@ -39,6 +48,9 @@ class CreateKBRequest(BaseModel):
 class SwitchKBRequest(BaseModel):
     kb_name: str
 
+class SearchDocsRequest(BaseModel):
+    query: str
+    top_k: int = 3
 
 # ──────────────────────────────────────────
 # Routes
@@ -67,6 +79,18 @@ def chat(request: ChatRequest):
         "answer": answer,
         "sources": results,
         "chat_history": chat_history,
+    }
+
+@app.post("/search_docs")
+def search_docs(request: SearchDocsRequest):
+    results = kb_service.search_docs(
+        request.query,
+        top_k=request.top_k
+    )
+
+    return {
+        "query": request.query,
+        "results": results
     }
 
 @app.post("/switch_kb")
@@ -138,6 +162,36 @@ def reload_index():
 def get_knowledge_bases():
     return {
         "knowledge_bases": list_kbs()
+    }
+
+@app.delete("/knowledge_bases/{kb_name}")
+def delete_knowledge_base(kb_name: str):
+    global kb_service
+
+    if kb_name == "default":
+        return {
+            "error": "default knowledge base cannot be deleted"
+        }
+
+    if ".." in kb_name or "/" in kb_name or "\\" in kb_name:
+        return {
+            "error": "invalid knowledge base name"
+        }
+
+    delete_file_docs_by_kb(kb_name)
+    delete_files_by_kb(kb_name)
+    delete_kb_record(kb_name)
+
+    kb_path = os.path.join("data", kb_name)
+
+    if os.path.exists(kb_path):
+        shutil.rmtree(kb_path)
+
+    if kb_service.kb_name == kb_name:
+        kb_service = MiniKBService("default")
+
+    return {
+        "message": f"{kb_name} deleted"
     }
 
 @app.post("/knowledge_bases")

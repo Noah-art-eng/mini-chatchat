@@ -27,7 +27,14 @@
         <div class="card">
             <div class="kb-toolbar">
                 <select id="kb-selector"></select>
-                <button id="btn-create-kb">New KB</button>
+
+                <button id="btn-create-kb">
+                    New KB
+                </button>
+
+                <button id="btn-delete-kb">
+                    Delete KB
+                </button>
             </div>
             <h2>Knowledge Base</h2>
             <div id="kb-stats"></div>
@@ -36,6 +43,17 @@
 
             <div id="chunk-viewer" class="chunk-viewer">
                 Select a chunk to preview its content.
+            </div>
+
+            <div class="chunk-search">
+                <h3>Search Chunks</h3>
+
+                <div class="chunk-search-row">
+                    <input id="chunk-search-input" placeholder="Search chunks...">
+                    <button id="btn-search-chunks">Search</button>
+                </div>
+
+                <div id="chunk-search-results"></div>
             </div>
         </div>
 

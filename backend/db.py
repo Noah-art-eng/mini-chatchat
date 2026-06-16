@@ -238,3 +238,47 @@ def list_file_docs(kb_name, file_name):
         {"chunk_id": row[0]}
         for row in rows
     ]
+
+def delete_file_docs_by_kb(kb_name):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        DELETE FROM file_doc
+        WHERE kb_name = ?
+    """, (
+        kb_name,
+    ))
+
+    conn.commit()
+    conn.close()
+
+
+def delete_files_by_kb(kb_name):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        DELETE FROM knowledge_file
+        WHERE kb_name = ?
+    """, (
+        kb_name,
+    ))
+
+    conn.commit()
+    conn.close()
+
+
+def delete_kb_record(kb_name):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        DELETE FROM knowledge_base
+        WHERE kb_name = ?
+    """, (
+        kb_name,
+    ))
+
+    conn.commit()
+    conn.close()
