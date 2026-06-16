@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini ChatChat</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="toast-container"></div>
+    <div class="container">
+
+        <h1>Mini ChatChat</h1>
+
+        <!-- Upload Section -->
+        <div class="card">
+            <div id="drop-zone">
+                <input type="file" id="pdfFile" multiple>
+                <button id="btn-upload">Upload PDF</button>
+                <div class="drop-hint">Drag files here to upload</div>
+            </div>
+        </div>
+
+        <!-- Knowledge Base -->
+        <div class="card">
+            <div class="kb-toolbar">
+                <select id="kb-selector"></select>
+                <button id="btn-create-kb">New KB</button>
+            </div>
+            <h2>Knowledge Base</h2>
+            <div id="kb-stats"></div>
+            <input id="document-search" placeholder="Search documents...">
+            <ul id="document-list"></ul>
+
+            <div id="chunk-viewer" class="chunk-viewer">
+                Select a chunk to preview its content.
+            </div>
+        </div>
+
+        <!-- Chat Section -->
+        <div class="card">
+            <div id="chat-history"></div>
+            <div class="chat-input-row">
+                <input id="question" placeholder="Ask something...">
+                <button id="btn-send">Send</button>
+            </div>
+            <button id="btn-clear">Clear Chat</button>
+        </div>
+
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
