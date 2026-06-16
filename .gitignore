@@ -12,3 +12,7 @@ __pycache__/
 backend/data/*/vector_store/
 
 backend/uploads/
+
+backend/data/*/content/*.pdf
+backend/data/*/content/*Resume*
+backend/data/*/uploads/*
