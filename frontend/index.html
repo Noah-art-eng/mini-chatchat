@@ -17,8 +17,8 @@
         <!-- Upload Section -->
         <div class="card">
             <div id="drop-zone">
-                <input type="file" id="pdfFile" multiple>
-                <button id="btn-upload">Upload PDF</button>
+                <input type="file" id="pdfFile" accept=".txt,.pdf,.docx,.md,.csv" multiple>
+                <button id="btn-upload" type="button">Upload PDF</button>
                 <div class="drop-hint">Drag files here to upload</div>
             </div>
         </div>
@@ -28,12 +28,22 @@
             <div class="kb-toolbar">
                 <select id="kb-selector"></select>
 
-                <button id="btn-create-kb">
+                <button id="btn-create-kb" type="button">
                     New KB
                 </button>
 
-                <button id="btn-delete-kb">
+                <button id="btn-delete-kb" type="button">
                     Delete KB
+                </button>
+
+                <button id="btn-export-kb" type="button">
+                    Export KB
+                </button>
+
+                <input type="file" id="kb-import-file" accept=".zip">
+
+                <button id="btn-import-kb" type="button">
+                    Import KB
                 </button>
             </div>
             <h2>Knowledge Base</h2>
@@ -50,7 +60,7 @@
 
                 <div class="chunk-search-row">
                     <input id="chunk-search-input" placeholder="Search chunks...">
-                    <button id="btn-search-chunks">Search</button>
+                    <button id="btn-search-chunks" type="button">Search</button>
                 </div>
 
                 <div id="chunk-search-results"></div>
@@ -59,17 +69,113 @@
 
         <!-- Chat Section -->
         <div class="card">
+            <div class="chat-mode-row">
+                <label for="chat-mode">Chat Mode</label>
+                <select id="chat-mode">
+                    <option value="local_kb">local_kb</option>
+                    <option value="temp_kb">temp_kb</option>
+                    <option value="search_engine">search_engine</option>
+                </select>
+            </div>
+
+            <div class="conversation-panel">
+                <div class="conversation-toolbar">
+                    <button id="btn-new-conversation" type="button">
+                        New Conversation
+                    </button>
+                    <span id="current-conversation-label">
+                        New Conversation
+                    </span>
+                </div>
+
+                <div id="conversation-list" class="conversation-list"></div>
+            </div>
+
+            <div class="retrieval-debug">
+                <h3>Retrieval Debug</h3>
+
+                <div class="debug-controls">
+                    <label>
+                        top_k
+                        <input id="debug-top-k" type="number" min="1" value="3">
+                    </label>
+
+                    <label>
+                        score_threshold
+                        <input id="debug-score-threshold" type="number" min="0" max="2" step="0.1" value="0.8">
+                    </label>
+
+                    <label>
+                        prompt_name
+                        <select id="debug-prompt-name">
+                            <option value="default">default</option>
+                            <option value="strict">strict</option>
+                            <option value="empty">empty</option>
+                        </select>
+                    </label>
+
+                    <label class="debug-checkbox">
+                        <input id="debug-rerank" type="checkbox">
+                        rerank
+                    </label>
+
+                    <label>
+                        rerank_top_n
+                        <input id="debug-rerank-top-n" type="number" min="1" value="3">
+                    </label>
+
+                    <label class="debug-checkbox">
+                        <input id="debug-return-direct" type="checkbox">
+                        return_direct
+                    </label>
+
+                    <button id="btn-debug-search" type="button">Debug Search</button>
+                </div>
+
+                <div id="debug-results"></div>
+            </div>
+
             <div id="chat-history"></div>
             <div class="chat-input-row">
                 <input id="question" placeholder="Ask something...">
-                <button id="btn-send">Send</button>
+                <button id="btn-send" type="button">Send</button>
             </div>
-            <button id="btn-clear">Clear Chat</button>
+            <button id="btn-clear" type="button">Clear Chat</button>
+        </div>
+
+        <!-- Temp File Chat Section -->
+        <div class="card">
+            <h2>Temp File Chat</h2>
+
+            <div class="temp-upload-row">
+                <input type="file" id="temp-file" accept=".txt,.pdf,.docx,.md,.csv">
+                <button id="btn-temp-upload" type="button">Upload Temp File</button>
+            </div>
+
+            <div class="temp-kb-status">
+                Temp KB:
+                <span id="temp-kb-id">No temp file uploaded</span>
+            </div>
+
+            <div class="chat-input-row">
+                <input id="temp-question" placeholder="Ask about the temp file...">
+                <button id="btn-temp-ask" type="button">Ask Temp File</button>
+            </div>
+
+            <div id="temp-answer" class="message">
+                <h3 class="assistant-label">Assistant</h3>
+                <p id="temp-answer-text"></p>
+
+                <h3>Sources</h3>
+                <div id="temp-sources" class="sources">
+                    <p>No temp file question yet.</p>
+                </div>
+            </div>
         </div>
 
     </div>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=conversation-history-1"></script>
 </body>
 
 </html>
