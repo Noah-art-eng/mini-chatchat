@@ -1,1 +1,0 @@
-RAG means Retrieval Augmented Generation. It retrieves relevant information from a knowledge base before generating an answer.

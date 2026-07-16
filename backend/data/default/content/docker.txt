@@ -1,1 +1,0 @@
-Docker is used to package applications and their dependencies into containers.

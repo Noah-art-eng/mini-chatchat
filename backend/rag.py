@@ -1,10 +1,38 @@
 from sentence_transformers import SentenceTransformer
 import numpy as np
 import faiss
-from openai import OpenAI
 from dotenv import load_dotenv
 import os
 from pypdf import PdfReader
+from model_config import (
+    get_default_chat_model,
+    get_default_temperature,
+    get_default_max_tokens,
+    get_embedding_model_name,
+    get_openai_client
+)
+from prompts import get_prompt_template
+
+DEFAULT_CONTEXT_TOKEN_BUDGET = 3000
+
+
+def estimate_tokens(text):
+    """
+    Lightweight token estimate for prompt budgeting.
+    English text is roughly 4 chars/token; CJK text is closer to 1 char/token.
+    """
+    if not text:
+        return 0
+
+    cjk_chars = sum(
+        1
+        for char in text
+        if "\u4e00" <= char <= "\u9fff"
+    )
+    non_cjk_chars = len(text) - cjk_chars
+
+    return cjk_chars + max(1, non_cjk_chars // 4)
+
 
 def load_documents(folder_path):
     documents = []
@@ -110,55 +138,146 @@ def search(
     return results
 
 
-def generate_answer(query, results, client, history): # 使用GPT-4.1-mini模型生成答案, 只使用搜索到的文本块作为上下文
-    context = "\n\n".join(
-    [
-        f"Source {result['id']}:\n{result['chunk']}"
-        for result in results
-    ]
+def build_context(results, context_token_budget=DEFAULT_CONTEXT_TOKEN_BUDGET):
+    if not results:
+        return ""
 
-)
-    history_text = "\n".join(
-    [
-        f"{item['role']}: {item['content']}"
-        for item in history
-    ]
-)
-    prompt = f"""
-Use the conversation history and context below.
+    context_parts = []
+    used_tokens = 0
 
-Conversation History:
-{history_text}
+    for result in results:
+        context_part = f"Source {result['id']}:\n{result['chunk']}"
+        part_tokens = estimate_tokens(context_part)
 
-Context:
-{context}
+        if (
+            context_token_budget is not None
+            and used_tokens + part_tokens > context_token_budget
+        ):
+            break
 
-Question:
-{query}
+        context_parts.append(context_part)
+        used_tokens += part_tokens
 
-Answer:
-"""
+    return "\n\n".join(context_parts)
 
-    response = client.chat.completions.create(
-        model="gpt-4.1-mini",
-        messages=[
+
+def build_history(history):
+    if not history:
+        return ""
+
+    return "\n".join(
+        [
+            f"{item['role']}: {item['content']}"
+            for item in history
+        ]
+    )
+
+
+def build_prompt(query, results, history, prompt_name="default"):
+    context = build_context(results)
+    history_text = build_history(history)
+
+    if not results:
+        prompt_name = "empty"
+
+    prompt_template = get_prompt_template(prompt_name)
+    return prompt_template.format(
+        question=query,
+        context=context,
+        history_text=history_text
+    )
+
+
+def generate_answer(
+    query,
+    results,
+    client,
+    history,
+    model=None,
+    temperature=None,
+    max_tokens=None,
+    prompt_name="default",
+): # 使用GPT-4.1-mini模型生成答案, 只使用搜索到的文本块作为上下文
+    prompt = build_prompt(query, results, history, prompt_name)
+
+    completion_args = {
+        "model": model or get_default_chat_model(),
+        "temperature": (
+            temperature
+            if temperature is not None
+            else get_default_temperature()
+        ),
+        "messages": [
             {
                 "role": "user",
                 "content": prompt
             }
         ]
-    )
+    }
+
+    if max_tokens is not None:
+        completion_args["max_tokens"] = max_tokens
+    elif get_default_max_tokens() is not None:
+        completion_args["max_tokens"] = get_default_max_tokens()
+
+    response = client.chat.completions.create(**completion_args)
 
     return response.choices[0].message.content
+
+
+def stream_answer(
+    query,
+    results,
+    client,
+    history,
+    model=None,
+    temperature=None,
+    max_tokens=None,
+    prompt_name="default",
+):
+    prompt = build_prompt(query, results, history, prompt_name)
+
+    completion_args = {
+        "model": model or get_default_chat_model(),
+        "temperature": (
+            temperature
+            if temperature is not None
+            else get_default_temperature()
+        ),
+        "stream": True,
+        "messages": [
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+    }
+
+    if max_tokens is not None:
+        completion_args["max_tokens"] = max_tokens
+    elif get_default_max_tokens() is not None:
+        completion_args["max_tokens"] = get_default_max_tokens()
+
+    response = client.chat.completions.create(**completion_args)
+
+    for chunk in response:
+        if not chunk.choices:
+            continue
+
+        delta = chunk.choices[0].delta
+        token = getattr(delta, "content", None)
+
+        if token:
+            yield token
 
 def main():
     documents = load_documents("documents") # 读取知识库文件
 
     load_dotenv()
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    client = get_openai_client()
 
     chunks = split_documents(documents)
-    model = SentenceTransformer("all-MiniLM-L6-v2") # 使用更小的模型, 把文字转成向量
+    model = SentenceTransformer(get_embedding_model_name()) # 使用更小的模型, 把文字转成向量
 
     index, vectors = build_faiss_index(chunks, model)
 

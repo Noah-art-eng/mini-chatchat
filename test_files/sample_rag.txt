@@ -1,0 +1,1 @@
+Mini ChatChat is a small RAG project built with FastAPI, FAISS, SQLite, and OpenAI. It supports local knowledge base chat, temporary file chat, search engine mode, streaming responses, and feedback rating.

@@ -1,18 +1,34 @@
 __pycache__/
 *.pyc
+.pytest_cache/
 
 .venv/
 
 .env
+*.log
 
 *.db
+backend/mini.db
+backend/data/
+backend/temp/
+backend/uploads/
+backend/__pycache__/
+backend/**/__pycache__/
+frontend/**/__pycache__/
+frontend-react/node_modules/
+frontend-react/dist/
+node_modules/
+dist/
+frontend-react/**/*.tsbuildinfo
+frontend-react/vite.config.js
+frontend-react/vite.config.d.ts
 
 .DS_Store
 
-backend/data/*/vector_store/
-
-backend/uploads/
-
-backend/data/*/content/*.pdf
-backend/data/*/content/*Resume*
-backend/data/*/uploads/*
+playwright-report/
+test-results/
+screenshots/
+*.webm
+*.zip
+.playwright-mcp/
+references/

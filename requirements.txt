@@ -1,0 +1,12 @@
+ddgs
+faiss-cpu
+fastapi
+numpy
+openai
+pypdf
+python-dotenv
+python-docx
+python-multipart
+requests
+sentence-transformers
+uvicorn

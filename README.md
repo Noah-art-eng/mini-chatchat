@@ -1,126 +1,253 @@
-# Mini ChatChat RAG
+# Mini ChatChat
 
-Mini ChatChat RAG is a lightweight ChatChat-inspired RAG project that demonstrates the core workflow of knowledge base management, vector retrieval, and LLM-powered question answering.
+Mini ChatChat is a compact, readable clone of the core LangChain-Chatchat experience. It focuses on the practical RAG path first:
 
-The project supports document upload, local vector indexing, knowledge-base-grounded chat, and source chunk display in the frontend.
+```text
+Question -> Retrieve -> Context -> Prompt -> LLM -> Answer
+```
+
+The project intentionally avoids LangChain for now so the retrieval, prompt building, streaming, knowledge-base management, and conversation flow remain easy to inspect.
+
+## Core Features
+
+- Local knowledge-base RAG chat.
+- Temporary file chat.
+- Search-engine mode.
+- Unified `/kb_chat` endpoint with ChatChat-style `mode`.
+- OpenAI-compatible `/chat/completions` endpoint.
+- DeepSeek-first, OpenAI-compatible model provider config.
+- Streaming SSE responses.
+- Conversation list, messages, rename, delete, and persisted assistant sources.
+- Feedback/rating for assistant messages.
+- Prompt templates: `default`, `empty`, `strict`.
+- Multi-format document loading: `.txt`, `.pdf`, `.docx`, `.md`, `.csv`.
+- FAISS persistence.
+- Hybrid search: FAISS + BM25.
+- Metadata filter by file/source.
+- Lightweight rerank.
+- Context deduplication.
+- Context token budget before prompt construction.
+- KB file metadata/status.
+- Single-file reindex.
+- KB import/export.
+- React frontend for the main product UI.
+- Agent mode with tool calling, multi-step execution, lightweight planner metadata, and trace restore.
+- Real MCP Integration Foundation with allowlisted demo, filesystem readonly, real stdio transport, and SQLite readonly MCP discovery and calls.
+- Legacy plain HTML/CSS/JS frontend kept for compatibility.
+- Smoke test scripts for core backend flows.
 
 ## Tech Stack
 
-### Backend
+Backend:
 
 - Python
-- FastAPI: HTTP API server
-- OpenAI Python SDK: LLM answer generation
-- Sentence Transformers: text embedding generation
-- FAISS: local vector similarity search
-- SQLite: metadata storage for knowledge bases, files, and chunks
-- pypdf: PDF text extraction
-- python-dotenv: environment variable loading from `.env`
+- FastAPI
+- SQLite
+- FAISS
+- Sentence Transformers
+- OpenAI-compatible Python SDK
+- DeepSeek API by default when `DEEPSEEK_API_KEY` is configured
+- pypdf
+- python-docx
+- python-dotenv
 
-### Frontend
+Frontend:
 
-- HTML
-- CSS
-- Vanilla JavaScript
-- Fetch API for backend requests
-- localStorage for frontend chat history
+- React
+- Vite
+- TypeScript
+- Plain HTML/CSS/JS legacy frontend
 
-## Features
+Testing:
 
-- Knowledge-base-grounded RAG chat
-- Multiple knowledge bases
-- Create a knowledge base
-- Switch the active knowledge base
-- Upload `.txt` and `.pdf` files
-- Automatically extract PDF text before indexing
-- Split documents into chunks
-- Generate embeddings with `all-MiniLM-L6-v2`
-- Build an in-memory FAISS vector index
-- Retrieve relevant chunks for each user question
-- Generate answers with an OpenAI-compatible LLM when API access is available
-- Display answer sources, chunk IDs, and similarity distances
-- View knowledge base stats: file count, chunk count, and embedding model
-- View document list
-- Search documents by filename
-- View chunks for each document
-- Preview chunk content
-- Delete documents and rebuild the index
-- Manually rebuild the index
+- Python smoke test scripts using `requests`
+- Vite production build
 
-## Project Structure
+## Architecture
 
-```text
-.
-├── backend
-│   ├── app.py                  # FastAPI application entry point
-│   ├── rag.py                  # Document loading, chunking, indexing, retrieval, answer generation
-│   ├── db.py                   # SQLite metadata storage
-│   ├── services
-│   │   └── kb_service.py       # Knowledge base service layer
-│   └── data
-│       └── {kb_name}
-│           ├── content         # Source .txt files used for retrieval
-│           ├── uploads         # Original uploaded files
-│           └── vector_store    # Reserved for future vector store persistence
-├── frontend
-│   ├── index.html              # Frontend page
-│   ├── app.js                  # Frontend interaction logic
-│   └── style.css               # Page styles
-├── requirements.txt
-└── README.md
+Important backend modules:
+
+- `backend/app.py`: FastAPI routes and request models.
+- `backend/chat_service.py`: local/temp/search KB chat orchestration and streaming response assembly.
+- `backend/rag.py`: document splitting, prompt context building, token budget, answer generation, streaming.
+- `backend/db.py`: SQLite schema, migrations, KB metadata, conversation/message, feedback.
+- `backend/model_config.py`: DeepSeek/OpenAI provider selection and model defaults.
+- `backend/services/kb_service.py`: KB state, FAISS persistence, hybrid search, metadata filter, dedup.
+- `backend/services/document_loader.py`: txt/pdf/docx/md/csv parsing.
+- `backend/services/search_service.py`: web search adapter.
+- `backend/services/reranker_service.py`: lightweight embedding rerank.
+- `backend/services/kb_import_export_service.py`: KB zip export/import.
+
+Frontend:
+
+- `frontend-react/`: current React UI.
+- `frontend/`: legacy frontend retained during migration.
+
+Runtime data:
+
+- `backend/mini.db`
+- `backend/data/`
+- `backend/data/{kb_name}/uploads/`
+- `backend/data/{kb_name}/content/`
+- `backend/data/{kb_name}/vector_store/`
+
+Runtime data is ignored by Git and should not be committed.
+
+## Environment
+
+Copy the example file and fill in one provider key:
+
+```bash
+cp .env.example .env
 ```
 
-## Setup
+`docker compose` reads the root `.env` file. If you run the backend directly from `backend/`, you can also copy the same values to `backend/.env`.
+
+DeepSeek is preferred when `DEEPSEEK_API_KEY` exists:
+
+```bash
+DEEPSEEK_API_KEY=
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-chat
+```
+
+OpenAI-compatible fallback:
+
+```bash
+OPENAI_API_KEY=
+OPENAI_BASE_URL=
+OPENAI_MODEL=
+```
+
+Embedding model:
+
+```bash
+EMBEDDING_MODEL=all-MiniLM-L6-v2
+```
+
+Do not commit real API keys.
+
+## Local Setup
 
 Python 3.10+ is recommended.
 
-Create a virtual environment:
-
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
+python3 -m pip install -r requirements.txt
 ```
 
-Install dependencies:
+If the project is missing dependencies because `requirements.txt` is minimal in your checkout, install the backend runtime dependencies:
 
 ```bash
-pip install fastapi uvicorn python-multipart openai python-dotenv sentence-transformers faiss-cpu numpy pypdf
+python3 -m pip install fastapi uvicorn python-multipart openai python-dotenv sentence-transformers faiss-cpu numpy pypdf python-docx requests
 ```
 
-Create a `.env` file in the project root:
+## Run Backend
 
-```bash
-OPENAI_API_KEY=your OpenAI API key
-```
-
-## Run the Backend
-
-Start the backend from the `backend` directory because the project manages knowledge base files relative to `backend/data`.
+Run from the `backend/` directory because runtime data paths are relative to that directory:
 
 ```bash
 cd backend
 uvicorn app:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Backend API:
+Backend:
 
 ```text
 http://127.0.0.1:8000
 ```
 
-FastAPI docs:
+API docs:
 
 ```text
 http://127.0.0.1:8000/docs
 ```
 
-## Run the Frontend
+Model config check:
 
-Open a new terminal and run this from the project root:
+```bash
+curl http://127.0.0.1:8000/models
+```
+
+The `/models` response intentionally does not expose API keys.
+
+## Run With Docker Compose
+
+Create a root `.env` file first:
+
+```bash
+cp .env.example .env
+```
+
+Fill in `DEEPSEEK_API_KEY` or `OPENAI_API_KEY`, then start the stack:
+
+```bash
+docker compose up --build
+```
+
+Services:
+
+```text
+Backend:  http://127.0.0.1:8000
+Frontend: http://127.0.0.1:5173
+```
+
+Health checks:
+
+```bash
+curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:8000/health/deps
+```
+
+The compose setup keeps runtime state outside the image:
+
+- `./backend/data:/app/backend/data`
+- `./backend/uploads:/app/backend/uploads`
+- `./backend/mini.db:/app/backend/mini.db`
+
+The frontend image is built with:
+
+```text
+VITE_API_BASE_URL=http://127.0.0.1:8000
+```
+
+Override it when needed:
+
+```bash
+VITE_API_BASE_URL=http://your-backend:8000 docker compose up --build
+```
+
+Docker build excludes `.venv`, `node_modules`, `backend/data`, `backend/uploads`, `backend/mini.db`, cache folders, test artifacts, and zip exports.
+
+## Run React Frontend
+
+```bash
+cd frontend-react
+npm install
+npm run dev
+```
+
+Default Vite URL:
+
+```text
+http://localhost:5173
+```
+
+Production build:
+
+```bash
+cd frontend-react
+npm run build
+```
+
+## Run Legacy Frontend
+
+The old frontend is still available:
 
 ```bash
 cd frontend
-python -m http.server 5500
+python3 -m http.server 5500
 ```
 
 Then open:
@@ -129,43 +256,75 @@ Then open:
 http://127.0.0.1:5500
 ```
 
-The frontend uses this backend URL by default:
+## Smoke Tests
 
-```js
-const API_BASE = "http://127.0.0.1:8000";
+Start the backend first:
+
+```bash
+cd backend
+uvicorn app:app --reload --host 127.0.0.1 --port 8000
 ```
 
-If the backend port changes, update `API_BASE` in `frontend/app.js`.
+Run the unified smoke suite from the project root:
 
-## Usage
+```bash
+python3 scripts/run_smoke_tests.py
+```
 
-1. Start the backend server.
-2. Start the frontend server.
-3. Select or create a knowledge base.
-4. Upload `.txt` or `.pdf` files.
-5. Wait for parsing, chunking, and indexing.
-6. Ask a question in the chat input.
-7. Review the generated answer and retrieved source chunks.
+The runner executes tests sequentially because several tests call `/switch_kb`.
 
-## API Endpoints
+Covered scripts:
 
-| Method | Path | Description |
-| --- | --- | --- |
-| `POST` | `/chat` | Run RAG chat against the active knowledge base |
-| `POST` | `/upload` | Upload a `.txt` or `.pdf` file |
-| `GET` | `/documents` | List documents in the active knowledge base |
-| `DELETE` | `/documents/{filename}` | Delete a document |
-| `GET` | `/stats` | Get active knowledge base stats |
-| `POST` | `/reload` | Manually rebuild the index |
-| `GET` | `/knowledge_bases` | List knowledge bases |
-| `POST` | `/knowledge_bases` | Create a knowledge base |
-| `POST` | `/switch_kb` | Switch the active knowledge base |
-| `GET` | `/file_docs/{filename}` | List chunks for a file |
-| `GET` | `/chunk/{chunk_id}` | Get chunk content |
+- `scripts/test_llm_provider.py`
+- `scripts/test_react_core_api_smoke.py`
+- `scripts/test_conversation_api_smoke.py`
+- `scripts/test_temp_kb_api_smoke.py`
+- `scripts/test_hybrid_search_smoke.py`
+- `scripts/test_metadata_filter_smoke.py`
+- `scripts/test_context_dedup_smoke.py`
+- `scripts/test_context_token_budget_smoke.py`
+- `scripts/test_kb_import_export.py`
 
-## Notes
+Syntax checks:
 
-- The FAISS index is currently built in memory and rebuilt after document upload or deletion.
-- `.txt` files in `backend/data/{kb_name}/content` are the main source files used for retrieval.
-- SQLite stores only metadata for knowledge bases, files, and chunks. It does not store vectors.
-- If the OpenAI API call fails, the backend falls back to returning the most relevant retrieved chunk when available.
+```bash
+python3 -m py_compile scripts/run_smoke_tests.py
+cd frontend-react && npm run build
+```
+
+## Current Status
+
+Completed:
+
+- Local KB RAG.
+- Temp KB / file chat.
+- Search-engine mode.
+- Streaming.
+- Conversation productization.
+- Feedback.
+- Sources persistence for assistant messages.
+- KB CRUD, upload, document actions, reindex, import/export.
+- Hybrid search.
+- Metadata filter.
+- Context deduplication.
+- Context token budget.
+- DeepSeek/OpenAI-compatible provider config.
+- React UI core experience.
+- Unified smoke test runner.
+- Agent planner loop.
+- Real MCP Integration Foundation.
+- Filesystem MCP readonly.
+- Real MCP stdio transport runtime.
+- SQLite MCP readonly.
+
+## Deferred Items
+
+Not started yet:
+
+- Playwright MCP tools.
+- Agent streaming.
+- OCR/PPT/Excel loaders.
+- Multi-provider model UI.
+- LangChain integration.
+
+The next recommended work is Playwright MCP controlled browser integration and Agent streaming.
