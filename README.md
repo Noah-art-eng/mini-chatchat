@@ -1,330 +1,422 @@
 # Mini ChatChat
 
-Mini ChatChat is a compact, readable clone of the core LangChain-Chatchat experience. It focuses on the practical RAG path first:
+[English](README.md) | [简体中文](README.zh-CN.md)
 
-```text
-Question -> Retrieve -> Context -> Prompt -> LLM -> Answer
-```
+Mini ChatChat is a full-stack AI knowledge workspace built with FastAPI, React, FAISS, SQLite, and OpenAI-compatible model providers.
 
-The project intentionally avoids LangChain for now so the retrieval, prompt building, streaming, knowledge-base management, and conversation flow remain easy to inspect.
+![Release](https://img.shields.io/badge/release-v1.0.0--rc.1-2f6f5f)
+![Smoke tests](https://img.shields.io/badge/smoke_tests-30%2F30-2f6f5f)
+![Docker](https://img.shields.io/badge/docker-compose-2f6f5f)
+![License](https://img.shields.io/badge/license-not_selected-lightgrey)
+
+![Mini ChatChat chat workspace](docs/release/media/github-readme/hero-chat.png)
+
+## Demo Video
+
+Watch the full product walkthrough:
+
+<!-- GitHub README links to the local demo recording. Upload it to YouTube, Bilibili, or a GitHub Release later if a more stable external player is preferred. -->
+[![Mini ChatChat Demo Video](docs/release/media/github-readme/hero-chat.png)](docs/release/media/github-readme/mini-chatchat-demo.mov)
+
+The demo covers:
+
+- Email registration and login
+- Local knowledge-base chat
+- Web search
+- Temporary file chat
+- Source inspection
+- Agent tool calling
+- Tool Center
+- Account and session management
+- Docker production architecture
+
+## Project Highlights
+
+Mini ChatChat focuses on product-grade full-stack AI engineering rather than hiding the core flow behind a framework.
+
+- Inspectable retrieval-augmented generation (RAG) pipeline without LangChain
+- FAISS + BM25 hybrid search, metadata filters, rerank, deduplication, and token budget
+- Streaming answers with source persistence, conversation history, and feedback
+- Local knowledge base, web search, and temporary file chat modes
+- Agent planner, Tool Registry, readonly MCP tools, and tool trace restore
+- Email auth, HttpOnly refresh cookie, session management, OAuth infrastructure, and user isolation
+- React + TypeScript product UI with design system, onboarding, bilingual interface, and account pages
+- Docker Compose, nginx proxy, health checks, backup/restore scripts, and deployment docs
+- 30/30 smoke tests covering RAG, auth, Agent, MCP, tools, and deployment-critical APIs
 
 ## Core Features
 
-- Local knowledge-base RAG chat.
-- Temporary file chat.
-- Search-engine mode.
-- Unified `/kb_chat` endpoint with ChatChat-style `mode`.
-- OpenAI-compatible `/chat/completions` endpoint.
-- DeepSeek-first, OpenAI-compatible model provider config.
-- Streaming SSE responses.
-- Conversation list, messages, rename, delete, and persisted assistant sources.
-- Feedback/rating for assistant messages.
-- Prompt templates: `default`, `empty`, `strict`.
-- Multi-format document loading: `.txt`, `.pdf`, `.docx`, `.md`, `.csv`.
-- FAISS persistence.
-- Hybrid search: FAISS + BM25.
-- Metadata filter by file/source.
-- Lightweight rerank.
-- Context deduplication.
-- Context token budget before prompt construction.
-- KB file metadata/status.
-- Single-file reindex.
-- KB import/export.
-- React frontend for the main product UI.
-- Agent mode with tool calling, multi-step execution, lightweight planner metadata, and trace restore.
-- Real MCP Integration Foundation with allowlisted demo, filesystem readonly, real stdio transport, and SQLite readonly MCP discovery and calls.
-- Legacy plain HTML/CSS/JS frontend kept for compatibility.
-- Smoke test scripts for core backend flows.
+Mini ChatChat includes the core workflows expected from a ChatChat-style AI knowledge workspace.
 
-## Tech Stack
+- **Chat modes**: local KB, web search, temp file chat, and Agent mode
+- **Knowledge base**: upload, document list, reindex, delete, import, export, and source inspection
+- **Retrieval**: FAISS vector search, BM25 lexical search, hybrid ranking, metadata filter, rerank, deduplication, and context budget
+- **Conversations**: history, rename, delete, updated time, feedback, and assistant source metadata
+- **Agent**: one-shot and multi-step tool use, planner metadata, Tool Registry, browser search/read, filesystem readonly, SQLite readonly, and MCP adapter paths
+- **Authentication**: email registration/login, refresh rotation, session list, logout other devices, account profile, Google/GitHub OAuth infrastructure, and user data isolation
+- **System**: health checks, provider/model summary, dependency checks, tool catalog, MCP status, and runtime version
+- **Deployment**: Docker dev/prod compose, nginx reverse proxy, production env examples, backup/restore, and release candidate docs
 
-Backend:
+### Product Showcase
 
-- Python
-- FastAPI
-- SQLite
-- FAISS
-- Sentence Transformers
-- OpenAI-compatible Python SDK
-- DeepSeek API by default when `DEEPSEEK_API_KEY` is configured
-- pypdf
-- python-docx
-- python-dotenv
+![Mini ChatChat home and chat modes](docs/release/media/github-readme/hero-chat.png)
 
-Frontend:
+The main workspace keeps Chat as the primary surface while exposing local KB, search, temp file, and Agent modes.
 
-- React
-- Vite
-- TypeScript
-- Plain HTML/CSS/JS legacy frontend
+![Mini ChatChat search answer with sources](docs/release/media/github-readme/search-sources.png)
 
-Testing:
+Search answers can show source cards with URLs, snippets, and inspection details.
 
-- Python smoke test scripts using `requests`
-- Vite production build
+![Mini ChatChat onboarding guide](docs/release/media/github-readme/onboarding.png)
+
+The onboarding flow explains the available modes without exposing developer-only controls first.
+
+![Mini ChatChat login page](docs/release/media/github-readme/login.png)
+
+The authentication flow supports email login and OAuth entry points while keeping Guest mode available.
+
+![Mini ChatChat tool center](docs/release/media/github-readme/tool-center.png)
+
+The System workspace includes a product-style Tool Center for safe Agent capabilities.
 
 ## Architecture
 
-Important backend modules:
+The app runs as a React frontend behind nginx and a FastAPI backend that owns auth, chat orchestration, retrieval, agents, storage, and model calls.
 
-- `backend/app.py`: FastAPI routes and request models.
-- `backend/chat_service.py`: local/temp/search KB chat orchestration and streaming response assembly.
-- `backend/rag.py`: document splitting, prompt context building, token budget, answer generation, streaming.
-- `backend/db.py`: SQLite schema, migrations, KB metadata, conversation/message, feedback.
-- `backend/model_config.py`: DeepSeek/OpenAI provider selection and model defaults.
-- `backend/services/kb_service.py`: KB state, FAISS persistence, hybrid search, metadata filter, dedup.
-- `backend/services/document_loader.py`: txt/pdf/docx/md/csv parsing.
-- `backend/services/search_service.py`: web search adapter.
-- `backend/services/reranker_service.py`: lightweight embedding rerank.
-- `backend/services/kb_import_export_service.py`: KB zip export/import.
+```mermaid
+flowchart LR
+  Browser["Browser"] --> Nginx["Nginx / Reverse Proxy"]
+  Nginx --> React["React UI"]
+  Nginx --> FastAPI["FastAPI"]
+  FastAPI --> Auth["Auth / Session"]
+  FastAPI --> Chat["Chat Service"]
+  Chat --> RAG["RAG Pipeline"]
+  RAG --> Hybrid["FAISS + BM25"]
+  Hybrid --> SQLite["SQLite Metadata"]
+  Hybrid --> Uploads["Uploads / KB Files"]
+  FastAPI --> Agent["Agent"]
+  Agent --> Tools["Tool Registry"]
+  Tools --> MCP["MCP Adapters"]
+  FastAPI --> Provider["OpenAI-compatible Model Provider"]
+```
+
+Key backend modules:
+
+- `backend/app.py`: FastAPI routes and request models
+- `backend/chat_service.py`: local KB, temp KB, search, streaming, conversation persistence
+- `backend/rag.py`: splitting, prompt context, token budget, answer generation
+- `backend/db.py`: SQLite schema, migrations, users, sessions, conversations, KB metadata
+- `backend/auth/`: password hashing, JSON Web Token (JWT), refresh sessions, OAuth, permissions
+- `backend/user_scope.py`: user-scoped database and file paths
+- `backend/services/kb_service.py`: FAISS persistence, hybrid search, metadata filters, deduplication
+- `backend/services/tools/`: local safe tools
+- `backend/services/mcp_registry.py`: MCP tool discovery and adapters
+
+## Tech Stack
+
+Mini ChatChat uses a small stack that is readable enough for interviews and complete enough for product demos.
+
+| Layer | Tools |
+| --- | --- |
+| Frontend | React, TypeScript, Vite, Lucide, Vitest, Nginx |
+| Backend | FastAPI, Python, SQLite, FAISS, Sentence Transformers |
+| AI | DeepSeek, OpenAI-compatible API, hybrid search, Agent tool calling, MCP |
+| Engineering | Docker, Docker Compose, nginx, smoke tests, ESLint, typecheck, backup/restore |
+
+## RAG Pipeline
+
+The retrieval path stays explicit so each step can be inspected, tested, and discussed.
+
+```text
+Question -> Retrieve -> Filter -> Rerank -> Deduplicate -> Budget -> Prompt -> LLM -> Answer
+```
+
+Implemented retrieval behavior:
+
+- Document parsing for `.txt`, `.pdf`, `.docx`, `.md`, and `.csv`
+- Chunking with stored file metadata
+- FAISS vector search
+- BM25 lexical search
+- Hybrid score merging
+- Optional metadata filtering by file/source
+- Lightweight embedding rerank
+- Duplicate chunk removal
+- Prompt context token budget
+- Return-direct retrieval mode for debugging without calling the model
+
+## Agent / Tools / MCP
+
+Agent mode demonstrates tool-using AI without turning the project into an unsafe automation sandbox.
+
+- Tool Registry with structured specs and results
+- Safe tools: calculator, current time, KB search, browser search/read, filesystem readonly, SQLite readonly
+- Agent planner and multi-step loop with trace restore
+- MCP adapter foundation with allowlisted readonly integration paths
+- Developer Mode for tool IDs, schemas, payloads, and trace details
+
+The current MCP integration is intentionally controlled. Filesystem and SQLite access are readonly and scoped.
+
+## Authentication & Security
+
+Authentication is implemented as part of the product, not as a mock layer.
+
+- Email registration and login
+- Password hashing, never plaintext password storage
+- Short-lived access token
+- HttpOnly refresh cookie with refresh rotation
+- Session list, revoke session, logout other devices, and logout all devices
+- User-scoped conversations, KBs, files, sessions, and preferences
+- Google/GitHub OAuth infrastructure and account linking
+- Origin checks, CORS configuration, rate limits, and production secret checks
+
+Google and GitHub OAuth flows are implemented, but real provider end-to-end verification requires valid production credentials and callback configuration.
+
+## Knowledge Base Workflow
+
+The Knowledge workspace supports the core document lifecycle for local RAG demos.
+
+1. Create or select a knowledge base
+2. Upload supported document files
+3. Inspect file status, chunk counts, and indexing metadata
+4. Ask local KB questions in chat
+5. Open answer sources and inspect retrieved chunks
+6. Reindex, delete, import, or export KB data
+
+![Knowledge workspace](docs/release/screenshots/v1.0.0-rc.1/knowledge-desktop.png)
+
+## Testing & Quality
+
+The project uses deterministic checks and smoke tests before claims of completion.
 
 Frontend:
 
-- `frontend-react/`: current React UI.
-- `frontend/`: legacy frontend retained during migration.
-
-Runtime data:
-
-- `backend/mini.db`
-- `backend/data/`
-- `backend/data/{kb_name}/uploads/`
-- `backend/data/{kb_name}/content/`
-- `backend/data/{kb_name}/vector_store/`
-
-Runtime data is ignored by Git and should not be committed.
-
-## Environment
-
-Copy the example file and fill in one provider key:
-
-```bash
-cp .env.example .env
-```
-
-`docker compose` reads the root `.env` file. If you run the backend directly from `backend/`, you can also copy the same values to `backend/.env`.
-
-DeepSeek is preferred when `DEEPSEEK_API_KEY` exists:
-
-```bash
-DEEPSEEK_API_KEY=
-DEEPSEEK_BASE_URL=https://api.deepseek.com
-DEEPSEEK_MODEL=deepseek-chat
-```
-
-OpenAI-compatible fallback:
-
-```bash
-OPENAI_API_KEY=
-OPENAI_BASE_URL=
-OPENAI_MODEL=
-```
-
-Embedding model:
-
-```bash
-EMBEDDING_MODEL=all-MiniLM-L6-v2
-```
-
-Do not commit real API keys.
-
-## Local Setup
-
-Python 3.10+ is recommended.
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python3 -m pip install -r requirements.txt
-```
-
-If the project is missing dependencies because `requirements.txt` is minimal in your checkout, install the backend runtime dependencies:
-
-```bash
-python3 -m pip install fastapi uvicorn python-multipart openai python-dotenv sentence-transformers faiss-cpu numpy pypdf python-docx requests
-```
-
-## Run Backend
-
-Run from the `backend/` directory because runtime data paths are relative to that directory:
-
-```bash
-cd backend
-uvicorn app:app --reload --host 127.0.0.1 --port 8000
-```
-
-Backend:
-
-```text
-http://127.0.0.1:8000
-```
-
-API docs:
-
-```text
-http://127.0.0.1:8000/docs
-```
-
-Model config check:
-
-```bash
-curl http://127.0.0.1:8000/models
-```
-
-The `/models` response intentionally does not expose API keys.
-
-## Run With Docker Compose
-
-Create a root `.env` file first:
-
-```bash
-cp .env.example .env
-```
-
-Fill in `DEEPSEEK_API_KEY` or `OPENAI_API_KEY`, then start the stack:
-
-```bash
-docker compose up --build
-```
-
-Services:
-
-```text
-Backend:  http://127.0.0.1:8000
-Frontend: http://127.0.0.1:5173
-```
-
-Health checks:
-
-```bash
-curl http://127.0.0.1:8000/health
-curl http://127.0.0.1:8000/health/deps
-```
-
-The compose setup keeps runtime state outside the image:
-
-- `./backend/data:/app/backend/data`
-- `./backend/uploads:/app/backend/uploads`
-- `./backend/mini.db:/app/backend/mini.db`
-
-The frontend image is built with:
-
-```text
-VITE_API_BASE_URL=http://127.0.0.1:8000
-```
-
-Override it when needed:
-
-```bash
-VITE_API_BASE_URL=http://your-backend:8000 docker compose up --build
-```
-
-Docker build excludes `.venv`, `node_modules`, `backend/data`, `backend/uploads`, `backend/mini.db`, cache folders, test artifacts, and zip exports.
-
-## Run React Frontend
-
 ```bash
 cd frontend-react
-npm install
-npm run dev
-```
-
-Default Vite URL:
-
-```text
-http://localhost:5173
-```
-
-Production build:
-
-```bash
-cd frontend-react
+npm run typecheck
+npm run lint
+npm run test
 npm run build
 ```
 
-## Run Legacy Frontend
-
-The old frontend is still available:
+Backend syntax check:
 
 ```bash
-cd frontend
-python3 -m http.server 5500
+python3 -m py_compile backend/app.py backend/db.py backend/chat_service.py backend/rag.py
 ```
 
-Then open:
-
-```text
-http://127.0.0.1:5500
-```
-
-## Smoke Tests
-
-Start the backend first:
-
-```bash
-cd backend
-uvicorn app:app --reload --host 127.0.0.1 --port 8000
-```
-
-Run the unified smoke suite from the project root:
+Smoke suite:
 
 ```bash
 python3 scripts/run_smoke_tests.py
 ```
 
-The runner executes tests sequentially because several tests call `/switch_kb`.
+Current release candidate evidence:
 
-Covered scripts:
+- Typecheck, lint, Vitest, and production build passed
+- Backend compile passed for release-touched modules
+- Smoke runner passed 30/30 tests
+- Docker dev/prod builds passed
+- Browser QA captured desktop, tablet, and mobile screenshots
+- `npm audit` and `npm audit --omit=dev` reported 0 vulnerabilities in the React project
 
-- `scripts/test_llm_provider.py`
-- `scripts/test_react_core_api_smoke.py`
-- `scripts/test_conversation_api_smoke.py`
-- `scripts/test_temp_kb_api_smoke.py`
-- `scripts/test_hybrid_search_smoke.py`
-- `scripts/test_metadata_filter_smoke.py`
-- `scripts/test_context_dedup_smoke.py`
-- `scripts/test_context_token_budget_smoke.py`
-- `scripts/test_kb_import_export.py`
+## Docker & Deployment
 
-Syntax checks:
+Mini ChatChat supports local development, Docker private deployment, and controlled demo deployment. A public hosted demo is not currently available.
+
+Development compose:
 
 ```bash
-python3 -m py_compile scripts/run_smoke_tests.py
-cd frontend-react && npm run build
+cp .env.example .env.docker
+docker compose -f docker-compose.dev.yml up --build
+```
+
+Production compose:
+
+```bash
+cp .env.production.example .env.production
+mkdir -p runtime/prod
+docker compose -f docker-compose.prod.yml up --build -d
+```
+
+Production endpoints:
+
+```text
+Frontend: http://127.0.0.1/
+Backend:  http://127.0.0.1/api
+```
+
+Health checks:
+
+```bash
+curl http://127.0.0.1/healthz
+curl http://127.0.0.1/api/health
+curl http://127.0.0.1/api/health/deps
+```
+
+Backup and restore:
+
+```bash
+scripts/backup.sh
+RESTORE_CONFIRM=yes scripts/restore.sh backups/mini-chatchat-YYYYMMDDTHHMMSSZ.tar.gz
+```
+
+## Quick Start
+
+Use the local path for development and Docker for a private demo.
+
+### Local backend
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install -r requirements.txt
+cd backend
+uvicorn app:app --reload --host 127.0.0.1 --port 8000
+```
+
+Backend URL:
+
+```text
+http://127.0.0.1:8000
+```
+
+### Local React frontend
+
+```bash
+cd frontend-react
+npm install
+npm run dev -- --host 127.0.0.1 --port 5173
+```
+
+Frontend URL:
+
+```text
+http://127.0.0.1:5173
+```
+
+### Docker private demo
+
+```bash
+cp .env.production.example .env.production
+mkdir -p runtime/prod
+docker compose -f docker-compose.prod.yml up --build -d
+curl http://127.0.0.1/api/health
+```
+
+## Environment Variables
+
+Do not commit real secrets. Use `.env.example`, `.env.production.example`, and [environment variable docs](docs/deployment/environment-variables.md) as the source of truth.
+
+| Variable | Purpose |
+| --- | --- |
+| `DEEPSEEK_API_KEY` | DeepSeek API key |
+| `OPENAI_API_KEY` | OpenAI-compatible fallback key |
+| `JWT_SECRET_KEY` | JWT signing secret |
+| `ALLOWED_ORIGINS` | Browser origins allowed by CORS and auth origin checks |
+| `FRONTEND_URL` | Frontend URL used by auth and OAuth flows |
+| `AUTH_COOKIE_SECURE` | Secure cookie flag for refresh sessions |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
+| `GITHUB_CLIENT_ID` | GitHub OAuth client ID |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth client secret |
+| `DATA_DIR` | Knowledge-base data root |
+| `UPLOAD_DIR` | Upload storage path |
+| `DATABASE_PATH` | SQLite database path |
+
+## Demo Walkthrough
+
+Use the scripted walkthrough for a 5 to 8 minute portfolio or interview demo:
+
+- [English demo script](docs/release/demo-script.md)
+- [Chinese demo script](docs/release/demo-script.zh-CN.md)
+
+Recommended flow:
+
+1. Explain the product goal
+2. Show Guest mode and locked capabilities
+3. Register or log in with a demo account
+4. Complete onboarding
+5. Create a KB and upload a document
+6. Ask a local KB question and inspect sources
+7. Switch to web search
+8. Upload a temp file and ask a question
+9. Run Agent tool calling
+10. Show Tool Center, Account/Sessions, System, and Docker architecture
+
+## Project Structure
+
+The repository separates backend services, React UI, docs, scripts, and runtime data.
+
+```text
+backend/          FastAPI app, auth, RAG, DB, services, tools, MCP adapters
+frontend-react/   React + TypeScript product UI
+frontend/         Legacy plain HTML/CSS/JS frontend
+scripts/          Smoke tests, backup, restore
+docs/             Architecture, roadmap, deployment, refactor, release docs
+runtime/          Local production runtime data, ignored by Git
+backups/          Local backup archives, ignored by Git
 ```
 
 ## Current Status
 
-Completed:
+Mini ChatChat is portfolio-ready and suitable for local or Docker-based private demos.
 
-- Local KB RAG.
-- Temp KB / file chat.
-- Search-engine mode.
-- Streaming.
-- Conversation productization.
-- Feedback.
-- Sources persistence for assistant messages.
-- KB CRUD, upload, document actions, reindex, import/export.
-- Hybrid search.
-- Metadata filter.
-- Context deduplication.
-- Context token budget.
-- DeepSeek/OpenAI-compatible provider config.
-- React UI core experience.
-- Unified smoke test runner.
-- Agent planner loop.
-- Real MCP Integration Foundation.
-- Filesystem MCP readonly.
-- Real MCP stdio transport runtime.
-- SQLite MCP readonly.
+The current release candidate includes production containerization, email authentication, session management, user data isolation, RAG, Agent tools, MCP integration, and automated smoke tests.
 
-## Deferred Items
+A public hosted demo is not currently available.
 
-Not started yet:
+Google and GitHub OAuth flows are implemented, but real provider end-to-end verification requires valid production credentials and callback configuration.
 
-- Playwright MCP tools.
-- Agent streaming.
-- OCR/PPT/Excel loaders.
-- Multi-provider model UI.
-- LangChain integration.
+## Known Limitations
 
-The next recommended work is Playwright MCP controlled browser integration and Agent streaming.
+The current release candidate is a strong portfolio demo, not a horizontally scaled SaaS platform.
+
+- No public hosted demo
+- Single-node SQLite architecture
+- Backend image is about 2 GB
+- Real Google/GitHub OAuth provider end-to-end verification still requires credentials
+- No email verification
+- No password reset
+- No distributed rate limiting
+- Backup is local archive only
+- No encrypted off-site backup
+- Public production deployment still requires HTTPS, monitoring, and shared infrastructure
+
+## Roadmap
+
+The next work should focus on deployment hardening rather than more demo features.
+
+- Public staging deployment
+- Real OAuth provider verification
+- Email verification
+- Password reset
+- Redis-backed rate limiting
+- PostgreSQL migration
+- Encrypted off-site backup
+- CI security scanning
+- Optional Optical Character Recognition (OCR), PPT, and Excel loaders
+- Controlled browser agent tools
+
+## Documentation
+
+Project docs are organized by design, refactor history, deployment, and release readiness.
+
+- [UI Design Bible](docs/ui-design/01-design-bible.md)
+- [Design tokens](docs/ui-design/02-design-tokens.md)
+- [Component library](docs/ui-design/05-component-library.md)
+- [Refactor records](docs/refactor/phase-1-foundation.md)
+- [Deployment docs](docs/deployment/production-deployment.md)
+- [Environment variables](docs/deployment/environment-variables.md)
+- [Backup and restore](docs/deployment/backup-restore.md)
+- [OAuth provider setup](docs/deployment/oauth-provider-setup.md)
+- [Production checklist](docs/deployment/production-checklist.md)
+- [Architecture notes](docs/release/architecture.md)
+- [Security review](docs/release/dependency-security-review.md)
+- [Release candidate readiness](docs/release/v1.0-release-candidate-readiness.md)
+- [Runtime verification](docs/release/v1.0-runtime-verification.md)
+- [English demo script](docs/release/demo-script.md)
+- [Chinese demo script](docs/release/demo-script.zh-CN.md)
+
+## License
+
+No open-source license has been selected yet. Until a license file is added, the project is visible for portfolio review but not licensed for reuse, redistribution, or commercial use.
