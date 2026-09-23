@@ -11,4 +11,7 @@ export type KnowledgeFile = {
   docs_count?: number | null;
   chunk_size?: number | null;
   chunk_overlap?: number | null;
+  content_path?: string | null;
+  error?: string | null;
+  upload_path?: string | null;
 };

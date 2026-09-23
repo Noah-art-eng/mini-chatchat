@@ -9,6 +9,7 @@ from .types import ToolResult, ToolSpec
 
 
 def get_local_tool_registry() -> dict[str, ToolSpec]:
+    """负责 get_local_tool_registry 的函数职责。"""
     tools = [
         get_current_time_tool(),
         get_calculator_tool(),
@@ -25,10 +26,12 @@ def get_local_tool_registry() -> dict[str, ToolSpec]:
 
 
 def get_tool_registry() -> dict[str, ToolSpec]:
+    """负责 get_tool_registry 的函数职责。"""
     return get_local_tool_registry()
 
 
 def list_all_tools() -> list[dict]:
+    """负责 list_all_tools 的函数职责。"""
     from services.mcp_registry import get_mcp_tool_registry
 
     registry = {
@@ -42,6 +45,7 @@ def list_all_tools() -> list[dict]:
 
 
 def resolve_tool(name: str) -> ToolSpec | None:
+    """负责 resolve_tool 的函数职责。"""
     if name in get_local_tool_registry():
         return get_local_tool_registry()[name]
 
@@ -51,10 +55,12 @@ def resolve_tool(name: str) -> ToolSpec | None:
 
 
 def get_tool(name: str) -> ToolSpec | None:
+    """负责 get_tool 的函数职责。"""
     return get_local_tool_registry().get(name)
 
 
 def list_tools() -> list[dict]:
+    """负责 list_tools 的函数职责。"""
     return [
         tool.public_dict()
         for tool in get_tool_registry().values()
@@ -62,6 +68,7 @@ def list_tools() -> list[dict]:
 
 
 def run_tool(name: str, arguments: dict | None = None) -> ToolResult:
+    """负责 run_tool 的函数职责。"""
     tool = resolve_tool(name)
 
     if tool is None:

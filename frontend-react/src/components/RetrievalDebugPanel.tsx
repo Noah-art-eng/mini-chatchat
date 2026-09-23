@@ -1,10 +1,13 @@
 import { useMemo, useState } from "react";
 import { debugKbChat } from "../api/chat";
+import { useI18n } from "../i18n";
 import { useConversationStore } from "../stores/conversationStore";
 import type { KBChatRequest } from "../types/chat";
 import type { Source } from "../types/conversation";
 
+/** 用途：负责 getSourceLabel 的界面或数据处理职责。 */
 function getSourceLabel(source: Source, index: number) {
+  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     source.title ||
     source.file_name ||
@@ -14,15 +17,18 @@ function getSourceLabel(source: Source, index: number) {
   );
 }
 
+/** 用途：负责 getSourceHref 的界面或数据处理职责。 */
 function getSourceHref(source: Source) {
   const value = source.url || source.source || "";
   return /^https?:\/\//.test(value) ? value : null;
 }
 
+/** 用途：负责 getPreview 的界面或数据处理职责。 */
 function getPreview(source: Source) {
-  return source.chunk || source.content || "No preview text returned.";
+  return source.chunk || source.content || "";
 }
 
+/** 用途：负责 getScores 的界面或数据处理职责。 */
 function getScores(source: Source) {
   return [
     typeof source.score === "number" ? `score ${source.score.toFixed(2)}` : null,
@@ -35,7 +41,9 @@ function getScores(source: Source) {
   ].filter(Boolean);
 }
 
+/** 用途：负责 RetrievalDebugPanel 的界面或数据处理职责。 */
 export function RetrievalDebugPanel() {
+  const { t } = useI18n();
   const { chatMode, kbName, tempKbId } = useConversationStore();
   const [query, setQuery] = useState("");
   const [topK, setTopK] = useState(3);
@@ -86,70 +94,88 @@ export function RetrievalDebugPanel() {
     topK
   ]);
 
+  /** 用途：负责 runDebugSearch 的界面或数据处理职责。 */
   async function runDebugSearch() {
     if (!debugPayload.query) {
+      /** 用途：负责 setStatus 的界面或数据处理职责。 */
       setStatus("error");
-      setError("Enter a debug query first.");
+      /** 用途：负责 setError 的界面或数据处理职责。 */
+      setError(t("debug.enterQuery"));
+      /** 用途：负责 setResults 的界面或数据处理职责。 */
       setResults([]);
       return;
     }
 
     if (chatMode === "temp_kb" && !tempKbId) {
+      /** 用途：负责 setStatus 的界面或数据处理职责。 */
       setStatus("error");
-      setError("Please upload a temp file first.");
+      /** 用途：负责 setError 的界面或数据处理职责。 */
+      setError(t("debug.uploadTempFirst"));
+      /** 用途：负责 setResults 的界面或数据处理职责。 */
       setResults([]);
       return;
     }
 
+    /** 用途：负责 setStatus 的界面或数据处理职责。 */
     setStatus("loading");
+    /** 用途：负责 setError 的界面或数据处理职责。 */
     setError(null);
+    /** 用途：负责 setResults 的界面或数据处理职责。 */
     setResults([]);
 
     try {
       const response = await debugKbChat(debugPayload);
 
       if (response.error) {
+        /** 用途：负责 setStatus 的界面或数据处理职责。 */
         setStatus("error");
+        /** 用途：负责 setError 的界面或数据处理职责。 */
         setError(response.error);
         return;
       }
 
       const nextResults =
         response.sources || response.results || response.docs || [];
+      /** 用途：负责 setResults 的界面或数据处理职责。 */
       setResults(nextResults);
+      /** 用途：负责 setStatus 的界面或数据处理职责。 */
       setStatus(nextResults.length > 0 ? "success" : "empty");
     } catch (debugError) {
+      /** 用途：负责 setStatus 的界面或数据处理职责。 */
       setStatus("error");
+      /** 用途：负责 setError 的界面或数据处理职责。 */
       setError(
-        debugError instanceof Error ? debugError.message : "Debug search failed."
+        debugError instanceof Error ? debugError.message : t("debug.failed")
       );
     }
   }
 
+  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <section
-      aria-label="Retrieval debug"
+      aria-label={t("debug.title")}
       className="retrieval-debug-panel"
       data-testid="retrieval-debug-panel"
     >
       <div className="panel-heading">
-        <p className="eyebrow">Retrieval Debug</p>
-        <h2>Search Probe</h2>
+        <p className="eyebrow">{t("chat.developerTools")}</p>
+        <h2>{t("debug.subtitle")}</h2>
+        <p>{t("debug.description")}</p>
       </div>
 
       <label className="debug-field">
-        Debug query
+        {t("debug.query")}
         <input
           data-testid="debug-query-input"
           onChange={event => setQuery(event.target.value)}
-          placeholder="Test retrieval without changing chat"
+          placeholder={t("debug.queryPlaceholder")}
           value={query}
         />
       </label>
 
       <div className="debug-grid">
         <label className="debug-field">
-          top_k
+          {t("debug.topK")}
           <input
             data-testid="debug-top-k-input"
             min={1}
@@ -160,10 +186,11 @@ export function RetrievalDebugPanel() {
         </label>
 
         <label className="debug-field">
-          threshold
+          {t("debug.threshold")}
           <input
             data-testid="debug-score-threshold-input"
             onChange={event =>
+              /** 用途：负责 setScoreThreshold 的界面或数据处理职责。 */
               setScoreThreshold(Number(event.target.value) || 0)
             }
             step={0.01}
@@ -174,7 +201,7 @@ export function RetrievalDebugPanel() {
       </div>
 
       <label className="debug-field">
-        prompt_name
+        {t("debug.promptName")}
         <input
           data-testid="debug-prompt-name-input"
           onChange={event => setPromptName(event.target.value)}
@@ -190,7 +217,7 @@ export function RetrievalDebugPanel() {
             onChange={event => setReturnDirect(event.target.checked)}
             type="checkbox"
           />
-          return_direct
+          {t("debug.returnDirect")}
         </label>
         <label>
           <input
@@ -199,12 +226,12 @@ export function RetrievalDebugPanel() {
             onChange={event => setRerank(event.target.checked)}
             type="checkbox"
           />
-          rerank
+          {t("debug.rerank")}
         </label>
       </div>
 
       <label className="debug-field">
-        rerank_top_n
+        {t("debug.rerankTopN")}
         <input
           data-testid="debug-rerank-top-n-input"
           min={1}
@@ -223,17 +250,17 @@ export function RetrievalDebugPanel() {
         }}
         type="button"
       >
-        {status === "loading" ? "Searching" : "Debug Search"}
+        {status === "loading" ? t("debug.searching") : t("debug.run")}
       </button>
 
       <div className="debug-results" data-testid="debug-results">
         {status === "idle" && (
-          <p className="muted">Run a debug search to inspect retrieval results.</p>
+          <p className="muted">{t("debug.idle")}</p>
         )}
-        {status === "loading" && <p className="muted">Loading debug results...</p>}
-        {status === "empty" && <p className="muted">No debug results found.</p>}
+        {status === "loading" && <p className="muted">{t("debug.loading")}</p>}
+        {status === "empty" && <p className="muted">{t("debug.empty")}</p>}
         {status === "error" && (
-          <p className="inline-error">{error || "Debug search failed."}</p>
+          <p className="inline-error">{error || t("debug.failed")}</p>
         )}
 
         {results.map((source, index) => {
@@ -241,6 +268,7 @@ export function RetrievalDebugPanel() {
           const href = getSourceHref(source);
           const scores = getScores(source);
 
+          /** 用途：负责 return 的界面或数据处理职责。 */
           return (
             <article className="debug-result-card" key={`${label}-${index}`}>
               <div className="source-meta">
@@ -266,7 +294,9 @@ export function RetrievalDebugPanel() {
                   {source.title || label}
                 </strong>
               )}
-              <p data-testid="source-preview">{getPreview(source)}</p>
+              <p data-testid="source-preview">
+                {getPreview(source) || t("debug.noPreview")}
+              </p>
             </article>
           );
         })}

@@ -3,6 +3,8 @@ import sys
 
 import requests
 
+from smoke_auth import auth_headers
+
 
 API_BASE = os.getenv(
     "MINI_CHATCHAT_API_BASE",
@@ -18,10 +20,12 @@ FORBIDDEN_TEXT = (
 
 
 def pass_step(message):
+    """负责 pass_step 的函数职责。"""
     print(f"[PASS] {message}")
 
 
 def fail_step(message, response=None):
+    """负责 fail_step 的函数职责。"""
     print(f"[FAIL] {message}")
 
     if response is not None:
@@ -32,10 +36,15 @@ def fail_step(message, response=None):
 
 
 def request(method, path, **kwargs):
+    """负责 request 的函数职责。"""
+    headers = kwargs.pop("headers", {})
+    headers = {**auth_headers(), **headers}
+
     try:
         return requests.request(
             method,
             f"{API_BASE}{path}",
+            headers=headers,
             timeout=180,
             **kwargs,
         )
@@ -48,12 +57,14 @@ def request(method, path, **kwargs):
 
 
 def assert_safe_response(response, step_name):
+    """负责 assert_safe_response 的函数职责。"""
     for text in FORBIDDEN_TEXT:
         if text.lower() in response.text.lower():
             fail_step(f"{step_name}: forbidden text found: {text}", response)
 
 
 def expect_ok_json(response, step_name):
+    """负责 expect_ok_json 的函数职责。"""
     assert_safe_response(response, step_name)
 
     if response.status_code != 200:
@@ -66,6 +77,7 @@ def expect_ok_json(response, step_name):
 
 
 def run_browser_read(arguments, step_name):
+    """负责 run_browser_read 的函数职责。"""
     response = request(
         "POST",
         "/agent/tools/browser_read/run",
@@ -75,6 +87,7 @@ def run_browser_read(arguments, step_name):
 
 
 def check_tool_is_listed():
+    """负责 check_tool_is_listed 的函数职责。"""
     response = request("GET", "/agent/tools")
     data = expect_ok_json(response, "GET /agent/tools")
     names = {
@@ -90,6 +103,7 @@ def check_tool_is_listed():
 
 
 def check_direct_browser_read_success():
+    """负责 check_direct_browser_read_success 的函数职责。"""
     data, response = run_browser_read(
         {
             "url": "https://example.com",
@@ -124,6 +138,7 @@ def check_direct_browser_read_success():
 
 
 def check_max_chars():
+    """负责 check_max_chars 的函数职责。"""
     data, response = run_browser_read(
         {
             "url": "https://www.iana.org/domains/example",
@@ -150,6 +165,7 @@ def check_max_chars():
 
 
 def check_rejected_url(url, expected_error, step_name):
+    """负责 check_rejected_url 的函数职责。"""
     data, response = run_browser_read(
         {
             "url": url,
@@ -172,6 +188,7 @@ def check_rejected_url(url, expected_error, step_name):
 
 
 def check_binary_rejected():
+    """负责 check_binary_rejected 的函数职责。"""
     data, response = run_browser_read(
         {
             "url": "https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png",
@@ -191,6 +208,7 @@ def check_binary_rejected():
 
 
 def check_redirect_to_private_rejected():
+    """负责 check_redirect_to_private_rejected 的函数职责。"""
     data, response = run_browser_read(
         {
             "url": "https://postman-echo.com/redirect-to?url=http://127.0.0.1:8000",
@@ -210,6 +228,7 @@ def check_redirect_to_private_rejected():
 
 
 def check_agent_run_browser_read():
+    """负责 check_agent_run_browser_read 的函数职责。"""
     response = request(
         "POST",
         "/agent/run",
@@ -247,6 +266,7 @@ def check_agent_run_browser_read():
 
 
 def main():
+    """负责 main 的函数职责。"""
     print(f"API_BASE={API_BASE}")
     check_tool_is_listed()
     check_direct_browser_read_success()

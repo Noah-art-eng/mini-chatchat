@@ -1,0 +1,50 @@
+.ui-skeleton-group {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.ui-skeleton {
+  background:
+    linear-gradient(
+      90deg,
+      var(--color-bg-subtle),
+      var(--color-bg-hover),
+      var(--color-bg-subtle)
+    );
+  background-size: 220% 100%;
+  border-radius: var(--radius-md);
+  display: block;
+  min-width: 0;
+  width: 100%;
+  animation: ui-skeleton-shimmer 1.35s var(--motion-ease-standard) infinite;
+}
+
+.ui-skeleton--text.ui-skeleton--sm { height: 10px; }
+.ui-skeleton--text.ui-skeleton--md { height: 14px; }
+.ui-skeleton--text.ui-skeleton--lg { height: 18px; }
+
+.ui-skeleton--row {
+  min-height: var(--list-row-height);
+}
+
+.ui-skeleton--card {
+  min-height: 112px;
+  border-radius: var(--radius-lg);
+}
+
+.ui-skeleton--table {
+  min-height: var(--table-row-height);
+}
+
+@keyframes ui-skeleton-shimmer {
+  to {
+    background-position-x: -220%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-skeleton {
+    animation: none;
+    background: var(--color-bg-subtle);
+  }
+}

@@ -1,0 +1,56 @@
+.ui-text {
+  color: var(--color-text-primary);
+  font-family: var(--font-family-sans);
+  font-weight: var(--font-weight-regular);
+  letter-spacing: 0;
+  margin: 0;
+}
+
+.ui-text--body {
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+.ui-text--bodySmall,
+.ui-text--muted {
+  font-size: var(--font-size-body-small);
+  line-height: var(--line-height-body);
+}
+
+.ui-text--caption {
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-compact);
+}
+
+.ui-text--label {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-compact);
+}
+
+.ui-text--muted,
+.ui-text--tone-muted {
+  color: var(--color-text-muted);
+}
+
+.ui-text--tone-danger {
+  color: var(--color-danger);
+}
+
+.ui-text--tone-warning {
+  color: var(--color-warning);
+}
+
+.ui-text--tone-success {
+  color: var(--color-success);
+}
+
+.ui-text--tone-info {
+  color: var(--color-info);
+}
+
+.ui-text--truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

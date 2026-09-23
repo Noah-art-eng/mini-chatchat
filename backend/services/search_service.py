@@ -1,11 +1,16 @@
 from ddgs import DDGS
 
 
+SEARCH_TIMEOUT_SECONDS = 10
+
+
 def search_web(query, top_k=3):
+    """负责 search_web 的函数职责。"""
     results = []
 
     try:
-        with DDGS() as ddgs:
+        # 搜索工具使用独立超时，避免外部搜索服务拖住 Agent 工作线程。
+        with DDGS(timeout=SEARCH_TIMEOUT_SECONDS) as ddgs:
             search_results = ddgs.text(
                 query,
                 max_results=top_k

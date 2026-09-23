@@ -3,6 +3,8 @@ import sys
 
 import requests
 
+from smoke_auth import auth_headers
+
 
 API_BASE = os.getenv(
     "MINI_CHATCHAT_API_BASE",
@@ -21,10 +23,12 @@ BLOCKED_PUBLIC_KEYS = {"command", "cmd", "cwd", "args", "env", "environment", "s
 
 
 def pass_step(message):
+    """负责 pass_step 的函数职责。"""
     print(f"[PASS] {message}")
 
 
 def fail_step(message, response=None):
+    """负责 fail_step 的函数职责。"""
     print(f"[FAIL] {message}")
 
     if response is not None:
@@ -35,10 +39,15 @@ def fail_step(message, response=None):
 
 
 def request(method, path, **kwargs):
+    """负责 request 的函数职责。"""
+    headers = kwargs.pop("headers", {})
+    headers = {**auth_headers(), **headers}
+
     try:
         return requests.request(
             method,
             f"{API_BASE}{path}",
+            headers=headers,
             timeout=240,
             **kwargs,
         )
@@ -51,6 +60,7 @@ def request(method, path, **kwargs):
 
 
 def assert_safe_response(response, step_name):
+    """负责 assert_safe_response 的函数职责。"""
     lower = response.text.lower()
     for text in FORBIDDEN_TEXT:
         if text.lower() in lower:
@@ -58,6 +68,7 @@ def assert_safe_response(response, step_name):
 
 
 def expect_ok_json(response, step_name):
+    """负责 expect_ok_json 的函数职责。"""
     assert_safe_response(response, step_name)
 
     if response.status_code != 200:
@@ -73,6 +84,7 @@ def expect_ok_json(response, step_name):
 
 
 def assert_no_public_leaks(value, step_name):
+    """负责 assert_no_public_leaks 的函数职责。"""
     if isinstance(value, dict):
         for key, child in value.items():
             if key in BLOCKED_PUBLIC_KEYS:
@@ -84,6 +96,7 @@ def assert_no_public_leaks(value, step_name):
 
 
 def assert_sqlite_metadata(data, response, tool_name):
+    """负责 assert_sqlite_metadata 的函数职责。"""
     metadata = data.get("metadata") or {}
     expected = {
         "provider": "mcp",
@@ -100,6 +113,7 @@ def assert_sqlite_metadata(data, response, tool_name):
 
 
 def check_sqlite_discovery():
+    """负责 check_sqlite_discovery 的函数职责。"""
     response = request("GET", "/agent/mcp/servers")
     data = expect_ok_json(response, "GET /agent/mcp/servers")
     servers = data.get("servers") or []
@@ -141,6 +155,7 @@ def check_sqlite_discovery():
 
 
 def check_registry():
+    """负责 check_registry 的函数职责。"""
     response = request("GET", "/agent/tools")
     data = expect_ok_json(response, "GET /agent/tools")
     names = {tool.get("name") for tool in data.get("tools") or []}
@@ -153,6 +168,7 @@ def check_registry():
 
 
 def check_list_tables_and_query():
+    """负责 check_list_tables_and_query 的函数职责。"""
     response = request(
         "POST",
         "/agent/mcp/tools/mcp.sqlite.list-tables/run",
@@ -202,6 +218,7 @@ def check_list_tables_and_query():
 
 
 def check_sql_rejections():
+    """负责 check_sql_rejections 的函数职责。"""
     cases = [
         ("UPDATE", "UPDATE conversation SET title = title"),
         ("DELETE", "DELETE FROM conversation WHERE 1=0"),
@@ -229,6 +246,7 @@ def check_sql_rejections():
 
 
 def check_unknown_tool_rejected():
+    """负责 check_unknown_tool_rejected 的函数职责。"""
     response = request(
         "POST",
         "/agent/mcp/tools/mcp.sqlite.execute/run",
@@ -248,6 +266,7 @@ def check_unknown_tool_rejected():
 
 
 def check_planner_sqlite_mcp():
+    """负责 check_planner_sqlite_mcp 的函数职责。"""
     response = request(
         "POST",
         "/agent/plan_run",
@@ -318,6 +337,7 @@ def check_planner_sqlite_mcp():
 
 
 def check_local_sqlite_unaffected():
+    """负责 check_local_sqlite_unaffected 的函数职责。"""
     response = request(
         "POST",
         "/agent/tools/sqlite_readonly_query/run",
@@ -337,6 +357,7 @@ def check_local_sqlite_unaffected():
 
 
 def main():
+    """负责 main 的函数职责。"""
     print(f"API_BASE={API_BASE}")
     check_sqlite_discovery()
     check_registry()

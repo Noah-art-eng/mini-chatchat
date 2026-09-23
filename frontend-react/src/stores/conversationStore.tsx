@@ -9,6 +9,7 @@ import {
 } from "react";
 import {
   deleteConversation,
+  deleteConversations,
   getConversationMessages,
   listConversations,
   renameConversation
@@ -51,10 +52,12 @@ type ConversationState = {
     title: string
   ) => Promise<void>;
   deleteConversationById: (conversationId: number) => Promise<void>;
+  deleteConversationsByIds: (conversationIds: number[]) => Promise<void>;
 };
 
 const ConversationContext = createContext<ConversationState | null>(null);
 
+/** 用途：负责 ConversationProvider 的界面或数据处理职责。 */
 export function ConversationProvider({ children }: { children: ReactNode }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [conversationId, setConversationId] = useState<number | null>(null);
@@ -72,6 +75,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
 
   const setActiveConversationId = useCallback((nextConversationId: number | null) => {
+    /** 用途：负责 setConversationId 的界面或数据处理职责。 */
     setConversationId(nextConversationId);
 
     if (nextConversationId === null) {
@@ -83,45 +87,62 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshConversations = useCallback(async () => {
+    /** 用途：负责 setIsLoadingConversations 的界面或数据处理职责。 */
     setIsLoadingConversations(true);
     try {
       const data = await listConversations();
+      /** 用途：负责 setConversations 的界面或数据处理职责。 */
       setConversations(data.conversations);
     } finally {
+      /** 用途：负责 setIsLoadingConversations 的界面或数据处理职责。 */
       setIsLoadingConversations(false);
     }
   }, []);
 
   const loadConversation = useCallback(async (conversation: Conversation) => {
+    /** 用途：负责 setConversationId 的界面或数据处理职责。 */
     setConversationId(conversation.id);
     localStorage.setItem(LAST_CONVERSATION_KEY, String(conversation.id));
+    /** 用途：负责 setStreamingMessage 的界面或数据处理职责。 */
     setStreamingMessage("");
+    /** 用途：负责 setSources 的界面或数据处理职责。 */
     setSources([]);
+    /** 用途：负责 setSelectedAssistantMessageId 的界面或数据处理职责。 */
     setSelectedAssistantMessageId(null);
+    /** 用途：负责 setIsLoadingMessages 的界面或数据处理职责。 */
     setIsLoadingMessages(true);
     try {
       const data = await getConversationMessages(conversation.id);
+      /** 用途：负责 setMessages 的界面或数据处理职责。 */
       setMessages(data.messages);
     } finally {
+      /** 用途：负责 setIsLoadingMessages 的界面或数据处理职责。 */
       setIsLoadingMessages(false);
     }
   }, []);
 
   const startNewConversation = useCallback(() => {
+    /** 用途：负责 setConversationId 的界面或数据处理职责。 */
     setConversationId(null);
     localStorage.removeItem(LAST_CONVERSATION_KEY);
+    /** 用途：负责 setMessages 的界面或数据处理职责。 */
     setMessages([]);
+    /** 用途：负责 setStreamingMessage 的界面或数据处理职责。 */
     setStreamingMessage("");
+    /** 用途：负责 setSources 的界面或数据处理职责。 */
     setSources([]);
+    /** 用途：负责 setSelectedAssistantMessageId 的界面或数据处理职责。 */
     setSelectedAssistantMessageId(null);
   }, []);
 
   const appendStreamingMessage = useCallback((token: string) => {
+    /** 用途：负责 setStreamingMessage 的界面或数据处理职责。 */
     setStreamingMessage(current => `${current}${token}`);
   }, []);
 
   const updateMessageFeedback = useCallback(
     (messageId: number, score: number) => {
+      /** 用途：负责 setMessages 的界面或数据处理职责。 */
       setMessages(currentMessages =>
         currentMessages.map(message =>
           message.id === messageId
@@ -137,9 +158,11 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
   );
 
   const renameConversationById = useCallback(
+    /** 用途：负责 async 的界面或数据处理职责。 */
     async (targetConversationId: number, title: string) => {
       const result = await renameConversation(targetConversationId, title);
 
+      /** 用途：负责 setConversations 的界面或数据处理职责。 */
       setConversations(currentConversations =>
         currentConversations.map(conversation =>
           conversation.id === targetConversationId
@@ -154,29 +177,58 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
   );
 
   const deleteConversationById = useCallback(
+    /** 用途：负责 async 的界面或数据处理职责。 */
     async (targetConversationId: number) => {
       await deleteConversation(targetConversationId);
       await refreshConversations();
 
       if (targetConversationId === conversationId) {
+        /** 用途：负责 setConversationId 的界面或数据处理职责。 */
         setConversationId(null);
         localStorage.removeItem(LAST_CONVERSATION_KEY);
+        /** 用途：负责 setMessages 的界面或数据处理职责。 */
         setMessages([]);
+        /** 用途：负责 setStreamingMessage 的界面或数据处理职责。 */
         setStreamingMessage("");
+        /** 用途：负责 setSources 的界面或数据处理职责。 */
         setSources([]);
+        /** 用途：负责 setSelectedAssistantMessageId 的界面或数据处理职责。 */
         setSelectedAssistantMessageId(null);
       }
     },
     [conversationId, refreshConversations]
   );
 
+  const deleteConversationsByIds = useCallback(
+    /** 用途：负责 async 的界面或数据处理职责。 */
+    async (targetConversationIds: number[]) => {
+      await deleteConversations(targetConversationIds);
+      /** 用途：负责 setConversationId 的界面或数据处理职责。 */
+      setConversationId(null);
+      localStorage.removeItem(LAST_CONVERSATION_KEY);
+      /** 用途：负责 setMessages 的界面或数据处理职责。 */
+      setMessages([]);
+      /** 用途：负责 setStreamingMessage 的界面或数据处理职责。 */
+      setStreamingMessage("");
+      /** 用途：负责 setSources 的界面或数据处理职责。 */
+      setSources([]);
+      /** 用途：负责 setSelectedAssistantMessageId 的界面或数据处理职责。 */
+      setSelectedAssistantMessageId(null);
+      await refreshConversations();
+    },
+    [refreshConversations]
+  );
+
+  /** 用途：负责 useEffect 的界面或数据处理职责。 */
   useEffect(() => {
     let ignore = false;
 
+    /** 用途：负责 restoreLastConversation 的界面或数据处理职责。 */
     async function restoreLastConversation() {
       const data = await listConversations();
       if (ignore) return;
 
+      /** 用途：负责 setConversations 的界面或数据处理职责。 */
       setConversations(data.conversations);
 
       const savedId = Number(localStorage.getItem(LAST_CONVERSATION_KEY));
@@ -189,8 +241,10 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    restoreLastConversation().catch(console.error);
+    /** 用途：负责 restoreLastConversation 的界面或数据处理职责。 */
+    restoreLastConversation().catch(() => undefined);
 
+    /** 用途：负责 return 的界面或数据处理职责。 */
     return () => {
       ignore = true;
     };
@@ -225,7 +279,8 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
       loadConversation,
       startNewConversation,
       renameConversationById,
-      deleteConversationById
+      deleteConversationById,
+      deleteConversationsByIds
     }),
     [
       appendStreamingMessage,
@@ -238,6 +293,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
       loadConversation,
       messages,
       deleteConversationById,
+      deleteConversationsByIds,
       refreshConversations,
       renameConversationById,
       selectedAssistantMessageId,
@@ -251,6 +307,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
     ]
   );
 
+  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <ConversationContext.Provider value={value}>
       {children}
@@ -258,6 +315,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/** 用途：负责 useConversationStore 的界面或数据处理职责。 */
 export function useConversationStore() {
   const context = useContext(ConversationContext);
 

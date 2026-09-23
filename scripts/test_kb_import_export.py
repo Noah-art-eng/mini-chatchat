@@ -7,6 +7,8 @@ from pathlib import Path
 
 import requests
 
+from smoke_auth import auth_headers
+
 
 API_BASE = os.getenv(
     "MINI_CHATCHAT_API_BASE",
@@ -20,10 +22,12 @@ IMPORT_KB = "e2e_imported_test"
 
 
 def pass_step(message):
+    """负责 pass_step 的函数职责。"""
     print(f"[PASS] {message}")
 
 
 def fail_step(message, response=None):
+    """负责 fail_step 的函数职责。"""
     print(f"[FAIL] {message}")
 
     if response is not None:
@@ -34,10 +38,15 @@ def fail_step(message, response=None):
 
 
 def request(method, path, **kwargs):
+    """负责 request 的函数职责。"""
+    headers = kwargs.pop("headers", {})
+    headers = {**auth_headers(), **headers}
+
     try:
         return requests.request(
             method,
             f"{API_BASE}{path}",
+            headers=headers,
             timeout=60,
             **kwargs,
         )
@@ -48,6 +57,7 @@ def request(method, path, **kwargs):
 
 
 def json_response(response, message):
+    """负责 json_response 的函数职责。"""
     try:
         return response.json()
     except ValueError:
@@ -55,6 +65,7 @@ def json_response(response, message):
 
 
 def expect_ok(response, message):
+    """负责 expect_ok 的函数职责。"""
     if response.status_code >= 400:
         fail_step(message, response)
 
@@ -71,7 +82,12 @@ def expect_ok(response, message):
 
 
 def delete_kb_if_exists(kb_name):
+    """负责 delete_kb_if_exists 的函数职责。"""
     response = request("DELETE", f"/knowledge_bases/{kb_name}")
+
+    if response.status_code == 404:
+        pass_step(f"delete existing KB if present: {kb_name}")
+        return
 
     if response.status_code >= 400:
         fail_step(f"delete existing KB {kb_name}", response)
@@ -80,6 +96,7 @@ def delete_kb_if_exists(kb_name):
 
 
 def create_and_switch_kb(kb_name):
+    """负责 create_and_switch_kb 的函数职责。"""
     response = request(
         "POST",
         "/knowledge_bases",
@@ -96,6 +113,7 @@ def create_and_switch_kb(kb_name):
 
 
 def upload_sample():
+    """负责 upload_sample 的函数职责。"""
     with SAMPLE_FILE.open("rb") as file:
         response = request(
             "POST",
@@ -107,12 +125,14 @@ def upload_sample():
 
 
 def get_documents():
+    """负责 get_documents 的函数职责。"""
     response = request("GET", "/documents")
     data = expect_ok(response, "GET /documents")
     return data.get("files", [])
 
 
 def find_sample_document(files):
+    """负责 find_sample_document 的函数职责。"""
     return next(
         (
             item
@@ -124,6 +144,7 @@ def find_sample_document(files):
 
 
 def assert_sample_indexed():
+    """负责 assert_sample_indexed 的函数职责。"""
     files = get_documents()
     sample = find_sample_document(files)
 
@@ -139,6 +160,7 @@ def assert_sample_indexed():
 
 
 def export_zip(temp_dir):
+    """负责 export_zip 的函数职责。"""
     response = request(
         "GET",
         f"/knowledge_bases/{EXPORT_KB}/export",
@@ -158,6 +180,7 @@ def export_zip(temp_dir):
 
 
 def assert_export_zip(zip_path):
+    """负责 assert_export_zip 的函数职责。"""
     with zipfile.ZipFile(zip_path, "r") as zip_file:
         names = zip_file.namelist()
 
@@ -197,6 +220,7 @@ def assert_export_zip(zip_path):
 
 
 def rewrite_zip_with_import_name(source_zip, temp_dir):
+    """负责 rewrite_zip_with_import_name 的函数职责。"""
     extract_dir = Path(temp_dir) / "rewrite"
     extract_dir.mkdir(parents=True, exist_ok=True)
 
@@ -222,6 +246,7 @@ def rewrite_zip_with_import_name(source_zip, temp_dir):
 
 
 def import_zip(zip_path):
+    """负责 import_zip 的函数职责。"""
     with zip_path.open("rb") as file:
         response = request(
             "POST",
@@ -239,6 +264,7 @@ def import_zip(zip_path):
 
 
 def switch_kb(kb_name):
+    """负责 switch_kb 的函数职责。"""
     response = request(
         "POST",
         "/switch_kb",
@@ -248,6 +274,7 @@ def switch_kb(kb_name):
 
 
 def verify_imported_search():
+    """负责 verify_imported_search 的函数职责。"""
     response = request(
         "POST",
         "/kb_chat",
@@ -287,15 +314,17 @@ def verify_imported_search():
 
 
 def cleanup():
+    """负责 cleanup 的函数职责。"""
     for kb_name in (EXPORT_KB, IMPORT_KB):
         response = request("DELETE", f"/knowledge_bases/{kb_name}")
-        if response.status_code >= 400:
+        if response.status_code >= 400 and response.status_code != 404:
             print(f"[WARN] cleanup failed for {kb_name}: {response.text[:500]}")
         else:
             pass_step(f"cleanup KB {kb_name}")
 
 
 def main():
+    """负责 main 的函数职责。"""
     print(f"API_BASE={API_BASE}")
 
     if not SAMPLE_FILE.exists():

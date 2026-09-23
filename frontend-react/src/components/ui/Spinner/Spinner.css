@@ -1,0 +1,36 @@
+.ui-spinner {
+  animation: ui-spinner-rotate var(--motion-duration-slow) linear infinite;
+  border: var(--border-width-strong) var(--border-style-default)
+    var(--color-border-default);
+  border-radius: var(--radius-circle);
+  border-top-color: var(--color-brand-primary);
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.ui-spinner--sm {
+  height: var(--icon-size-sm);
+  width: var(--icon-size-sm);
+}
+
+.ui-spinner--md {
+  height: var(--icon-size-md);
+  width: var(--icon-size-md);
+}
+
+.ui-spinner--lg {
+  height: var(--icon-size-lg);
+  width: var(--icon-size-lg);
+}
+
+@keyframes ui-spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-spinner {
+    animation: none;
+  }
+}

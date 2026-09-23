@@ -19,10 +19,12 @@ FORBIDDEN_TEXT = (
 
 
 def pass_step(message):
+    """负责 pass_step 的函数职责。"""
     print(f"[PASS] {message}")
 
 
 def fail_step(message, response=None):
+    """负责 fail_step 的函数职责。"""
     print(f"[FAIL] {message}")
 
     if response is not None:
@@ -33,6 +35,7 @@ def fail_step(message, response=None):
 
 
 def request(method, path, **kwargs):
+    """负责 request 的函数职责。"""
     try:
         return requests.request(
             method,
@@ -49,12 +52,14 @@ def request(method, path, **kwargs):
 
 
 def assert_safe_response(response, step_name):
+    """负责 assert_safe_response 的函数职责。"""
     for text in FORBIDDEN_TEXT:
         if text.lower() in response.text.lower():
             fail_step(f"{step_name}: forbidden text found: {text}", response)
 
 
 def parse_json(response, step_name):
+    """负责 parse_json 的函数职责。"""
     try:
         return response.json()
     except ValueError:
@@ -62,6 +67,7 @@ def parse_json(response, step_name):
 
 
 def expect_ok_json(response, step_name):
+    """负责 expect_ok_json 的函数职责。"""
     assert_safe_response(response, step_name)
 
     if response.status_code != 200:
@@ -76,6 +82,7 @@ def expect_ok_json(response, step_name):
 
 
 def check_models():
+    """负责 check_models 的函数职责。"""
     response = request("GET", "/models")
     data = expect_ok_json(response, "GET /models")
     chat = data.get("chat", {})
@@ -89,6 +96,7 @@ def check_models():
 
 
 def create_conversation_via_chat():
+    """负责 create_conversation_via_chat 的函数职责。"""
     payload = {
         "mode": "local_kb",
         "kb_name": "default",
@@ -128,6 +136,7 @@ def create_conversation_via_chat():
 
 
 def find_conversation(conversations, conversation_id):
+    """负责 find_conversation 的函数职责。"""
     return next(
         (
             conversation
@@ -139,6 +148,7 @@ def find_conversation(conversations, conversation_id):
 
 
 def check_conversation_exists(conversation_id):
+    """负责 check_conversation_exists 的函数职责。"""
     response = request("GET", "/conversations")
     data = expect_ok_json(response, "GET /conversations")
     conversations = data.get("conversations", [])
@@ -161,6 +171,7 @@ def check_conversation_exists(conversation_id):
 
 
 def check_messages(conversation_id, assistant_message_id):
+    """负责 check_messages 的函数职责。"""
     response = request("GET", f"/conversations/{conversation_id}/messages")
     data = expect_ok_json(
         response,
@@ -203,6 +214,7 @@ def check_messages(conversation_id, assistant_message_id):
 
 
 def rename_conversation(conversation_id):
+    """负责 rename_conversation 的函数职责。"""
     title = f"Smoke conversation {datetime.now().strftime('%Y%m%d%H%M%S')}"
     response = request(
         "PATCH",
@@ -226,6 +238,7 @@ def rename_conversation(conversation_id):
 
 
 def check_renamed_title(conversation_id, expected_title):
+    """负责 check_renamed_title 的函数职责。"""
     response = request("GET", "/conversations")
     data = expect_ok_json(response, "GET /conversations after rename")
     conversation = find_conversation(data.get("conversations", []), conversation_id)
@@ -244,6 +257,7 @@ def check_renamed_title(conversation_id, expected_title):
 
 
 def delete_conversation(conversation_id):
+    """负责 delete_conversation 的函数职责。"""
     response = request("DELETE", f"/conversations/{conversation_id}")
     data = expect_ok_json(response, f"DELETE /conversations/{conversation_id}")
 
@@ -255,6 +269,7 @@ def delete_conversation(conversation_id):
 
 
 def check_deleted(conversation_id):
+    """负责 check_deleted 的函数职责。"""
     response = request("GET", "/conversations")
     data = expect_ok_json(response, "GET /conversations after delete")
     conversation = find_conversation(data.get("conversations", []), conversation_id)
@@ -267,6 +282,7 @@ def check_deleted(conversation_id):
 
 
 def main():
+    """负责 main 的函数职责。"""
     print(f"API_BASE={API_BASE}")
     check_models()
     conversation_id, assistant_message_id = create_conversation_via_chat()

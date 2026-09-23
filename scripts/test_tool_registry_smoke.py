@@ -18,10 +18,12 @@ FORBIDDEN_TEXT = (
 
 
 def pass_step(message):
+    """负责 pass_step 的函数职责。"""
     print(f"[PASS] {message}")
 
 
 def fail_step(message, response=None):
+    """负责 fail_step 的函数职责。"""
     print(f"[FAIL] {message}")
 
     if response is not None:
@@ -32,6 +34,7 @@ def fail_step(message, response=None):
 
 
 def request(method, path, **kwargs):
+    """负责 request 的函数职责。"""
     try:
         return requests.request(
             method,
@@ -48,12 +51,14 @@ def request(method, path, **kwargs):
 
 
 def assert_safe_response(response, step_name):
+    """负责 assert_safe_response 的函数职责。"""
     for text in FORBIDDEN_TEXT:
         if text.lower() in response.text.lower():
             fail_step(f"{step_name}: forbidden text found: {text}", response)
 
 
 def expect_ok_json(response, step_name):
+    """负责 expect_ok_json 的函数职责。"""
     assert_safe_response(response, step_name)
 
     if response.status_code != 200:
@@ -66,6 +71,7 @@ def expect_ok_json(response, step_name):
 
 
 def run_tool(tool_name, arguments, step_name):
+    """负责 run_tool 的函数职责。"""
     response = request(
         "POST",
         f"/agent/tools/{tool_name}/run",
@@ -75,6 +81,7 @@ def run_tool(tool_name, arguments, step_name):
 
 
 def check_tool_list():
+    """负责 check_tool_list 的函数职责。"""
     response = request("GET", "/agent/tools")
     data = expect_ok_json(response, "GET /agent/tools")
     tools = data.get("tools", [])
@@ -92,6 +99,7 @@ def check_tool_list():
 
 
 def check_current_time():
+    """负责 check_current_time 的函数职责。"""
     data, response = run_tool(
         "current_time",
         {},
@@ -110,6 +118,7 @@ def check_current_time():
 
 
 def check_calculator_success():
+    """负责 check_calculator_success 的函数职责。"""
     data, response = run_tool(
         "calculator",
         {"expression": "25 * 8 + (10 % 3)"},
@@ -128,6 +137,7 @@ def check_calculator_success():
 
 
 def check_calculator_rejects_unsafe_expression():
+    """负责 check_calculator_rejects_unsafe_expression 的函数职责。"""
     data, response = run_tool(
         "calculator",
         {"expression": "__import__('os').system('echo unsafe')"},
@@ -145,6 +155,7 @@ def check_calculator_rejects_unsafe_expression():
 
 
 def check_kb_search():
+    """负责 check_kb_search 的函数职责。"""
     data, response = run_tool(
         "kb_search",
         {
@@ -177,6 +188,7 @@ def check_kb_search():
 
 
 def main():
+    """负责 main 的函数职责。"""
     print(f"API_BASE={API_BASE}")
     check_tool_list()
     check_current_time()

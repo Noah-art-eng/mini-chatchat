@@ -1,9 +1,11 @@
 from services.kb_service import MiniKBService
+from db import user_owns_kb
 
 from .types import ToolResult, ToolSpec
 
 
 def is_safe_kb_name(kb_name: str) -> bool:
+    """负责 is_safe_kb_name 的函数职责。"""
     return (
         bool(kb_name)
         and ".." not in kb_name
@@ -13,6 +15,7 @@ def is_safe_kb_name(kb_name: str) -> bool:
 
 
 def normalize_top_k(value) -> int:
+    """负责 normalize_top_k 的函数职责。"""
     try:
         top_k = int(value)
     except (TypeError, ValueError):
@@ -22,10 +25,12 @@ def normalize_top_k(value) -> int:
 
 
 def execute_kb_search(arguments: dict) -> ToolResult:
+    """负责 execute_kb_search 的函数职责。"""
     query = arguments.get("query")
     kb_name = arguments.get("kb_name", "default")
     top_k = normalize_top_k(arguments.get("top_k", 3))
     metadata_filter = arguments.get("metadata_filter")
+    user_id = arguments.get("_user_id")
 
     if not isinstance(query, str) or not query.strip():
         return ToolResult(
@@ -45,8 +50,14 @@ def execute_kb_search(arguments: dict) -> ToolResult:
             error="metadata_filter must be an object",
         )
 
+    if not user_owns_kb(kb_name, user_id=user_id):
+        return ToolResult(
+            ok=False,
+            error="knowledge base not found",
+        )
+
     try:
-        kb_service = MiniKBService(kb_name)
+        kb_service = MiniKBService(kb_name, user_id=user_id)
         sources = kb_service.search_docs(
             query,
             top_k=top_k,
@@ -72,6 +83,7 @@ def execute_kb_search(arguments: dict) -> ToolResult:
 
 
 def get_kb_search_tool() -> ToolSpec:
+    """负责 get_kb_search_tool 的函数职责。"""
     return ToolSpec(
         name="kb_search",
         description="Search a local knowledge base and return matching chunks.",

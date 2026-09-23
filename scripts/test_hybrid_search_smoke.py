@@ -4,6 +4,8 @@ from pathlib import Path
 
 import requests
 
+from smoke_auth import auth_headers
+
 
 API_BASE = os.getenv(
     "MINI_CHATCHAT_API_BASE",
@@ -23,10 +25,12 @@ FORBIDDEN_TEXT = (
 
 
 def pass_step(message):
+    """负责 pass_step 的函数职责。"""
     print(f"[PASS] {message}")
 
 
 def fail_step(message, response=None):
+    """负责 fail_step 的函数职责。"""
     print(f"[FAIL] {message}")
 
     if response is not None:
@@ -37,10 +41,15 @@ def fail_step(message, response=None):
 
 
 def request(method, path, **kwargs):
+    """负责 request 的函数职责。"""
+    headers = kwargs.pop("headers", {})
+    headers = {**auth_headers(), **headers}
+
     try:
         return requests.request(
             method,
             f"{API_BASE}{path}",
+            headers=headers,
             timeout=90,
             **kwargs,
         )
@@ -53,12 +62,14 @@ def request(method, path, **kwargs):
 
 
 def assert_safe_response(response, step_name):
+    """负责 assert_safe_response 的函数职责。"""
     for text in FORBIDDEN_TEXT:
         if text.lower() in response.text.lower():
             fail_step(f"{step_name}: forbidden text found: {text}", response)
 
 
 def parse_json(response, step_name):
+    """负责 parse_json 的函数职责。"""
     try:
         return response.json()
     except ValueError:
@@ -66,6 +77,7 @@ def parse_json(response, step_name):
 
 
 def expect_ok_json(response, step_name):
+    """负责 expect_ok_json 的函数职责。"""
     assert_safe_response(response, step_name)
 
     if response.status_code != 200:
@@ -80,6 +92,7 @@ def expect_ok_json(response, step_name):
 
 
 def assert_hybrid_sources(sources, step_name, response):
+    """负责 assert_hybrid_sources 的函数职责。"""
     if not sources:
         fail_step(f"{step_name}: missing sources", response)
 
@@ -106,7 +119,12 @@ def assert_hybrid_sources(sources, step_name, response):
 
 
 def delete_kb_if_exists(kb_name):
+    """负责 delete_kb_if_exists 的函数职责。"""
     response = request("DELETE", f"/knowledge_bases/{kb_name}")
+
+    if response.status_code == 404:
+        pass_step(f"delete existing KB if present: {kb_name}")
+        return
 
     if response.status_code >= 400:
         fail_step(f"DELETE /knowledge_bases/{kb_name}", response)
@@ -115,6 +133,7 @@ def delete_kb_if_exists(kb_name):
 
 
 def create_and_switch_kb(kb_name):
+    """负责 create_and_switch_kb 的函数职责。"""
     response = request(
         "POST",
         "/knowledge_bases",
@@ -131,6 +150,7 @@ def create_and_switch_kb(kb_name):
 
 
 def upload_sample_to_current_kb():
+    """负责 upload_sample_to_current_kb 的函数职责。"""
     if not SAMPLE_FILE.exists():
         fail_step(f"missing test file: {SAMPLE_FILE}")
 
@@ -145,12 +165,14 @@ def upload_sample_to_current_kb():
 
 
 def prepare_local_test_kb():
+    """负责 prepare_local_test_kb 的函数职责。"""
     delete_kb_if_exists(LOCAL_TEST_KB)
     create_and_switch_kb(LOCAL_TEST_KB)
     upload_sample_to_current_kb()
 
 
 def check_local_kb_hybrid(kb_name):
+    """负责 check_local_kb_hybrid 的函数职责。"""
     payload = {
         "mode": "local_kb",
         "kb_name": kb_name,
@@ -174,6 +196,7 @@ def check_local_kb_hybrid(kb_name):
 
 
 def upload_temp_file():
+    """负责 upload_temp_file 的函数职责。"""
     if not SAMPLE_FILE.exists():
         fail_step(f"missing test file: {SAMPLE_FILE}")
 
@@ -196,6 +219,7 @@ def upload_temp_file():
 
 
 def check_temp_kb_hybrid(temp_kb_id):
+    """负责 check_temp_kb_hybrid 的函数职责。"""
     payload = {
         "mode": "temp_kb",
         "temp_kb_id": temp_kb_id,
@@ -219,6 +243,7 @@ def check_temp_kb_hybrid(temp_kb_id):
 
 
 def main():
+    """负责 main 的函数职责。"""
     print(f"API_BASE={API_BASE}")
     should_cleanup = False
 

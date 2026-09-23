@@ -67,6 +67,7 @@ const tempSources = document.getElementById("temp-sources");
 // 2. Chat Functions
 // =============================
 
+/** 用途：负责 normalizeSources 的界面或数据处理职责。 */
 function normalizeSources(sources) {
     if (!Array.isArray(sources)) return [];
 
@@ -117,6 +118,7 @@ function normalizeSources(sources) {
     });
 }
 
+/** 用途：负责 renderSources 的界面或数据处理职责。 */
 function renderSources(sources) {
     const normalizedSources = normalizeSources(sources);
 
@@ -159,6 +161,7 @@ function renderSources(sources) {
         : "<p>No relevant sources found.</p>";
 }
 
+/** 用途：负责 buildKbChatPayload 的界面或数据处理职责。 */
 function buildKbChatPayload(query) {
     const mode = chatModeSelect.value;
     const settings = getRetrievalSettings();
@@ -189,10 +192,12 @@ function buildKbChatPayload(query) {
     return payload;
 }
 
+/** 用途：负责 getRetrievalSettings 的界面或数据处理职责。 */
 function getRetrievalSettings() {
     return {
         top_k: Number(debugTopKInput.value) || 3,
         score_threshold:
+            /** 用途：负责 Number 的界面或数据处理职责。 */
             Number(debugScoreThresholdInput.value) || 0.8,
         prompt_name: debugPromptNameSelect.value || "default",
         return_direct: debugReturnDirectInput.checked,
@@ -201,6 +206,7 @@ function getRetrievalSettings() {
     };
 }
 
+/** 用途：负责 buildDebugPayload 的界面或数据处理职责。 */
 function buildDebugPayload(query) {
     const payload = buildKbChatPayload(query);
     payload.stream = false;
@@ -208,6 +214,7 @@ function buildDebugPayload(query) {
     return payload;
 }
 
+/** 用途：负责 extractDebugResults 的界面或数据处理职责。 */
 function extractDebugResults(data) {
     if (Array.isArray(data)) return data;
     if (!data) return [];
@@ -223,6 +230,7 @@ function extractDebugResults(data) {
     return [];
 }
 
+/** 用途：负责 renderDebugResults 的界面或数据处理职责。 */
 function renderDebugResults(results) {
     const debugResultsEl = document.getElementById("debug-results");
     if (!debugResultsEl) return;
@@ -271,6 +279,7 @@ function renderDebugResults(results) {
         : "<p>No debug results found.</p>";
 }
 
+/** 用途：负责 renderFeedbackControls 的界面或数据处理职责。 */
 function renderFeedbackControls(messageId) {
     const disabled = messageId ? "" : "disabled";
 
@@ -299,6 +308,7 @@ function renderFeedbackControls(messageId) {
     `;
 }
 
+/** 用途：负责 setCurrentConversation 的界面或数据处理职责。 */
 function setCurrentConversation(conversationId, title = null) {
     currentConversationId = conversationId || null;
 
@@ -306,22 +316,28 @@ function setCurrentConversation(conversationId, title = null) {
         ? title || `Conversation ${currentConversationId}`
         : "New Conversation";
 
+    /** 用途：负责 saveChatHistory 的界面或数据处理职责。 */
     saveChatHistory();
+    /** 用途：负责 highlightCurrentConversation 的界面或数据处理职责。 */
     highlightCurrentConversation();
 }
 
+/** 用途：负责 highlightCurrentConversation 的界面或数据处理职责。 */
 function highlightCurrentConversation() {
     conversationList
         .querySelectorAll(".conversation-item")
         .forEach(item => {
             item.classList.toggle(
                 "active",
+                /** 用途：负责 String 的界面或数据处理职责。 */
                 String(item.dataset.conversationId) ===
+                    /** 用途：负责 String 的界面或数据处理职责。 */
                     String(currentConversationId)
             );
         });
 }
 
+/** 用途：负责 setMessageFeedbackId 的界面或数据处理职责。 */
 function setMessageFeedbackId(messageEl, messageId) {
     if (!messageId) return;
 
@@ -338,11 +354,13 @@ function setMessageFeedbackId(messageEl, messageId) {
     status.textContent = "";
 }
 
+/** 用途：负责 sendFeedback 的界面或数据处理职责。 */
 async function sendFeedback(button, score) {
     const messageEl = button.closest(".message");
     const messageId = messageEl.dataset.assistantMessageId;
 
     if (!messageId) {
+        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast("Feedback is not available for this answer yet.", "error");
         return;
     }
@@ -369,6 +387,7 @@ async function sendFeedback(button, score) {
         const data = await response.json();
 
         if (data.error) {
+            /** 用途：负责 showToast 的界面或数据处理职责。 */
             showToast(data.error, "error");
             return;
         }
@@ -384,14 +403,18 @@ async function sendFeedback(button, score) {
         status.textContent =
             score === 1 ? "Liked" : "Disliked";
 
+        /** 用途：负责 saveChatHistory 的界面或数据处理职责。 */
         saveChatHistory();
+        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast("Feedback saved.", "success");
     } catch (error) {
         console.error(error);
+        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast("Failed to save feedback.", "error");
     }
 }
 
+/** 用途：负责 renderJsonChatMessage 的界面或数据处理职责。 */
 function renderJsonChatMessage(question, data) {
     const sources = data.sources || [];
     const answer = data.answer || "";
@@ -420,6 +443,7 @@ function renderJsonChatMessage(question, data) {
     `;
 }
 
+/** 用途：负责 renderConversationMessages 的界面或数据处理职责。 */
 function renderConversationMessages(messages) {
     const entries = [];
     let pendingUser = null;
@@ -475,6 +499,7 @@ function renderConversationMessages(messages) {
         entries.join("") || "<p>No messages in this conversation yet.</p>";
 }
 
+/** 用途：负责 handleJsonChatFallback 的界面或数据处理职责。 */
 async function handleJsonChatFallback(response, question) {
     const data = await response.json();
 
@@ -482,26 +507,33 @@ async function handleJsonChatFallback(response, question) {
     if (loadingEl) loadingEl.remove();
 
     if (data.conversation_id) {
+        /** 用途：负责 setCurrentConversation 的界面或数据处理职责。 */
         setCurrentConversation(data.conversation_id);
+        /** 用途：负责 loadConversations 的界面或数据处理职责。 */
         loadConversations();
     }
 
     if (data.return_direct) {
+        /** 用途：负责 renderJsonChatMessage 的界面或数据处理职责。 */
         renderJsonChatMessage(question, {
             answer: "",
             sources: data.sources || [],
             assistant_message_id: null
         });
+        /** 用途：负责 saveChatHistory 的界面或数据处理职责。 */
         saveChatHistory();
         questionInput.value = "";
         return;
     }
 
+    /** 用途：负责 renderJsonChatMessage 的界面或数据处理职责。 */
     renderJsonChatMessage(question, data);
+    /** 用途：负责 saveChatHistory 的界面或数据处理职责。 */
     saveChatHistory();
     questionInput.value = "";
 }
 
+/** 用途：负责 parseSSEEvent 的界面或数据处理职责。 */
 function parseSSEEvent(eventText) {
     const eventData = eventText
         .split("\n")
@@ -515,6 +547,7 @@ function parseSSEEvent(eventText) {
 
     try {
         const event = JSON.parse(eventData);
+        /** 用途：负责 persistConversationId 的界面或数据处理职责。 */
         persistConversationId(event.conversation_id);
         return event;
     } catch (error) {
@@ -523,18 +556,22 @@ function parseSSEEvent(eventText) {
     }
 }
 
+/** 用途：负责 persistConversationIdFromText 的界面或数据处理职责。 */
 function persistConversationIdFromText(text) {
     const match = text.match(/"conversation_id"\s*:\s*"?(\d+)"?/);
     if (match) {
+        /** 用途：负责 persistConversationId 的界面或数据处理职责。 */
         persistConversationId(match[1]);
     }
 }
 
+/** 用途：负责 readSSE 的界面或数据处理职责。 */
 async function readSSE(response, onEvent) {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
 
+    /** 用途：负责 flushEvents 的界面或数据处理职责。 */
     async function flushEvents(force = false) {
         const normalizedBuffer = buffer.replace(/\r\n/g, "\n");
         const parts = normalizedBuffer.split("\n\n");
@@ -553,6 +590,7 @@ async function readSSE(response, onEvent) {
 
         if (done) {
             const tail = decoder.decode();
+            /** 用途：负责 persistConversationIdFromText 的界面或数据处理职责。 */
             persistConversationIdFromText(tail);
             buffer += tail;
             await flushEvents(true);
@@ -560,12 +598,14 @@ async function readSSE(response, onEvent) {
         }
 
         const chunk = decoder.decode(value, { stream: true });
+        /** 用途：负责 persistConversationIdFromText 的界面或数据处理职责。 */
         persistConversationIdFromText(chunk);
         buffer += chunk;
         await flushEvents(false);
     }
 }
 
+/** 用途：负责 getTokenContent 的界面或数据处理职责。 */
 function getTokenContent(event) {
     if (event.type === "token") return event.content || "";
     if (typeof event.answer === "string") return event.answer;
@@ -573,7 +613,9 @@ function getTokenContent(event) {
     return event.choices?.[0]?.delta?.content || "";
 }
 
+/** 用途：负责 getCurrentConversationLabel 的界面或数据处理职责。 */
 function getCurrentConversationLabel() {
+    /** 用途：负责 return 的界面或数据处理职责。 */
     return (
         currentConversationLabel ||
         document.getElementById("current-conversation-label") ||
@@ -581,6 +623,7 @@ function getCurrentConversationLabel() {
     );
 }
 
+/** 用途：负责 persistConversationId 的界面或数据处理职责。 */
 function persistConversationId(conversationId) {
     if (
         conversationId === undefined ||
@@ -603,8 +646,10 @@ function persistConversationId(conversationId) {
     }
 }
 
+/** 用途：负责 persistConversationFromEvent 的界面或数据处理职责。 */
 function persistConversationFromEvent(event, messageEl) {
     const conversationId = event?.conversation_id;
+    /** 用途：负责 persistConversationId 的界面或数据处理职责。 */
     persistConversationId(conversationId);
 
     if (messageEl) {
@@ -612,9 +657,11 @@ function persistConversationFromEvent(event, messageEl) {
             currentConversationId || "";
     }
 
+    /** 用途：负责 highlightCurrentConversation 的界面或数据处理职责。 */
     highlightCurrentConversation();
 }
 
+/** 用途：负责 readChatStream 的界面或数据处理职责。 */
 async function readChatStream(
     response,
     messageEl,
@@ -623,10 +670,12 @@ async function readChatStream(
     query
 ) {
     await readSSE(response, async event => {
+        /** 用途：负责 persistConversationFromEvent 的界面或数据处理职责。 */
         persistConversationFromEvent(event, messageEl);
 
         if (event.type === "sources" || event.sources || event.docs) {
             sourcesEl.innerHTML =
+                /** 用途：负责 renderSources 的界面或数据处理职责。 */
                 renderSources(event.sources || event.docs || []);
             return;
         }
@@ -634,6 +683,7 @@ async function readChatStream(
         if (event.type === "error") {
             const errorMessage = event.message || "Streaming failed.";
             answerEl.textContent = errorMessage;
+            /** 用途：负责 showToast 的界面或数据处理职责。 */
             showToast(errorMessage, "error");
 
             if (currentConversationId) {
@@ -652,6 +702,7 @@ async function readChatStream(
         }
 
         if (event.type === "done") {
+            /** 用途：负责 setMessageFeedbackId 的界面或数据处理职责。 */
             setMessageFeedbackId(
                 messageEl,
                 event.assistant_message_id
@@ -671,11 +722,13 @@ async function readChatStream(
     await loadConversations();
 }
 
+/** 用途：负责 ask 的界面或数据处理职责。 */
 async function ask() {
     const question = questionInput.value.trim();
     if (!question) return;
 
     if (chatModeSelect.value === "temp_kb" && !currentTempKbId) {
+        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast("Upload a temp file first.", "error");
         return;
     }
@@ -760,15 +813,18 @@ async function ask() {
     }
 }
 
+/** 用途：负责 debugSearch 的界面或数据处理职责。 */
 async function debugSearch() {
     const query = questionInput.value.trim();
 
     if (!query) {
+        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast("Enter a question to debug retrieval.", "error");
         return;
     }
 
     if (chatModeSelect.value === "temp_kb" && !currentTempKbId) {
+        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast("Upload a temp file first.", "error");
         return;
     }
@@ -791,6 +847,7 @@ async function debugSearch() {
             return;
         }
 
+        /** 用途：负责 renderDebugResults 的界面或数据处理职责。 */
         renderDebugResults(extractDebugResults(data));
     } catch (error) {
         console.error(error);
@@ -798,10 +855,12 @@ async function debugSearch() {
     }
 }
 
+/** 用途：负责 readTempFileStream 的界面或数据处理职责。 */
 async function readTempFileStream(response) {
     await readSSE(response, async event => {
         if (event.type === "sources" || event.sources || event.docs) {
             tempSources.innerHTML =
+                /** 用途：负责 renderSources 的界面或数据处理职责。 */
                 renderSources(event.sources || event.docs || []);
             return;
         }
@@ -813,10 +872,12 @@ async function readTempFileStream(response) {
     });
 }
 
+/** 用途：负责 uploadTempFile 的界面或数据处理职责。 */
 async function uploadTempFile() {
     const file = tempFileInput.files[0];
 
     if (!file) {
+        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast("Please choose a temp file first.", "error");
         return;
     }
@@ -833,6 +894,7 @@ async function uploadTempFile() {
         const data = await response.json();
 
         if (!data.temp_kb_id) {
+            /** 用途：负责 showToast 的界面或数据处理职责。 */
             showToast(data.message || "Temp upload failed.", "error");
             return;
         }
@@ -842,17 +904,21 @@ async function uploadTempFile() {
         tempAnswerText.textContent = "";
         tempSources.innerHTML = "<p>No temp file question yet.</p>";
 
+        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast("Temp file uploaded.", "success");
     } catch (error) {
         console.error(error);
+        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast("Temp upload failed. Please check backend.", "error");
     }
 }
 
+/** 用途：负责 askTempFile 的界面或数据处理职责。 */
 async function askTempFile() {
     const query = tempQuestionInput.value.trim();
 
     if (!currentTempKbId) {
+        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast("Upload a temp file first.", "error");
         return;
     }
@@ -899,8 +965,10 @@ async function askTempFile() {
 // 3. Upload Functions
 // =============================
 
+/** 用途：负责 uploadFiles 的界面或数据处理职责。 */
 async function uploadFiles(files) {
     if (!files || files.length === 0) {
+        /** 用途：负责 alert 的界面或数据处理职责。 */
         alert("Please choose a file first.");
         return;
     }
@@ -916,16 +984,21 @@ async function uploadFiles(files) {
             });
         }
 
+        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast("Files uploaded successfully", "success");
 
+        /** 用途：负责 loadStats 的界面或数据处理职责。 */
         loadStats();
+        /** 用途：负责 loadDocuments 的界面或数据处理职责。 */
         loadDocuments();
     } catch (error) {
         console.error(error);
+        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast("Upload failed. Please check backend.", "error");
     }
 }
 
+/** 用途：负责 uploadPdf 的界面或数据处理职责。 */
 async function uploadPdf() {
     const files = document.getElementById("pdfFile").files;
     await uploadFiles(files);
@@ -936,6 +1009,7 @@ async function uploadPdf() {
 // 4. Knowledge Base Functions
 // =============================
 
+/** 用途：负责 loadStats 的界面或数据处理职责。 */
 async function loadStats() {
     try {
         const response = await fetch(`${API_BASE}/stats`);
@@ -950,18 +1024,21 @@ async function loadStats() {
     }
 }
 
+/** 用途：负责 loadDocuments 的界面或数据处理职责。 */
 async function loadDocuments() {
     try {
         const response = await fetch(`${API_BASE}/documents`);
         const data = await response.json();
 
         allDocuments = data.files;
+        /** 用途：负责 renderDocuments 的界面或数据处理职责。 */
         renderDocuments(allDocuments);
     } catch (error) {
         console.error(error);
     }
 }
 
+/** 用途：负责 renderDocuments 的界面或数据处理职责。 */
 function renderDocuments(files) {
     documentList.innerHTML = files.map(file => `
         <li class="document-item">
@@ -1018,6 +1095,7 @@ function renderDocuments(files) {
     `).join("");
 }
 
+/** 用途：负责 toggleFileChunks 的界面或数据处理职责。 */
 async function toggleFileChunks(filename) {
     const chunkBox = document.getElementById(
         `chunks-${filename}`
@@ -1050,6 +1128,7 @@ async function toggleFileChunks(filename) {
             : `<p>No chunks found.</p>`;
     } catch (error) {
         console.error(error);
+        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast(
             "Failed to load chunks.",
             "error"
@@ -1057,6 +1136,7 @@ async function toggleFileChunks(filename) {
     }
 }
 
+/** 用途：负责 loadChunkContent 的界面或数据处理职责。 */
 async function loadChunkContent(chunkId) {
     try {
         const response = await fetch(
@@ -1075,6 +1155,7 @@ async function loadChunkContent(chunkId) {
         `;
     } catch (error) {
         console.error(error);
+        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast(
             "Failed to load chunk content.",
             "error"
@@ -1082,6 +1163,7 @@ async function loadChunkContent(chunkId) {
     }
 }
 
+/** 用途：负责 deleteDocument 的界面或数据处理职责。 */
 async function deleteDocument(filename) {
     const confirmed = confirm(`Delete ${filename}?`);
     if (!confirmed) return;
@@ -1093,16 +1175,21 @@ async function deleteDocument(filename) {
         );
 
         const data = await response.json();
+        /** 用途：负责 alert 的界面或数据处理职责。 */
         alert(data.message);
 
+        /** 用途：负责 loadStats 的界面或数据处理职责。 */
         loadStats();
+        /** 用途：负责 loadDocuments 的界面或数据处理职责。 */
         loadDocuments();
     } catch (error) {
         console.error(error);
+        /** 用途：负责 alert 的界面或数据处理职责。 */
         alert("Delete failed. Please check backend.");
     }
 }
 
+/** 用途：负责 reindexDocument 的界面或数据处理职责。 */
 async function reindexDocument(filename, currentChunkSize, currentChunkOverlap) {
     const chunkSizeInput = prompt(
         "chunk_size",
@@ -1122,11 +1209,13 @@ async function reindexDocument(filename, currentChunkSize, currentChunkOverlap) 
     const chunkOverlap = Number(chunkOverlapInput);
 
     if (!Number.isInteger(chunkSize) || chunkSize <= 0) {
+        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast("chunk_size must be a positive integer.", "error");
         return;
     }
 
     if (!Number.isInteger(chunkOverlap) || chunkOverlap < 0) {
+        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast("chunk_overlap must be zero or a positive integer.", "error");
         return;
     }
@@ -1149,19 +1238,25 @@ async function reindexDocument(filename, currentChunkSize, currentChunkOverlap) 
         const data = await response.json();
 
         if (data.error) {
+            /** 用途：负责 showToast 的界面或数据处理职责。 */
             showToast(data.error, "error");
         } else {
+            /** 用途：负责 showToast 的界面或数据处理职责。 */
             showToast(data.message || "File reindexed.", "success");
         }
 
+        /** 用途：负责 loadStats 的界面或数据处理职责。 */
         loadStats();
+        /** 用途：负责 loadDocuments 的界面或数据处理职责。 */
         loadDocuments();
     } catch (error) {
         console.error(error);
+        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast("Reindex failed. Please check backend.", "error");
     }
 }
 
+/** 用途：负责 createKnowledgeBase 的界面或数据处理职责。 */
 async function createKnowledgeBase() {
     const kbName = prompt("New knowledge base name:");
 
@@ -1182,15 +1277,18 @@ async function createKnowledgeBase() {
     kbSelector.value = kbName;
     await switchKnowledgeBase();
 
+    /** 用途：负责 showToast 的界面或数据处理职责。 */
     showToast("Knowledge base created.", "success");
 }
 
+/** 用途：负责 deleteKnowledgeBase 的界面或数据处理职责。 */
 async function deleteKnowledgeBase() {
     const kbName = kbSelector.value;
 
     if (!kbName) return;
 
     if (kbName === "default") {
+        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast(
             "Default knowledge base cannot be deleted.",
             "error"
@@ -1215,10 +1313,12 @@ async function deleteKnowledgeBase() {
         const data = await response.json();
 
         if (data.error) {
+            /** 用途：负责 showToast 的界面或数据处理职责。 */
             showToast(data.error, "error");
             return;
         }
 
+        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast(data.message, "success");
 
         await loadKnowledgeBases();
@@ -1231,6 +1331,7 @@ async function deleteKnowledgeBase() {
 
     } catch (error) {
         console.error(error);
+        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast(
             "Failed to delete knowledge base.",
             "error"
@@ -1238,10 +1339,12 @@ async function deleteKnowledgeBase() {
     }
 }
 
+/** 用途：负责 exportKb 的界面或数据处理职责。 */
 async function exportKb() {
     const kbName = kbSelector.value;
 
     if (!kbName) {
+        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast("Select a knowledge base first.", "error");
         return;
     }
@@ -1252,6 +1355,7 @@ async function exportKb() {
         );
 
         if (!response.ok) {
+            /** 用途：负责 showToast 的界面或数据处理职责。 */
             showToast("Export failed.", "error");
             return;
         }
@@ -1260,6 +1364,7 @@ async function exportKb() {
 
         if (contentType.includes("application/json")) {
             const data = await response.json();
+            /** 用途：负责 showToast 的界面或数据处理职责。 */
             showToast(data.error || "Export failed.", "error");
             return;
         }
@@ -1274,17 +1379,21 @@ async function exportKb() {
         link.remove();
         URL.revokeObjectURL(url);
 
+        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast("Knowledge base exported.", "success");
     } catch (error) {
         console.error(error);
+        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast("Export failed. Please check backend.", "error");
     }
 }
 
+/** 用途：负责 importKb 的界面或数据处理职责。 */
 async function importKb() {
     const file = kbImportFileInput.files[0];
 
     if (!file) {
+        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast("Choose a KB export zip first.", "error");
         return;
     }
@@ -1306,10 +1415,12 @@ async function importKb() {
         const data = await response.json();
 
         if (data.error) {
+            /** 用途：负责 showToast 的界面或数据处理职责。 */
             showToast(data.error, "error");
             return;
         }
 
+        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast(
             `Imported ${data.kb_name}: ${data.files_count} files, ${data.chunks_count} chunks.`,
             "success"
@@ -1322,14 +1433,18 @@ async function importKb() {
             await switchKnowledgeBase();
         }
 
+        /** 用途：负责 loadStats 的界面或数据处理职责。 */
         loadStats();
+        /** 用途：负责 loadDocuments 的界面或数据处理职责。 */
         loadDocuments();
     } catch (error) {
         console.error(error);
+        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast("Import failed. Please check backend.", "error");
     }
 }
 
+/** 用途：负责 searchChunks 的界面或数据处理职责。 */
 async function searchChunks() {
 
     const query =
@@ -1389,6 +1504,7 @@ async function searchChunks() {
 // 5. Conversation Functions
 // =============================
 
+/** 用途：负责 recoverLatestConversationAfterAsk 的界面或数据处理职责。 */
 async function recoverLatestConversationAfterAsk(query) {
     try {
         const response = await fetch(`${API_BASE}/conversations`);
@@ -1401,6 +1517,7 @@ async function recoverLatestConversationAfterAsk(query) {
         const conversation =
             conversations.find(item => {
                 const title = item.title || "";
+                /** 用途：负责 return 的界面或数据处理职责。 */
                 return (
                     title === normalizedQuery ||
                     title.includes(normalizedQuery) ||
@@ -1411,6 +1528,7 @@ async function recoverLatestConversationAfterAsk(query) {
 
         if (!conversation) return null;
 
+        /** 用途：负责 persistConversationId 的界面或数据处理职责。 */
         persistConversationId(conversation.id);
         await loadConversations();
 
@@ -1421,6 +1539,7 @@ async function recoverLatestConversationAfterAsk(query) {
     }
 }
 
+/** 用途：负责 loadConversations 的界面或数据处理职责。 */
 async function loadConversations() {
     try {
         const response = await fetch(`${API_BASE}/conversations`);
@@ -1446,6 +1565,7 @@ async function loadConversations() {
                 const conversation = conversations[index];
 
                 button.addEventListener("click", () => {
+                    /** 用途：负责 loadConversation 的界面或数据处理职责。 */
                     loadConversation(
                         conversation.id,
                         conversation.title
@@ -1453,6 +1573,7 @@ async function loadConversations() {
                 });
             });
 
+        /** 用途：负责 highlightCurrentConversation 的界面或数据处理职责。 */
         highlightCurrentConversation();
     } catch (error) {
         console.error(error);
@@ -1460,6 +1581,7 @@ async function loadConversations() {
     }
 }
 
+/** 用途：负责 loadConversation 的界面或数据处理职责。 */
 async function loadConversation(conversationId, title) {
     try {
         const response = await fetch(
@@ -1467,15 +1589,20 @@ async function loadConversation(conversationId, title) {
         );
         const data = await response.json();
 
+        /** 用途：负责 setCurrentConversation 的界面或数据处理职责。 */
         setCurrentConversation(conversationId, title);
+        /** 用途：负责 renderConversationMessages 的界面或数据处理职责。 */
         renderConversationMessages(data.messages || []);
     } catch (error) {
         console.error(error);
+        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast("Failed to load conversation.", "error");
     }
 }
 
+/** 用途：负责 newConversation 的界面或数据处理职责。 */
 function newConversation() {
+    /** 用途：负责 setCurrentConversation 的界面或数据处理职责。 */
     setCurrentConversation(null);
     chatHistoryEl.innerHTML = "";
     questionInput.value = "";
@@ -1486,10 +1613,12 @@ function newConversation() {
 // 6. Chat History Functions
 // =============================
 
+/** 用途：负责 saveChatHistory 的界面或数据处理职责。 */
 function saveChatHistory() {
     if (currentConversationId) {
         localStorage.setItem(
             "currentConversationId",
+            /** 用途：负责 String 的界面或数据处理职责。 */
             String(currentConversationId)
         );
     } else {
@@ -1497,6 +1626,7 @@ function saveChatHistory() {
     }
 }
 
+/** 用途：负责 restoreChatHistory 的界面或数据处理职责。 */
 async function restoreChatHistory() {
     await loadConversations();
 
@@ -1509,14 +1639,17 @@ async function restoreChatHistory() {
     }
 }
 
+/** 用途：负责 clearChatHistory 的界面或数据处理职责。 */
 function clearChatHistory() {
     localStorage.removeItem("currentConversationId");
     currentConversationId = null;
     currentConversationLabel.textContent = "New Conversation";
     chatHistoryEl.innerHTML = "";
+    /** 用途：负责 highlightCurrentConversation 的界面或数据处理职责。 */
     highlightCurrentConversation();
 }
 
+/** 用途：负责 showToast 的界面或数据处理职责。 */
 function showToast(message, type = "success") {
     const toastContainer =
         document.getElementById("toast-container");
@@ -1528,15 +1661,18 @@ function showToast(message, type = "success") {
 
     toastContainer.appendChild(toast);
 
+    /** 用途：负责 setTimeout 的界面或数据处理职责。 */
     setTimeout(function () {
         toast.classList.add("hide");
 
+        /** 用途：负责 setTimeout 的界面或数据处理职责。 */
         setTimeout(function () {
             toast.remove();
         }, 300);
     }, 3000);
 }
 
+/** 用途：负责 loadKnowledgeBases 的界面或数据处理职责。 */
 async function loadKnowledgeBases() {
     const response =
         await fetch(`${API_BASE}/knowledge_bases`);
@@ -1557,6 +1693,7 @@ async function loadKnowledgeBases() {
     }
 }
 
+/** 用途：负责 switchKnowledgeBase 的界面或数据处理职责。 */
 async function switchKnowledgeBase() {
 
     const kbName =
@@ -1578,7 +1715,9 @@ async function switchKnowledgeBase() {
         }
     );
 
+    /** 用途：负责 loadStats 的界面或数据处理职责。 */
     loadStats();
+    /** 用途：负责 loadDocuments 的界面或数据处理职责。 */
     loadDocuments();
 }
 
@@ -1589,42 +1728,50 @@ async function switchKnowledgeBase() {
 
 btnSend.addEventListener("click", function (event) {
     event.preventDefault();
+    /** 用途：负责 ask 的界面或数据处理职责。 */
     ask();
 });
 
 btnUpload.addEventListener("click", function (event) {
     event.preventDefault();
+    /** 用途：负责 uploadPdf 的界面或数据处理职责。 */
     uploadPdf();
 });
 
 btnClear.addEventListener("click", function (event) {
     event.preventDefault();
+    /** 用途：负责 clearChatHistory 的界面或数据处理职责。 */
     clearChatHistory();
 });
 
 btnNewConversation.addEventListener("click", function (event) {
     event.preventDefault();
+    /** 用途：负责 newConversation 的界面或数据处理职责。 */
     newConversation();
 });
 
 btnDebugSearch.addEventListener("click", function (event) {
     event.preventDefault();
+    /** 用途：负责 debugSearch 的界面或数据处理职责。 */
     debugSearch();
 });
 
 btnTempUpload.addEventListener("click", function (event) {
     event.preventDefault();
+    /** 用途：负责 uploadTempFile 的界面或数据处理职责。 */
     uploadTempFile();
 });
 
 btnTempAsk.addEventListener("click", function (event) {
     event.preventDefault();
+    /** 用途：负责 askTempFile 的界面或数据处理职责。 */
     askTempFile();
 });
 
 questionInput.addEventListener("keydown", function (event) {
     if (event.key === "Enter") {
         event.preventDefault();
+        /** 用途：负责 ask 的界面或数据处理职责。 */
         ask();
     }
 });
@@ -1632,6 +1779,7 @@ questionInput.addEventListener("keydown", function (event) {
 tempQuestionInput.addEventListener("keydown", function (event) {
     if (event.key === "Enter") {
         event.preventDefault();
+        /** 用途：负责 askTempFile 的界面或数据处理职责。 */
         askTempFile();
     }
 });
@@ -1648,6 +1796,7 @@ dropZone.addEventListener("dragleave", function () {
 dropZone.addEventListener("drop", function (event) {
     event.preventDefault();
     dropZone.classList.remove("drag-over");
+    /** 用途：负责 uploadFiles 的界面或数据处理职责。 */
     uploadFiles(event.dataTransfer.files);
 });
 
@@ -1656,6 +1805,7 @@ documentSearch.addEventListener("input", function () {
     const filtered = allDocuments.filter(file =>
         file.filename.toLowerCase().includes(keyword)
     );
+    /** 用途：负责 renderDocuments 的界面或数据处理职责。 */
     renderDocuments(filtered);
 });
 
@@ -1663,26 +1813,31 @@ kbSelector.addEventListener("change", switchKnowledgeBase);
 
 btnCreateKb.addEventListener("click", function (event) {
     event.preventDefault();
+    /** 用途：负责 createKnowledgeBase 的界面或数据处理职责。 */
     createKnowledgeBase();
 });
 
 btnDeleteKb.addEventListener("click", function (event) {
     event.preventDefault();
+    /** 用途：负责 deleteKnowledgeBase 的界面或数据处理职责。 */
     deleteKnowledgeBase();
 });
 
 btnExportKb.addEventListener("click", function (event) {
     event.preventDefault();
+    /** 用途：负责 exportKb 的界面或数据处理职责。 */
     exportKb();
 });
 
 btnImportKb.addEventListener("click", function (event) {
     event.preventDefault();
+    /** 用途：负责 importKb 的界面或数据处理职责。 */
     importKb();
 });
 
 btnSearchChunks.addEventListener("click", function (event) {
     event.preventDefault();
+    /** 用途：负责 searchChunks 的界面或数据处理职责。 */
     searchChunks();
 });
 

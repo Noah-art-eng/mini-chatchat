@@ -1,0 +1,30 @@
+.ui-divider {
+  border: 0;
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.ui-divider--horizontal {
+  border-top: var(--border-width-default) var(--border-style-default)
+    var(--ui-divider-color);
+  width: 100%;
+}
+
+.ui-divider--vertical {
+  align-self: stretch;
+  border-left: var(--border-width-default) var(--border-style-default)
+    var(--ui-divider-color);
+  min-height: var(--control-height-sm);
+}
+
+.ui-divider--subtle {
+  --ui-divider-color: var(--color-border-subtle);
+}
+
+.ui-divider--default {
+  --ui-divider-color: var(--color-border-default);
+}
+
+.ui-divider--strong {
+  --ui-divider-color: var(--color-border-strong);
+}

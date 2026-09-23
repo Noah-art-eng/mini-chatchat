@@ -3,6 +3,8 @@ import sys
 
 import requests
 
+from smoke_auth import auth_headers
+
 
 API_BASE = os.getenv(
     "MINI_CHATCHAT_API_BASE",
@@ -18,10 +20,12 @@ FORBIDDEN_TEXT = (
 
 
 def pass_step(message):
+    """负责 pass_step 的函数职责。"""
     print(f"[PASS] {message}")
 
 
 def fail_step(message, response=None):
+    """负责 fail_step 的函数职责。"""
     print(f"[FAIL] {message}")
 
     if response is not None:
@@ -32,10 +36,15 @@ def fail_step(message, response=None):
 
 
 def request(method, path, **kwargs):
+    """负责 request 的函数职责。"""
+    headers = kwargs.pop("headers", {})
+    headers = {**auth_headers(), **headers}
+
     try:
         return requests.request(
             method,
             f"{API_BASE}{path}",
+            headers=headers,
             timeout=120,
             **kwargs,
         )
@@ -48,12 +57,14 @@ def request(method, path, **kwargs):
 
 
 def assert_safe_response(response, step_name):
+    """负责 assert_safe_response 的函数职责。"""
     for text in FORBIDDEN_TEXT:
         if text.lower() in response.text.lower():
             fail_step(f"{step_name}: forbidden text found: {text}", response)
 
 
 def expect_ok_json(response, step_name):
+    """负责 expect_ok_json 的函数职责。"""
     assert_safe_response(response, step_name)
 
     if response.status_code != 200:
@@ -66,6 +77,7 @@ def expect_ok_json(response, step_name):
 
 
 def check_decide_calculator():
+    """负责 check_decide_calculator 的函数职责。"""
     response = request(
         "POST",
         "/agent/decide",
@@ -95,6 +107,7 @@ def check_decide_calculator():
 
 
 def check_run_once_calculator():
+    """负责 check_run_once_calculator 的函数职责。"""
     response = request(
         "POST",
         "/agent/run_once",
@@ -127,6 +140,7 @@ def check_run_once_calculator():
 
 
 def check_run_once_kb_search():
+    """负责 check_run_once_kb_search 的函数职责。"""
     response = request(
         "POST",
         "/agent/run_once",
@@ -166,6 +180,7 @@ def check_run_once_kb_search():
 
 
 def check_invalid_tool_name():
+    """负责 check_invalid_tool_name 的函数职责。"""
     response = request(
         "POST",
         "/agent/run_once",
@@ -188,6 +203,7 @@ def check_invalid_tool_name():
 
 
 def main():
+    """负责 main 的函数职责。"""
     print(f"API_BASE={API_BASE}")
     check_decide_calculator()
     check_run_once_calculator()

@@ -1,7 +1,13 @@
+import { FileSearch, FileText, Globe2 } from "lucide-react";
+import { useI18n } from "../i18n";
 import { useConversationStore } from "../stores/conversationStore";
+import { Icon } from "./ui";
 
+/** 用途：负责 SourcesPanel 的界面或数据处理职责。 */
 export function SourcesPanel() {
+  const { t } = useI18n();
   const { messages, selectedAssistantMessageId, sources } =
+    /** 用途：负责 useConversationStore 的界面或数据处理职责。 */
     useConversationStore();
   const selectedMessage = messages.find(
     message =>
@@ -13,6 +19,7 @@ export function SourcesPanel() {
   const showHistoricalMissing =
     selectedMessage && selectedMessageSources.length === 0;
 
+  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <section
       aria-label="Sources"
@@ -20,18 +27,18 @@ export function SourcesPanel() {
       data-testid="sources-panel"
       id="sources-panel"
     >
-      <p className="eyebrow">Sources / KB Panel</p>
-      <h2>{selectedMessage ? "Message Sources" : "Latest Sources"}</h2>
+      <p className="eyebrow">{t("sources.title")}</p>
+      <h2>{selectedMessage ? t("sources.messageSources") : t("sources.latestSources")}</h2>
 
       {showHistoricalMissing && (
-        <p className="muted">Historical sources were not saved.</p>
+        <p className="muted">{t("sources.missing")}</p>
       )}
 
       {!showHistoricalMissing && visibleSources.length === 0 && (
-        <p className="muted">
-          Sources from the current streamed answer will appear here. KB
-          management and retrieval debug migrate in later phases.
-        </p>
+        <div className="source-empty-state">
+          <Icon icon={FileSearch} size="lg" tone="muted" />
+          <p className="muted">{t("sources.empty")}</p>
+        </div>
       )}
 
       <div className="source-list">
@@ -41,23 +48,19 @@ export function SourcesPanel() {
             source.file_name ||
             source.url ||
             source.source ||
-            `Source ${index + 1}`;
+            /** 用途：负责 t 的界面或数据处理职责。 */
+            t("sources.source", { index: index + 1 });
           const sourceUrl = source.url || source.source || "";
           const isUrl = /^https?:\/\//.test(sourceUrl);
-          const scores = [
-            typeof source.score === "number"
-              ? `score ${source.score.toFixed(2)}`
-              : null,
-            typeof source.distance === "number"
-              ? `distance ${source.distance.toFixed(2)}`
-              : null,
-            typeof source.rerank_score === "number"
-              ? `rerank ${source.rerank_score.toFixed(2)}`
-              : null
-          ].filter(Boolean);
+          const preview = source.chunk || source.content || t("sources.noPreview");
 
+          /** 用途：负责 return 的界面或数据处理职责。 */
           return (
             <article className="source-card" key={`${label}-${index}`}>
+              <span className="source-index">
+                <Icon icon={isUrl ? Globe2 : FileText} size="sm" tone={isUrl ? "browser" : "file"} />
+                {String(index + 1).padStart(2, "0")}
+              </span>
               <div className="source-meta">
                 {isUrl ? (
                   <a
@@ -71,19 +74,23 @@ export function SourcesPanel() {
                 ) : (
                   <strong data-testid="source-title">{label}</strong>
                 )}
-                <small>
-                  chunk {source.chunk_id ?? index + 1}
-                  {scores.length > 0 ? ` · ${scores.join(" · ")}` : ""}
-                </small>
               </div>
               {isUrl && (
                 <strong className="source-title" data-testid="source-title">
                   {source.title || label}
                 </strong>
               )}
-              <p data-testid="source-preview">
-                {source.chunk || source.content || "No source preview available."}
-              </p>
+              <p data-testid="source-preview">{preview}</p>
+              {isUrl && (
+                <a
+                  className="source-open-link"
+                  href={sourceUrl}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  {t("sources.openSource")}
+                </a>
+              )}
             </article>
           );
         })}

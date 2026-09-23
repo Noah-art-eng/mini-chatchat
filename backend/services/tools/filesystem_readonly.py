@@ -34,6 +34,7 @@ ALLOWED_EXTENSIONS = {
 
 
 def validate_relative_path(path: str) -> str | None:
+    """负责 validate_relative_path 的函数职责。"""
     if not path.strip():
         return "path is required"
 
@@ -59,6 +60,7 @@ def validate_relative_path(path: str) -> str | None:
 
 
 def execute_filesystem_readonly_read(arguments: dict) -> ToolResult:
+    """负责 execute_filesystem_readonly_read 的函数职责。"""
     path = arguments.get("path")
 
     if not isinstance(path, str):
@@ -113,6 +115,7 @@ def execute_filesystem_readonly_read(arguments: dict) -> ToolResult:
 
 
 def get_filesystem_readonly_read_tool() -> ToolSpec:
+    """负责 get_filesystem_readonly_read_tool 的函数职责。"""
     return ToolSpec(
         name="filesystem_readonly_read",
         description=(

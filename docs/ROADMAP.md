@@ -196,6 +196,9 @@ Rules:
   - CPU-only PyTorch install.
   - separate Docker requirements.
   - model cache volume.
+- Production deployment rehearsal on a real VPS/cloud host.
+- OAuth state durable storage for multi-process production.
+- Optional managed PostgreSQL/object storage migration.
 - OCR/image document parsing.
 - PPT/Excel loaders.
 - Cross-encoder reranker.
@@ -203,3 +206,35 @@ Rules:
 - Multi-query retrieval.
 - Multi-provider model UI.
 - LangChain integration.
+
+## Phase 11: Production Deployment And DevOps Hardening
+
+Status: complete for single-host production-readiness candidate
+
+Delivered:
+
+- Backend multi-stage Dockerfile.
+- Non-root backend runtime user.
+- CPU PyTorch wheel index for backend dependency install.
+- Frontend nginx production image.
+- nginx `/api` reverse proxy with SSE buffering disabled.
+- `docker-compose.dev.yml`.
+- `docker-compose.prod.yml`.
+- Healthchecks and restart policies.
+- Configurable DB/data/uploads paths.
+- `.env.production.example`.
+- Request ID and structured request logs.
+- Runtime metadata and non-secret stats in health responses.
+- `scripts/backup.sh`.
+- `scripts/restore.sh`.
+- Deployment docs under `docs/deployment/`.
+- `CHANGELOG.md`.
+- `docs/release/v1.0-production-ready.md`.
+
+Remaining production limitations:
+
+- Real public deployment rehearsal is still required.
+- SQLite remains single-host only.
+- OAuth state is still in memory.
+- Backend image size can still be reduced further.
+- Browser QA depends on local Playwright/browser availability.

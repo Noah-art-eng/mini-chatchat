@@ -7,6 +7,7 @@ MAX_RESULTS = 5
 
 
 def normalize_max_results(value) -> int:
+    """负责 normalize_max_results 的函数职责。"""
     try:
         max_results = int(value)
     except (TypeError, ValueError):
@@ -16,6 +17,7 @@ def normalize_max_results(value) -> int:
 
 
 def execute_browser_search(arguments: dict) -> ToolResult:
+    """负责 execute_browser_search 的函数职责。"""
     query = arguments.get("query")
     max_results = normalize_max_results(arguments.get("max_results", 3))
 
@@ -57,6 +59,7 @@ def execute_browser_search(arguments: dict) -> ToolResult:
 
 
 def get_browser_search_tool() -> ToolSpec:
+    """负责 get_browser_search_tool 的函数职责。"""
     return ToolSpec(
         name="browser_search",
         description=(

@@ -4,6 +4,8 @@ from pathlib import Path
 
 import requests
 
+from smoke_auth import auth_headers
+
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 API_BASE = os.getenv(
@@ -23,10 +25,12 @@ BLOCKED_PUBLIC_KEYS = {"command", "cmd", "cwd", "args", "env", "environment", "s
 
 
 def pass_step(message):
+    """负责 pass_step 的函数职责。"""
     print(f"[PASS] {message}")
 
 
 def fail_step(message, response=None):
+    """负责 fail_step 的函数职责。"""
     print(f"[FAIL] {message}")
 
     if response is not None:
@@ -37,10 +41,15 @@ def fail_step(message, response=None):
 
 
 def request(method, path, **kwargs):
+    """负责 request 的函数职责。"""
+    headers = kwargs.pop("headers", {})
+    headers = {**auth_headers(), **headers}
+
     try:
         return requests.request(
             method,
             f"{API_BASE}{path}",
+            headers=headers,
             timeout=240,
             **kwargs,
         )
@@ -53,6 +62,7 @@ def request(method, path, **kwargs):
 
 
 def assert_safe_response(response, step_name):
+    """负责 assert_safe_response 的函数职责。"""
     lower = response.text.lower()
     for text in FORBIDDEN_TEXT:
         if text.lower() in lower:
@@ -60,6 +70,7 @@ def assert_safe_response(response, step_name):
 
 
 def expect_ok_json(response, step_name):
+    """负责 expect_ok_json 的函数职责。"""
     assert_safe_response(response, step_name)
 
     if response.status_code != 200:
@@ -72,6 +83,7 @@ def expect_ok_json(response, step_name):
 
 
 def assert_no_public_leaks(value, step_name):
+    """负责 assert_no_public_leaks 的函数职责。"""
     if isinstance(value, dict):
         for key, child in value.items():
             if key in BLOCKED_PUBLIC_KEYS:
@@ -83,6 +95,7 @@ def assert_no_public_leaks(value, step_name):
 
 
 def check_filesystem_stdio_process_starts():
+    """负责 check_filesystem_stdio_process_starts 的函数职责。"""
     response = request("GET", "/agent/mcp/tools")
     data = expect_ok_json(response, "GET /agent/mcp/tools")
     assert_no_public_leaks(data, "GET /agent/mcp/tools")
@@ -115,6 +128,7 @@ def check_filesystem_stdio_process_starts():
 
 
 def check_server_status_initialized():
+    """负责 check_server_status_initialized 的函数职责。"""
     response = request("GET", "/agent/mcp/servers")
     data = expect_ok_json(response, "GET /agent/mcp/servers")
     assert_no_public_leaks(data, "GET /agent/mcp/servers")
@@ -133,6 +147,7 @@ def check_server_status_initialized():
 
 
 def check_real_tool_call(discovered_names):
+    """负责 check_real_tool_call 的函数职责。"""
     if "read_file" in discovered_names:
         tool = "mcp.filesystem_stdio.read_file"
         arguments = {
@@ -173,6 +188,7 @@ def check_real_tool_call(discovered_names):
 
 
 def check_rejections_and_timeout_shape():
+    """负责 check_rejections_and_timeout_shape 的函数职责。"""
     unknown = request(
         "POST",
         "/agent/mcp/tools/mcp.missing.read_file/run",
@@ -195,6 +211,7 @@ def check_rejections_and_timeout_shape():
 
 
 def check_bad_command_rejected():
+    """负责 check_bad_command_rejected 的函数职责。"""
     sys.path.insert(0, str(ROOT_DIR / "backend"))
     from services.mcp_transport import StdioMCPServer, StdioMCPServerConfig
 
@@ -220,6 +237,7 @@ def check_bad_command_rejected():
 
 
 def check_shutdown_cleanup():
+    """负责 check_shutdown_cleanup 的函数职责。"""
     response = request("POST", "/agent/mcp/servers/filesystem_stdio/shutdown")
     data = expect_ok_json(response, "POST /agent/mcp/servers/filesystem_stdio/shutdown")
     assert_no_public_leaks(data, "POST /agent/mcp/servers/filesystem_stdio/shutdown")
@@ -232,6 +250,7 @@ def check_shutdown_cleanup():
 
 
 def main():
+    """负责 main 的函数职责。"""
     print(f"API_BASE={API_BASE}")
     names = check_filesystem_stdio_process_starts()
     check_server_status_initialized()

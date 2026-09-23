@@ -1,9 +1,10 @@
-import { API_BASE } from "./client";
+import { authFetch } from "./client";
 import type { KBChatRequest, StreamEvent } from "../types/chat";
 import type { Source } from "../types/conversation";
 
+/** 用途：负责 startKbChat 的界面或数据处理职责。 */
 export async function startKbChat(request: KBChatRequest) {
-  const response = await fetch(`${API_BASE}/kb_chat`, {
+  const response = await authFetch("/kb_chat", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
@@ -18,8 +19,9 @@ export async function startKbChat(request: KBChatRequest) {
   return response;
 }
 
+/** 用途：负责 debugKbChat 的界面或数据处理职责。 */
 export async function debugKbChat(request: KBChatRequest) {
-  const response = await fetch(`${API_BASE}/kb_chat`, {
+  const response = await authFetch("/kb_chat", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
@@ -41,13 +43,14 @@ export async function debugKbChat(request: KBChatRequest) {
   }>;
 }
 
+/** 用途：负责 uploadTempFile 的界面或数据处理职责。 */
 export async function uploadTempFile(file: File) {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("chunk_size", "300");
   formData.append("chunk_overlap", "50");
 
-  const response = await fetch(`${API_BASE}/temp_upload`, {
+  const response = await authFetch("/temp_upload", {
     method: "POST",
     body: formData
   });
@@ -65,6 +68,7 @@ export async function uploadTempFile(file: File) {
   }>;
 }
 
+/** 用途：负责 readSSE 的界面或数据处理职责。 */
 export async function readSSE(
   response: Response,
   onEvent: (event: StreamEvent) => void
@@ -77,6 +81,7 @@ export async function readSSE(
   const decoder = new TextDecoder();
   let buffer = "";
 
+  /** 用途：负责 parseEvent 的界面或数据处理职责。 */
   function parseEvent(rawEvent: string) {
     const data = rawEvent
       .split("\n")
@@ -86,25 +91,30 @@ export async function readSSE(
       .trim();
 
     if (!data || data === "[DONE]") return;
+    /** 用途：负责 onEvent 的界面或数据处理职责。 */
     onEvent(JSON.parse(data) as StreamEvent);
   }
 
-  while (true) {
-    const { value, done } = await reader.read();
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
 
-    if (done) {
-      buffer += decoder.decode();
-      buffer
-        .replace(/\r\n/g, "\n")
-        .split("\n\n")
-        .filter(Boolean)
-        .forEach(parseEvent);
-      return;
+      if (done) {
+        buffer += decoder.decode();
+        buffer
+          .replace(/\r\n/g, "\n")
+          .split("\n\n")
+          .filter(Boolean)
+          .forEach(parseEvent);
+        return;
+      }
+
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.replace(/\r\n/g, "\n").split("\n\n");
+      buffer = parts.pop() || "";
+      parts.filter(Boolean).forEach(parseEvent);
     }
-
-    buffer += decoder.decode(value, { stream: true });
-    const parts = buffer.replace(/\r\n/g, "\n").split("\n\n");
-    buffer = parts.pop() || "";
-    parts.filter(Boolean).forEach(parseEvent);
+  } finally {
+    reader.releaseLock();
   }
 }

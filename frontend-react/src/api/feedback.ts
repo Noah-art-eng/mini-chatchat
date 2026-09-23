@@ -1,5 +1,6 @@
 import { requestJson } from "./client";
 
+/** 用途：负责 sendMessageFeedback 的界面或数据处理职责。 */
 export async function sendMessageFeedback(
   messageId: number,
   score: 1 | -1,

@@ -5,6 +5,8 @@ from pathlib import Path
 
 import requests
 
+from smoke_auth import auth_headers
+
 
 API_BASE = os.getenv(
     "MINI_CHATCHAT_API_BASE",
@@ -24,10 +26,12 @@ FORBIDDEN_TEXT = (
 
 
 def pass_step(message):
+    """负责 pass_step 的函数职责。"""
     print(f"[PASS] {message}")
 
 
 def fail_step(message, response=None):
+    """负责 fail_step 的函数职责。"""
     print(f"[FAIL] {message}")
 
     if response is not None:
@@ -38,10 +42,15 @@ def fail_step(message, response=None):
 
 
 def request(method, path, **kwargs):
+    """负责 request 的函数职责。"""
+    headers = kwargs.pop("headers", {})
+    headers = {**auth_headers(), **headers}
+
     try:
         return requests.request(
             method,
             f"{API_BASE}{path}",
+            headers=headers,
             timeout=90,
             **kwargs,
         )
@@ -54,12 +63,14 @@ def request(method, path, **kwargs):
 
 
 def assert_safe_response(response, step_name):
+    """负责 assert_safe_response 的函数职责。"""
     for text in FORBIDDEN_TEXT:
         if text.lower() in response.text.lower():
             fail_step(f"{step_name}: forbidden text found: {text}", response)
 
 
 def parse_json(response, step_name):
+    """负责 parse_json 的函数职责。"""
     try:
         return response.json()
     except ValueError:
@@ -67,6 +78,7 @@ def parse_json(response, step_name):
 
 
 def expect_ok_json(response, step_name):
+    """负责 expect_ok_json 的函数职责。"""
     assert_safe_response(response, step_name)
 
     if response.status_code != 200:
@@ -81,7 +93,12 @@ def expect_ok_json(response, step_name):
 
 
 def delete_kb_if_exists(kb_name):
+    """负责 delete_kb_if_exists 的函数职责。"""
     response = request("DELETE", f"/knowledge_bases/{kb_name}")
+
+    if response.status_code == 404:
+        pass_step(f"delete existing KB if present: {kb_name}")
+        return
 
     if response.status_code >= 400:
         fail_step(f"DELETE /knowledge_bases/{kb_name}", response)
@@ -90,6 +107,7 @@ def delete_kb_if_exists(kb_name):
 
 
 def create_and_switch_kb(kb_name):
+    """负责 create_and_switch_kb 的函数职责。"""
     response = request(
         "POST",
         "/knowledge_bases",
@@ -106,6 +124,7 @@ def create_and_switch_kb(kb_name):
 
 
 def write_local_test_files(temp_dir):
+    """负责 write_local_test_files 的函数职责。"""
     alpha = Path(temp_dir) / "metadata_alpha.txt"
     beta = Path(temp_dir) / "metadata_beta.txt"
 
@@ -124,6 +143,7 @@ def write_local_test_files(temp_dir):
 
 
 def upload_file(path):
+    """负责 upload_file 的函数职责。"""
     with path.open("rb") as file:
         response = request(
             "POST",
@@ -135,6 +155,7 @@ def upload_file(path):
 
 
 def prepare_local_test_kb(temp_dir):
+    """负责 prepare_local_test_kb 的函数职责。"""
     delete_kb_if_exists(LOCAL_TEST_KB)
     create_and_switch_kb(LOCAL_TEST_KB)
     alpha, beta = write_local_test_files(temp_dir)
@@ -144,6 +165,7 @@ def prepare_local_test_kb(temp_dir):
 
 
 def kb_chat_return_direct(payload, step_name):
+    """负责 kb_chat_return_direct 的函数职责。"""
     response = request("POST", "/kb_chat", json=payload)
     data = expect_ok_json(response, step_name)
     sources = data.get("sources", [])
@@ -155,6 +177,7 @@ def kb_chat_return_direct(payload, step_name):
 
 
 def source_names(sources):
+    """负责 source_names 的函数职责。"""
     return {
         source
         for source in (
@@ -166,6 +189,7 @@ def source_names(sources):
 
 
 def assert_only_source(sources, expected_source, step_name, response):
+    """负责 assert_only_source 的函数职责。"""
     actual_sources = source_names(sources)
 
     if actual_sources != {expected_source}:
@@ -181,6 +205,7 @@ def assert_only_source(sources, expected_source, step_name, response):
 
 
 def check_local_without_filter(alpha_name, beta_name):
+    """负责 check_local_without_filter 的函数职责。"""
     sources, response = kb_chat_return_direct(
         {
             "mode": "local_kb",
@@ -211,6 +236,7 @@ def check_local_without_filter(alpha_name, beta_name):
 
 
 def check_local_file_name_filter(alpha_name):
+    """负责 check_local_file_name_filter 的函数职责。"""
     sources, response = kb_chat_return_direct(
         {
             "mode": "local_kb",
@@ -237,6 +263,7 @@ def check_local_file_name_filter(alpha_name):
 
 
 def check_local_source_filter(beta_name):
+    """负责 check_local_source_filter 的函数职责。"""
     sources, response = kb_chat_return_direct(
         {
             "mode": "local_kb",
@@ -262,7 +289,30 @@ def check_local_source_filter(beta_name):
     pass_step("POST /kb_chat local_kb source filter")
 
 
+def check_search_docs_file_filter(alpha_name):
+    """负责 check_search_docs_file_filter 的函数职责。"""
+    response = request(
+        "POST",
+        "/search_docs",
+        json={
+            "query": "metadata filter shared topic",
+            "top_k": 5,
+            "file_name": alpha_name,
+        },
+    )
+    data = expect_ok_json(response, "POST /search_docs file_name filter")
+    sources = data.get("results", [])
+    assert_only_source(
+        sources,
+        alpha_name,
+        "POST /search_docs file_name filter",
+        response,
+    )
+    pass_step("POST /search_docs file_name filter")
+
+
 def upload_temp_file():
+    """负责 upload_temp_file 的函数职责。"""
     if not SAMPLE_FILE.exists():
         fail_step(f"missing test file: {SAMPLE_FILE}")
 
@@ -285,6 +335,7 @@ def upload_temp_file():
 
 
 def check_temp_source_filter(temp_kb_id):
+    """负责 check_temp_source_filter 的函数职责。"""
     sources, response = kb_chat_return_direct(
         {
             "mode": "temp_kb",
@@ -311,6 +362,7 @@ def check_temp_source_filter(temp_kb_id):
 
 
 def main():
+    """负责 main 的函数职责。"""
     print(f"API_BASE={API_BASE}")
     should_cleanup = False
 
@@ -321,6 +373,7 @@ def main():
             check_local_without_filter(alpha_name, beta_name)
             check_local_file_name_filter(alpha_name)
             check_local_source_filter(beta_name)
+            check_search_docs_file_filter(alpha_name)
 
         temp_kb_id = upload_temp_file()
         check_temp_source_filter(temp_kb_id)

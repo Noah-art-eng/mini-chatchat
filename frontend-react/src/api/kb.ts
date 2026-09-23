@@ -1,10 +1,12 @@
-import { API_BASE, requestJson } from "./client";
+import { authFetch, requestJson } from "./client";
 import type { KnowledgeBase, KnowledgeFile } from "../types/kb";
 
+/** 用途：负责 listKnowledgeBases 的界面或数据处理职责。 */
 export async function listKnowledgeBases() {
   return requestJson<{ knowledge_bases: KnowledgeBase[] }>("/knowledge_bases");
 }
 
+/** 用途：负责 switchKnowledgeBase 的界面或数据处理职责。 */
 export async function switchKnowledgeBase(kbName: string) {
   return requestJson<{ current_kb: string }>("/switch_kb", {
     method: "POST",
@@ -14,10 +16,12 @@ export async function switchKnowledgeBase(kbName: string) {
   });
 }
 
+/** 用途：负责 listDocuments 的界面或数据处理职责。 */
 export async function listDocuments() {
   return requestJson<{ files: KnowledgeFile[] }>("/documents");
 }
 
+/** 用途：负责 uploadDocument 的界面或数据处理职责。 */
 export async function uploadDocument(file: File) {
   const formData = new FormData();
   formData.append("file", file);
@@ -25,7 +29,7 @@ export async function uploadDocument(file: File) {
   formData.append("chunk_size", "300");
   formData.append("chunk_overlap", "50");
 
-  const response = await fetch(`${API_BASE}/upload`, {
+  const response = await authFetch("/upload", {
     method: "POST",
     body: formData
   });
@@ -40,9 +44,10 @@ export async function uploadDocument(file: File) {
   }>;
 }
 
+/** 用途：负责 downloadDocument 的界面或数据处理职责。 */
 export async function downloadDocument(filename: string) {
-  const response = await fetch(
-    `${API_BASE}/documents/${encodeURIComponent(filename)}/download`
+  const response = await authFetch(
+    `/documents/${encodeURIComponent(filename)}/download`
   );
 
   if (!response.ok) {
@@ -67,6 +72,7 @@ export async function downloadDocument(filename: string) {
   URL.revokeObjectURL(url);
 }
 
+/** 用途：负责 reindexDocument 的界面或数据处理职责。 */
 export async function reindexDocument(
   filename: string,
   chunkSize = 300,
@@ -85,6 +91,7 @@ export async function reindexDocument(
   });
 }
 
+/** 用途：负责 deleteDocument 的界面或数据处理职责。 */
 export async function deleteDocument(filename: string) {
   return requestJson<{
     message?: string;
@@ -94,9 +101,10 @@ export async function deleteDocument(filename: string) {
   });
 }
 
+/** 用途：负责 exportKnowledgeBase 的界面或数据处理职责。 */
 export async function exportKnowledgeBase(kbName: string) {
-  const response = await fetch(
-    `${API_BASE}/knowledge_bases/${encodeURIComponent(kbName)}/export`
+  const response = await authFetch(
+    `/knowledge_bases/${encodeURIComponent(kbName)}/export`
   );
 
   if (!response.ok) {
@@ -121,12 +129,13 @@ export async function exportKnowledgeBase(kbName: string) {
   URL.revokeObjectURL(url);
 }
 
+/** 用途：负责 importKnowledgeBase 的界面或数据处理职责。 */
 export async function importKnowledgeBase(file: File) {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("override", "false");
 
-  const response = await fetch(`${API_BASE}/knowledge_bases/import`, {
+  const response = await authFetch("/knowledge_bases/import", {
     method: "POST",
     body: formData
   });

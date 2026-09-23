@@ -4,6 +4,8 @@ import sys
 
 import requests
 
+from smoke_auth import auth_headers
+
 
 API_BASE = os.getenv(
     "MINI_CHATCHAT_API_BASE",
@@ -21,6 +23,7 @@ FORBIDDEN = [
 
 
 def fail_step(message, response=None):
+    """负责 fail_step 的函数职责。"""
     print(f"[FAIL] {message}")
     if response is not None:
         print(f"status={response.status_code}")
@@ -29,14 +32,25 @@ def fail_step(message, response=None):
 
 
 def pass_step(message):
+    """负责 pass_step 的函数职责。"""
     print(f"[PASS] {message}")
 
 
 def request(method, path, **kwargs):
-    return requests.request(method, f"{API_BASE}{path}", timeout=90, **kwargs)
+    """负责 request 的函数职责。"""
+    headers = kwargs.pop("headers", {})
+    headers = {**auth_headers(), **headers}
+    return requests.request(
+        method,
+        f"{API_BASE}{path}",
+        headers=headers,
+        timeout=90,
+        **kwargs,
+    )
 
 
 def expect_ok_json(response, label):
+    """负责 expect_ok_json 的函数职责。"""
     if response.status_code != 200:
         fail_step(f"{label} returned HTTP {response.status_code}", response)
 
@@ -47,6 +61,7 @@ def expect_ok_json(response, label):
 
 
 def parse_sse_events(response):
+    """负责 parse_sse_events 的函数职责。"""
     events = []
     raw_chunks = []
     current = []
@@ -79,6 +94,7 @@ def parse_sse_events(response):
 
 
 def assert_no_leaks(text):
+    """负责 assert_no_leaks 的函数职责。"""
     lowered = text.lower()
     for forbidden in FORBIDDEN:
         if forbidden.lower() in lowered:
@@ -86,6 +102,7 @@ def assert_no_leaks(text):
 
 
 def assert_event_order(event_types):
+    """负责 assert_event_order 的函数职责。"""
     required = [
         "planning",
         "step_start",
@@ -108,6 +125,7 @@ def assert_event_order(event_types):
 
 
 def main():
+    """负责 main 的函数职责。"""
     print(f"API_BASE={API_BASE}")
     health = request("GET", "/models")
     if health.status_code != 200:
@@ -122,6 +140,7 @@ def main():
     }
     response = requests.post(
         f"{API_BASE}/agent/plan_run_stream",
+        headers=auth_headers(),
         json=payload,
         stream=True,
         timeout=90,

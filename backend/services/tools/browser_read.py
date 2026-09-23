@@ -62,7 +62,9 @@ SENSITIVE_MARKERS = (
 
 
 class ReadableHTMLParser(HTMLParser):
+    """负责 ReadableHTMLParser 的类职责。"""
     def __init__(self):
+        """负责 __init__ 的函数职责。"""
         super().__init__(convert_charrefs=True)
         self.title_parts = []
         self.text_parts = []
@@ -70,6 +72,7 @@ class ReadableHTMLParser(HTMLParser):
         self.in_title = False
 
     def handle_starttag(self, tag, attrs):
+        """负责 handle_starttag 的函数职责。"""
         tag = tag.lower()
         attr_map = {
             name.lower(): value or ""
@@ -87,6 +90,7 @@ class ReadableHTMLParser(HTMLParser):
             self.text_parts.append("\n")
 
     def handle_endtag(self, tag):
+        """负责 handle_endtag 的函数职责。"""
         tag = tag.lower()
 
         if tag == "title":
@@ -100,6 +104,7 @@ class ReadableHTMLParser(HTMLParser):
             self.text_parts.append("\n")
 
     def handle_data(self, data):
+        """负责 handle_data 的函数职责。"""
         if self.in_title:
             self.title_parts.append(data)
 
@@ -107,13 +112,16 @@ class ReadableHTMLParser(HTMLParser):
             self.text_parts.append(data)
 
     def title(self):
+        """负责 title 的函数职责。"""
         return normalize_text(" ".join(self.title_parts))
 
     def text(self):
+        """负责 text 的函数职责。"""
         return normalize_text(" ".join(self.text_parts))
 
 
 def is_hidden(attrs: dict) -> bool:
+    """负责 is_hidden 的函数职责。"""
     if "hidden" in attrs or attrs.get("aria-hidden", "").lower() == "true":
         return True
 
@@ -122,6 +130,7 @@ def is_hidden(attrs: dict) -> bool:
 
 
 def normalize_max_chars(value) -> int:
+    """负责 normalize_max_chars 的函数职责。"""
     try:
         max_chars = int(value)
     except (TypeError, ValueError):
@@ -131,6 +140,7 @@ def normalize_max_chars(value) -> int:
 
 
 def normalize_text(value: str) -> str:
+    """负责 normalize_text 的函数职责。"""
     text = html.unescape(value or "")
     text = re.sub(r"[ \t\r\f\v]+", " ", text)
     text = re.sub(r"\n\s*", "\n", text)
@@ -139,6 +149,7 @@ def normalize_text(value: str) -> str:
 
 
 def is_blocked_hostname(hostname: str) -> bool:
+    """负责 is_blocked_hostname 的函数职责。"""
     lowered = hostname.rstrip(".").lower()
 
     if lowered in {"localhost", "localhost.localdomain"}:
@@ -154,6 +165,7 @@ def is_blocked_hostname(hostname: str) -> bool:
 
 
 def is_public_ip(address: str) -> bool:
+    """负责 is_public_ip 的函数职责。"""
     ip = ipaddress.ip_address(address)
     return not (
         ip.is_private
@@ -166,6 +178,7 @@ def is_public_ip(address: str) -> bool:
 
 
 def resolve_public_ips(hostname: str) -> tuple[list[str], str | None]:
+    """负责 resolve_public_ips 的函数职责。"""
     try:
         addr_info = socket.getaddrinfo(
             hostname,
@@ -194,6 +207,7 @@ def resolve_public_ips(hostname: str) -> tuple[list[str], str | None]:
 
 
 def validate_url(raw_url: str) -> tuple[str | None, str | None]:
+    """负责 validate_url 的函数职责。"""
     if not isinstance(raw_url, str) or not raw_url.strip():
         return None, "url is required"
 
@@ -224,6 +238,7 @@ def validate_url(raw_url: str) -> tuple[str | None, str | None]:
 
 
 def read_response_body(response) -> bytes:
+    """负责 read_response_body 的函数职责。"""
     chunks = []
     total = 0
 
@@ -242,6 +257,7 @@ def read_response_body(response) -> bytes:
 
 
 def request_once(url: str) -> tuple[int, dict, bytes]:
+    """负责 request_once 的函数职责。"""
     parsed = urlparse(url)
     port = parsed.port
     path = parsed.path or "/"
@@ -284,6 +300,7 @@ def request_once(url: str) -> tuple[int, dict, bytes]:
 
 
 def fetch_url(url: str) -> tuple[str | None, dict | None, bytes | None, str | None]:
+    """负责 fetch_url 的函数职责。"""
     current_url = url
 
     for redirect_count in range(MAX_REDIRECTS + 1):
@@ -316,10 +333,12 @@ def fetch_url(url: str) -> tuple[str | None, dict | None, bytes | None, str | No
 
 
 def parse_content_type(value: str) -> str:
+    """负责 parse_content_type 的函数职责。"""
     return (value or "").split(";", 1)[0].strip().lower()
 
 
 def extract_text(body: bytes, content_type: str) -> tuple[str, str]:
+    """负责 extract_text 的函数职责。"""
     decoded = body.decode("utf-8", errors="replace")
 
     if content_type == "text/plain":
@@ -331,6 +350,7 @@ def extract_text(body: bytes, content_type: str) -> tuple[str, str]:
 
 
 def redact_sensitive_markers(text: str) -> str:
+    """负责 redact_sensitive_markers 的函数职责。"""
     safe_text = text
     for marker in SENSITIVE_MARKERS:
         safe_text = re.sub(
@@ -343,6 +363,7 @@ def redact_sensitive_markers(text: str) -> str:
 
 
 def execute_browser_read(arguments: dict) -> ToolResult:
+    """负责 execute_browser_read 的函数职责。"""
     url = arguments.get("url")
     max_chars = normalize_max_chars(arguments.get("max_chars", DEFAULT_MAX_CHARS))
 
@@ -401,6 +422,7 @@ def execute_browser_read(arguments: dict) -> ToolResult:
 
 
 def get_browser_read_tool() -> ToolSpec:
+    """负责 get_browser_read_tool 的函数职责。"""
     return ToolSpec(
         name="browser_read",
         description=(

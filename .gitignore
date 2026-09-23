@@ -5,6 +5,8 @@ __pycache__/
 .venv/
 
 .env
+.env.docker
+.env.production
 *.log
 
 *.db

@@ -16,10 +16,12 @@ FORBIDDEN_TEXT = (
 
 
 def pass_step(message):
+    """负责 pass_step 的函数职责。"""
     print(f"[PASS] {message}")
 
 
 def fail_step(message, response=None):
+    """负责 fail_step 的函数职责。"""
     print(f"[FAIL] {message}")
 
     if response is not None:
@@ -30,6 +32,7 @@ def fail_step(message, response=None):
 
 
 def request(method, path, **kwargs):
+    """负责 request 的函数职责。"""
     try:
         return requests.request(
             method,
@@ -46,6 +49,7 @@ def request(method, path, **kwargs):
 
 
 def parse_json(response, step_name):
+    """负责 parse_json 的函数职责。"""
     try:
         return response.json()
     except ValueError:
@@ -53,6 +57,7 @@ def parse_json(response, step_name):
 
 
 def assert_no_key_error(response, step_name):
+    """负责 assert_no_key_error 的函数职责。"""
     body = response.text
     for text in FORBIDDEN_TEXT:
         if text.lower() in body.lower():
@@ -60,6 +65,7 @@ def assert_no_key_error(response, step_name):
 
 
 def summarize_sources(sources):
+    """负责 summarize_sources 的函数职责。"""
     if not sources:
         return "sources=0"
 
@@ -73,6 +79,7 @@ def summarize_sources(sources):
 
 
 def expect_ok_json(response, step_name):
+    """负责 expect_ok_json 的函数职责。"""
     assert_no_key_error(response, step_name)
 
     if response.status_code != 200:
@@ -87,6 +94,7 @@ def expect_ok_json(response, step_name):
 
 
 def check_models():
+    """负责 check_models 的函数职责。"""
     response = request("GET", "/models")
     data = expect_ok_json(response, "GET /models")
     chat = data.get("chat", {})
@@ -102,6 +110,7 @@ def check_models():
 
 
 def check_local_kb_answer():
+    """负责 check_local_kb_answer 的函数职责。"""
     payload = {
         "mode": "local_kb",
         "kb_name": "default",
@@ -129,6 +138,7 @@ def check_local_kb_answer():
 
 
 def check_local_kb_return_direct():
+    """负责 check_local_kb_return_direct 的函数职责。"""
     payload = {
         "mode": "local_kb",
         "kb_name": "default",
@@ -153,6 +163,7 @@ def check_local_kb_return_direct():
 
 
 def check_search_engine():
+    """负责 check_search_engine 的函数职责。"""
     payload = {
         "mode": "search_engine",
         "query": "latest OpenAI news",
@@ -179,6 +190,7 @@ def check_search_engine():
 
 
 def main():
+    """负责 main 的函数职责。"""
     print(f"API_BASE={API_BASE}")
     check_models()
     check_local_kb_answer()

@@ -3,6 +3,8 @@ import sys
 
 import requests
 
+from smoke_auth import auth_headers
+
 
 API_BASE = os.getenv(
     "MINI_CHATCHAT_API_BASE",
@@ -18,10 +20,12 @@ FORBIDDEN_TEXT = (
 
 
 def pass_step(message):
+    """负责 pass_step 的函数职责。"""
     print(f"[PASS] {message}")
 
 
 def fail_step(message, response=None):
+    """负责 fail_step 的函数职责。"""
     print(f"[FAIL] {message}")
 
     if response is not None:
@@ -32,10 +36,15 @@ def fail_step(message, response=None):
 
 
 def request(method, path, **kwargs):
+    """负责 request 的函数职责。"""
+    headers = kwargs.pop("headers", {})
+    headers = {**auth_headers(), **headers}
+
     try:
         return requests.request(
             method,
             f"{API_BASE}{path}",
+            headers=headers,
             timeout=120,
             **kwargs,
         )
@@ -48,12 +57,14 @@ def request(method, path, **kwargs):
 
 
 def assert_safe_response(response, step_name):
+    """负责 assert_safe_response 的函数职责。"""
     for text in FORBIDDEN_TEXT:
         if text.lower() in response.text.lower():
             fail_step(f"{step_name}: forbidden text found: {text}", response)
 
 
 def expect_ok_json(response, step_name):
+    """负责 expect_ok_json 的函数职责。"""
     assert_safe_response(response, step_name)
 
     if response.status_code != 200:
@@ -66,6 +77,7 @@ def expect_ok_json(response, step_name):
 
 
 def run_filesystem_tool(path):
+    """负责 run_filesystem_tool 的函数职责。"""
     return request(
         "POST",
         "/agent/tools/filesystem_readonly_read/run",
@@ -78,6 +90,7 @@ def run_filesystem_tool(path):
 
 
 def check_tool_is_listed():
+    """负责 check_tool_is_listed 的函数职责。"""
     response = request("GET", "/agent/tools")
     data = expect_ok_json(response, "GET /agent/tools")
 
@@ -94,6 +107,7 @@ def check_tool_is_listed():
 
 
 def check_read_readme():
+    """负责 check_read_readme 的函数职责。"""
     response = run_filesystem_tool("README.md")
     data = expect_ok_json(response, "read README.md")
 
@@ -113,6 +127,7 @@ def check_read_readme():
 
 
 def check_read_backend_app():
+    """负责 check_read_backend_app 的函数职责。"""
     response = run_filesystem_tool("backend/app.py")
     data = expect_ok_json(response, "read backend/app.py")
 
@@ -128,6 +143,7 @@ def check_read_backend_app():
 
 
 def check_rejected_path(path, expected):
+    """负责 check_rejected_path 的函数职责。"""
     response = run_filesystem_tool(path)
     data = expect_ok_json(response, f"reject path {path}")
 
@@ -143,6 +159,7 @@ def check_rejected_path(path, expected):
 
 
 def check_agent_run_filesystem():
+    """负责 check_agent_run_filesystem 的函数职责。"""
     response = request(
         "POST",
         "/agent/run",
@@ -182,6 +199,7 @@ def check_agent_run_filesystem():
 
 
 def main():
+    """负责 main 的函数职责。"""
     print(f"API_BASE={API_BASE}")
     check_tool_is_listed()
     check_read_readme()

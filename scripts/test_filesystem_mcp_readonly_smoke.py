@@ -3,6 +3,8 @@ import sys
 
 import requests
 
+from smoke_auth import auth_headers
+
 
 API_BASE = os.getenv(
     "MINI_CHATCHAT_API_BASE",
@@ -20,10 +22,12 @@ FORBIDDEN_TEXT = (
 
 
 def pass_step(message):
+    """负责 pass_step 的函数职责。"""
     print(f"[PASS] {message}")
 
 
 def fail_step(message, response=None):
+    """负责 fail_step 的函数职责。"""
     print(f"[FAIL] {message}")
 
     if response is not None:
@@ -34,10 +38,15 @@ def fail_step(message, response=None):
 
 
 def request(method, path, **kwargs):
+    """负责 request 的函数职责。"""
+    headers = kwargs.pop("headers", {})
+    headers = {**auth_headers(), **headers}
+
     try:
         return requests.request(
             method,
             f"{API_BASE}{path}",
+            headers=headers,
             timeout=180,
             **kwargs,
         )
@@ -50,12 +59,14 @@ def request(method, path, **kwargs):
 
 
 def assert_safe_response(response, step_name):
+    """负责 assert_safe_response 的函数职责。"""
     for text in FORBIDDEN_TEXT:
         if text.lower() in response.text.lower():
             fail_step(f"{step_name}: forbidden text found: {text}", response)
 
 
 def expect_ok_json(response, step_name):
+    """负责 expect_ok_json 的函数职责。"""
     assert_safe_response(response, step_name)
 
     if response.status_code != 200:
@@ -68,6 +79,7 @@ def expect_ok_json(response, step_name):
 
 
 def assert_mcp_metadata(data, response, tool_name):
+    """负责 assert_mcp_metadata 的函数职责。"""
     metadata = data.get("metadata") or {}
     expected = {
         "provider": "mcp",
@@ -86,6 +98,7 @@ def assert_mcp_metadata(data, response, tool_name):
 
 
 def check_discovery():
+    """负责 check_discovery 的函数职责。"""
     response = request("GET", "/agent/mcp/servers")
     data = expect_ok_json(response, "GET /agent/mcp/servers")
     servers = data.get("servers") or []
@@ -123,6 +136,7 @@ def check_discovery():
 
 
 def check_registry():
+    """负责 check_registry 的函数职责。"""
     response = request("GET", "/agent/tools")
     data = expect_ok_json(response, "GET /agent/tools")
     names = {tool.get("name") for tool in data.get("tools") or []}
@@ -136,6 +150,7 @@ def check_registry():
 
 
 def check_read_file():
+    """负责 check_read_file 的函数职责。"""
     response = request(
         "POST",
         "/agent/mcp/tools/mcp.filesystem.read_file/run",
@@ -169,6 +184,7 @@ def check_read_file():
 
 
 def check_list_dir():
+    """负责 check_list_dir 的函数职责。"""
     response = request(
         "POST",
         "/agent/mcp/tools/mcp.filesystem.list_dir/run",
@@ -197,6 +213,7 @@ def check_list_dir():
 
 
 def check_rejections():
+    """负责 check_rejections 的函数职责。"""
     cases = [
         (
             "absolute path",
@@ -250,6 +267,7 @@ def check_rejections():
 
 
 def check_agent_plan_run():
+    """负责 check_agent_plan_run 的函数职责。"""
     response = request(
         "POST",
         "/agent/plan_run",
@@ -312,6 +330,7 @@ def check_agent_plan_run():
 
 
 def main():
+    """负责 main 的函数职责。"""
     print(f"API_BASE={API_BASE}")
     check_discovery()
     check_registry()

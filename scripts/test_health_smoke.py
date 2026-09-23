@@ -18,10 +18,12 @@ FORBIDDEN_TEXT = (
 
 
 def pass_step(message):
+    """负责 pass_step 的函数职责。"""
     print(f"[PASS] {message}")
 
 
 def fail_step(message, response=None):
+    """负责 fail_step 的函数职责。"""
     print(f"[FAIL] {message}")
 
     if response is not None:
@@ -32,6 +34,7 @@ def fail_step(message, response=None):
 
 
 def request(method, path, **kwargs):
+    """负责 request 的函数职责。"""
     try:
         return requests.request(
             method,
@@ -48,12 +51,14 @@ def request(method, path, **kwargs):
 
 
 def assert_safe_response(response, step_name):
+    """负责 assert_safe_response 的函数职责。"""
     for text in FORBIDDEN_TEXT:
         if text.lower() in response.text.lower():
             fail_step(f"{step_name}: forbidden text found: {text}", response)
 
 
 def expect_ok_json(response, step_name):
+    """负责 expect_ok_json 的函数职责。"""
     assert_safe_response(response, step_name)
 
     if response.status_code != 200:
@@ -66,6 +71,7 @@ def expect_ok_json(response, step_name):
 
 
 def check_health():
+    """负责 check_health 的函数职责。"""
     response = request("GET", "/health")
     data = expect_ok_json(response, "GET /health")
 
@@ -90,6 +96,7 @@ def check_health():
 
 
 def check_health_deps():
+    """负责 check_health_deps 的函数职责。"""
     response = request("GET", "/health/deps")
     data = expect_ok_json(response, "GET /health/deps")
 
@@ -137,6 +144,7 @@ def check_health_deps():
 
 
 def main():
+    """负责 main 的函数职责。"""
     print(f"API_BASE={API_BASE}")
     check_health()
     check_health_deps()

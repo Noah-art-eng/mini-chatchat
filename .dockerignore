@@ -7,10 +7,16 @@ __pycache__/
 *.pyc
 
 backend/.env
+.env
+.env.docker
+.env.production
 backend/mini.db
 backend/data/
 backend/uploads/
 backend/temp/
+runtime/
+backups/
+*.bak
 
 frontend-react/node_modules/
 frontend-react/dist/

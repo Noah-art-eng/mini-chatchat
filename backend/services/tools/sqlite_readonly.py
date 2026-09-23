@@ -17,6 +17,7 @@ FORBIDDEN_SQL = re.compile(
 
 
 def normalize_limit(value) -> int:
+    """负责 normalize_limit 的函数职责。"""
     try:
         limit = int(value)
     except (TypeError, ValueError):
@@ -26,6 +27,7 @@ def normalize_limit(value) -> int:
 
 
 def validate_select_sql(sql: str) -> str | None:
+    """负责 validate_select_sql 的函数职责。"""
     stripped = sql.strip()
 
     if not stripped:
@@ -46,6 +48,7 @@ def validate_select_sql(sql: str) -> str | None:
 
 
 def execute_sqlite_readonly_query(arguments: dict) -> ToolResult:
+    """负责 execute_sqlite_readonly_query 的函数职责。"""
     sql = arguments.get("sql")
     limit = normalize_limit(arguments.get("limit", MAX_ROWS))
 
@@ -108,6 +111,7 @@ def execute_sqlite_readonly_query(arguments: dict) -> ToolResult:
 
 
 def get_sqlite_readonly_query_tool() -> ToolSpec:
+    """负责 get_sqlite_readonly_query_tool 的函数职责。"""
     return ToolSpec(
         name="sqlite_readonly_query",
         description=(

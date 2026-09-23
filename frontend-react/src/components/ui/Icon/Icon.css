@@ -1,0 +1,68 @@
+.ui-icon {
+  align-items: center;
+  color: currentColor;
+  display: inline-flex;
+  flex: 0 0 auto;
+  justify-content: center;
+  line-height: 1;
+}
+
+.ui-icon svg {
+  display: block;
+  height: 100%;
+  width: 100%;
+}
+
+.ui-icon--sm {
+  height: var(--icon-size-sm);
+  width: var(--icon-size-sm);
+}
+
+.ui-icon--md {
+  height: var(--icon-size-md);
+  width: var(--icon-size-md);
+}
+
+.ui-icon--lg {
+  height: var(--icon-size-lg);
+  width: var(--icon-size-lg);
+}
+
+.ui-icon--tone-muted {
+  color: var(--color-text-muted);
+}
+
+.ui-icon--tone-brand {
+  color: var(--color-brand-primary);
+}
+
+.ui-icon--tone-success,
+.ui-icon--tone-file {
+  color: var(--color-success);
+}
+
+.ui-icon--tone-warning,
+.ui-icon--tone-system {
+  color: var(--color-warning);
+}
+
+.ui-icon--tone-danger {
+  color: var(--color-danger);
+}
+
+.ui-icon--tone-info,
+.ui-icon--tone-database {
+  color: var(--color-info);
+}
+
+.ui-icon--tone-knowledge {
+  color: var(--icon-tone-knowledge);
+}
+
+.ui-icon--tone-browser {
+  color: var(--icon-tone-browser);
+}
+
+.ui-icon--tone-mcp {
+  color: var(--icon-tone-mcp);
+}

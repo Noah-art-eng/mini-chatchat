@@ -1,0 +1,35 @@
+.ui-surface {
+  border: var(--border-width-default) var(--border-style-default)
+    var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.ui-surface--base {
+  background: var(--color-bg-surface);
+}
+
+.ui-surface--subtle {
+  background: var(--color-bg-subtle);
+}
+
+.ui-surface--elevated {
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-sm);
+}
+
+.ui-surface--critical {
+  background: var(--color-danger-soft);
+  border-color: var(--color-danger-soft);
+}
+
+.ui-surface--interactive {
+  transition:
+    background-color var(--motion-duration-fast) var(--motion-ease-standard),
+    border-color var(--motion-duration-fast) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-fast) var(--motion-ease-standard);
+}
+
+.ui-surface--interactive:hover {
+  border-color: var(--color-border-default);
+  box-shadow: var(--shadow-xs);
+}

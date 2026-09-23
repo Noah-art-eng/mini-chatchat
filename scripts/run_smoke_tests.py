@@ -8,6 +8,11 @@ import requests
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
+DEFAULT_VENV_PYTHON = ROOT_DIR / ".venv" / "bin" / "python"
+PYTHON_BIN = os.getenv(
+    "MINI_CHATCHAT_PYTHON",
+    str(DEFAULT_VENV_PYTHON) if DEFAULT_VENV_PYTHON.exists() else sys.executable,
+)
 API_BASE = os.getenv(
     "MINI_CHATCHAT_API_BASE",
     "http://127.0.0.1:8000",
@@ -17,12 +22,21 @@ SMOKE_TESTS = [
     "scripts/test_llm_provider.py",
     "scripts/test_react_core_api_smoke.py",
     "scripts/test_conversation_api_smoke.py",
+    "scripts/test_auth_session_smoke.py",
+    "scripts/test_account_session_smoke.py",
+    "scripts/test_oauth_smoke.py",
+    "scripts/test_email_auth_isolation_smoke.py",
     "scripts/test_temp_kb_api_smoke.py",
     "scripts/test_hybrid_search_smoke.py",
     "scripts/test_metadata_filter_smoke.py",
+    "scripts/test_request_validation_smoke.py",
+    "scripts/test_agent_stop_guard.py",
+    "scripts/test_agent_nonblocking_smoke.py",
     "scripts/test_context_dedup_smoke.py",
     "scripts/test_context_token_budget_smoke.py",
+    "scripts/test_rag_context_alignment.py",
     "scripts/test_kb_import_export.py",
+    "scripts/test_search_time_routing_smoke.py",
     "scripts/test_tool_registry_smoke.py",
     "scripts/test_agent_tool_calling_smoke.py",
     "scripts/test_agent_loop_smoke.py",
@@ -43,6 +57,7 @@ SMOKE_TESTS = [
 
 
 def check_backend():
+    """负责 check_backend 的函数职责。"""
     try:
         response = requests.get(f"{API_BASE}/models", timeout=5)
         if response.status_code == 200:
@@ -64,18 +79,44 @@ def check_backend():
 
 
 def run_script(script_path):
+    """负责 run_script 的函数职责。"""
     started_at = time.monotonic()
     print(f"\n=== RUN {script_path} ===")
 
     result = subprocess.run(
-        [sys.executable, script_path],
+        [PYTHON_BIN, script_path],
         cwd=ROOT_DIR,
         env=os.environ.copy(),
         text=True,
+        capture_output=True,
     )
 
     elapsed = time.monotonic() - started_at
-    status = "PASS" if result.returncode == 0 else "FAIL"
+    output = (result.stdout or "") + (result.stderr or "")
+
+    if result.stdout:
+        print(result.stdout, end="")
+    if result.stderr:
+        print(result.stderr, end="", file=sys.stderr)
+
+    if result.returncode == 0 and "[SKIP]" in output:
+        status = "SKIP"
+    elif result.returncode == 0:
+        status = "PASS"
+    elif any(
+        marker in output
+        for marker in (
+            "ModuleNotFoundError",
+            "ImportError",
+            "Backend is not running",
+            "Connection refused",
+            "Name or service not known",
+        )
+    ):
+        status = "ENVIRONMENT ERROR"
+    else:
+        status = "FAIL"
+
     print(f"=== {status} {script_path} ({elapsed:.1f}s) ===")
 
     return {
@@ -87,8 +128,13 @@ def run_script(script_path):
 
 
 def main():
+    """负责 main 的函数职责。"""
     print(f"API_BASE={API_BASE}")
-    check_backend()
+    print(f"PYTHON_BIN={PYTHON_BIN}")
+
+    if not check_backend():
+        print("[ENVIRONMENT ERROR] Backend must be running before smoke tests.")
+        sys.exit(1)
 
     started_at = time.monotonic()
     results = []
@@ -110,7 +156,11 @@ def main():
         results.append(run_script(script_path))
 
     total_elapsed = time.monotonic() - started_at
-    failed = [result for result in results if result["status"] != "PASS"]
+    failed = [result for result in results if result["status"] == "FAIL"]
+    environment_errors = [
+        result for result in results if result["status"] == "ENVIRONMENT ERROR"
+    ]
+    skipped = [result for result in results if result["status"] == "SKIP"]
 
     print("\n=== Smoke Test Summary ===")
     for result in results:
@@ -120,11 +170,24 @@ def main():
         )
 
     print(f"Total tests: {len(results)}")
+    print(f"PASS: {sum(1 for result in results if result['status'] == 'PASS')}")
+    print(f"FAIL: {len(failed)}")
+    print(f"SKIP: {len(skipped)}")
+    print(f"ENVIRONMENT ERROR: {len(environment_errors)}")
     print(f"Total elapsed: {total_elapsed:.1f}s")
 
     if failed:
         print("\nFailed scripts:")
         for result in failed:
+            print(
+                f"- {result['script']} "
+                f"(exit code {result['returncode']})"
+            )
+        sys.exit(1)
+
+    if environment_errors:
+        print("\nEnvironment error scripts:")
+        for result in environment_errors:
             print(
                 f"- {result['script']} "
                 f"(exit code {result['returncode']})"

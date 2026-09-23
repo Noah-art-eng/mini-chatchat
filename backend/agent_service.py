@@ -1,13 +1,18 @@
 import json
 import re
 
-from db import create_conversation, get_conversation_messages, save_message
+from db import (
+    create_conversation,
+    get_conversation,
+    get_conversation_messages,
+    save_message,
+)
 from model_config import (
     get_default_chat_model,
     get_default_temperature,
     get_openai_client,
 )
-from services.tools import list_all_tools, resolve_tool, run_tool
+from services.tools import list_all_tools, list_tools, resolve_tool, run_tool
 
 
 ALLOWED_TOOL_KEYS = {"tool", "arguments", "reason"}
@@ -36,8 +41,90 @@ STREAM_REDACTED_KEYS = {
     "stderr",
 }
 
+TIME_QUERY_TERMS = [
+    "现在几点",
+    "当前时间",
+    "今天几号",
+    "今天星期几",
+    "几点了",
+    "time now",
+    "current date",
+    "current time",
+]
+WEB_SEARCH_TERMS = [
+    "latest",
+    "current product price",
+    "recent release",
+    "news",
+    "web",
+    "internet",
+    "search online",
+    "搜索网页",
+    "联网",
+    "最新",
+    "新闻",
+    "最近发布",
+    "公开更新",
+    "当前事件",
+]
+KB_SEARCH_TERMS = [
+    "knowledge base",
+    "local knowledge",
+    "uploaded document",
+    "project document",
+    "知识库",
+    "本地文档",
+    "上传材料",
+    "上传文件",
+]
+TIMEZONE_MAPPINGS = [
+    (["新西兰", "奥克兰", "auckland"], "Pacific/Auckland"),
+    (["中国", "北京", "shanghai", "beijing"], "Asia/Shanghai"),
+    (["utc"], "UTC"),
+]
+
+
+def query_contains_any(query, terms):
+    """负责 query_contains_any 的函数职责。"""
+    normalized = query.lower()
+    return any(term in normalized for term in terms)
+
+
+def infer_timezone_from_query(query):
+    """负责 infer_timezone_from_query 的函数职责。"""
+    normalized = query.lower()
+
+    for aliases, timezone_name in TIMEZONE_MAPPINGS:
+        if any(alias in normalized for alias in aliases):
+            return timezone_name
+
+    return None
+
+
+def is_time_query(query):
+    """负责 is_time_query 的函数职责。"""
+    normalized = query.lower()
+    return (
+        query_contains_any(query, TIME_QUERY_TERMS)
+        or (
+            any(word in normalized for word in ["time", "date", "utc", "now"])
+            and not is_web_search_query(query)
+        )
+    )
+
+
+def is_web_search_query(query):
+    """负责 is_web_search_query 的函数职责。"""
+    return query_contains_any(query, WEB_SEARCH_TERMS)
+
+
+def is_kb_query(query):
+    """负责 is_kb_query 的函数职责。"""
+    return query_contains_any(query, KB_SEARCH_TERMS)
+
 
 def normalize_tool_spec(tool):
+    """负责 normalize_tool_spec 的函数职责。"""
     if hasattr(tool, "public_dict"):
         return tool.public_dict()
 
@@ -45,10 +132,20 @@ def normalize_tool_spec(tool):
 
 
 def get_available_tool_specs(tool_names=None):
-    registry = {
-        tool["name"]: tool
-        for tool in list_all_tools()
-    }
+    # 显式指定本地工具时无需探测 MCP，避免无关的 MCP 冷启动拖慢 Agent。
+    """负责 get_available_tool_specs 的函数职责。"""
+    if tool_names is not None and all(
+        not str(name).startswith("mcp.") for name in tool_names
+    ):
+        registry = {
+            tool["name"]: tool
+            for tool in list_tools()
+        }
+    else:
+        registry = {
+            tool["name"]: tool
+            for tool in list_all_tools()
+        }
 
     if tool_names is None:
         return list(registry.values()), None
@@ -69,6 +166,7 @@ def get_available_tool_specs(tool_names=None):
 
 
 def build_tool_call_prompt(query, available_tools):
+    """负责 build_tool_call_prompt 的函数职责。"""
     tool_names = [
         normalize_tool_spec(tool)["name"]
         for tool in available_tools
@@ -102,12 +200,16 @@ Required JSON shape:
 
 Rules:
 - Use calculator for arithmetic expressions.
-- Use current_time for time/date questions.
-- Use kb_search for questions that should search the local knowledge base.
+- Use current_time for clock/date questions such as "现在几点", "当前时间", "今天几号", "今天星期几", "time now", "current date", or timezone-specific time questions.
+- For "新西兰", "奥克兰", or "Auckland" time questions, call current_time with {{"timezone": "Pacific/Auckland"}}.
+- For "中国", "北京", "Shanghai", or "Beijing" time questions, call current_time with {{"timezone": "Asia/Shanghai"}}.
+- For UTC time questions, call current_time with {{"timezone": "UTC"}}.
+- Use browser_search for latest news, public web updates, current product prices, recently released information, current events, or explicit web search requests.
+- Use kb_search for questions about the local knowledge base, project documents, uploaded materials, or user-provided KB content.
 - Use sqlite_readonly_query for read-only SQL SELECT questions about Mini ChatChat database tables.
 - Use filesystem_readonly_read for read-only questions that ask to inspect a project file by relative path.
 - Use browser_read when the user provides a direct public http or https URL and asks to read, summarize, inspect, or answer from that page.
-- Use browser_search for current public web information or explicit web search requests.
+- Do not use current_time for news/current-event questions; use browser_search instead.
 - Use mcp.demo.echo only when the user explicitly asks to echo through the demo MCP tool.
 - Use mcp.filesystem.read_file for read-only project file inspection through MCP.
 - Use mcp.sqlite.query when the user explicitly asks for the SQLite MCP tool.
@@ -118,6 +220,7 @@ Rules:
 
 
 def extract_json_object(text):
+    """负责 extract_json_object 的函数职责。"""
     stripped = (text or "").strip()
 
     if stripped.startswith("```"):
@@ -135,6 +238,7 @@ def extract_json_object(text):
 
 
 def parse_tool_call(llm_text):
+    """负责 parse_tool_call 的函数职责。"""
     try:
         data = json.loads(extract_json_object(llm_text))
     except json.JSONDecodeError as exc:
@@ -167,6 +271,7 @@ def parse_tool_call(llm_text):
 
 
 def parse_agent_action(llm_text):
+    """负责 parse_agent_action 的函数职责。"""
     try:
         data = json.loads(extract_json_object(llm_text))
     except json.JSONDecodeError as exc:
@@ -213,6 +318,7 @@ def parse_agent_action(llm_text):
 
 
 def normalize_plan_step(step, index):
+    """负责 normalize_plan_step 的函数职责。"""
     title = ""
     if isinstance(step, dict):
         title = step.get("title") or step.get("description") or ""
@@ -231,6 +337,7 @@ def normalize_plan_step(step, index):
 
 
 def parse_plan(llm_text):
+    """负责 parse_plan 的函数职责。"""
     try:
         data = json.loads(extract_json_object(llm_text))
     except json.JSONDecodeError as exc:
@@ -266,6 +373,7 @@ def parse_plan(llm_text):
 
 
 def choose_tool_without_llm(query, available_tools):
+    """负责 choose_tool_without_llm 的函数职责。"""
     tool_names = {
         tool["name"]
         for tool in available_tools
@@ -285,13 +393,26 @@ def choose_tool_without_llm(query, available_tools):
             "reason": "The query contains an arithmetic expression.",
         }
 
-    if (
-        "current_time" in tool_names
-        and any(word in normalized for word in ["time", "date", "utc", "now"])
-    ):
+    if "browser_search" in tool_names and is_web_search_query(query):
+        return {
+            "tool": "browser_search",
+            "arguments": {
+                "query": query,
+                "max_results": 3,
+            },
+            "reason": "The query asks for current public web information.",
+        }
+
+    if "current_time" in tool_names and is_time_query(query):
+        arguments = {}
+        timezone_name = infer_timezone_from_query(query)
+
+        if timezone_name:
+            arguments["timezone"] = timezone_name
+
         return {
             "tool": "current_time",
-            "arguments": {},
+            "arguments": arguments,
             "reason": "The query asks for current time or date.",
         }
 
@@ -386,32 +507,6 @@ def choose_tool_without_llm(query, available_tools):
             }
 
     if (
-        "browser_search" in tool_names
-        and any(
-            word in normalized
-            for word in [
-                "latest",
-                "current",
-                "news",
-                "web",
-                "internet",
-                "search online",
-                "搜索网页",
-                "联网",
-                "最新",
-            ]
-        )
-    ):
-        return {
-            "tool": "browser_search",
-            "arguments": {
-                "query": query,
-                "max_results": 3,
-            },
-            "reason": "The query asks for current public web information.",
-        }
-
-    if (
         "mcp.demo.echo" in tool_names
         and "mcp" in normalized
         and "echo" in normalized
@@ -427,12 +522,16 @@ def choose_tool_without_llm(query, available_tools):
         }
 
     if "kb_search" in tool_names:
+        reason = "The query can be answered by searching the knowledge base."
+        if is_kb_query(query):
+            reason = "The query asks about local knowledge base or uploaded content."
+
         return {
             "tool": "kb_search",
             "arguments": {
                 "query": query,
             },
-            "reason": "The query can be answered by searching the knowledge base.",
+            "reason": reason,
         }
 
     return {
@@ -443,6 +542,7 @@ def choose_tool_without_llm(query, available_tools):
 
 
 def choose_multi_step_action_without_llm(query, available_tools, steps):
+    """负责 choose_multi_step_action_without_llm 的函数职责。"""
     used_tools = {
         (step.get("tool_call") or {}).get("tool")
         for step in steps
@@ -466,12 +566,18 @@ def choose_multi_step_action_without_llm(query, available_tools, steps):
     if (
         "current_time" in tool_names
         and "current_time" not in used_tools
-        and any(word in normalized for word in ["time", "date", "utc", "now"])
+        and is_time_query(query)
     ):
+        arguments = {}
+        timezone_name = infer_timezone_from_query(query)
+
+        if timezone_name:
+            arguments["timezone"] = timezone_name
+
         return {
             "action": "tool",
             "tool": "current_time",
-            "arguments": {},
+            "arguments": arguments,
             "reason": "The query also asks for current time or date.",
             "final_answer": None,
         }
@@ -486,6 +592,7 @@ def choose_multi_step_action_without_llm(query, available_tools, steps):
 
 
 def generate_plan_without_llm(query):
+    """负责 generate_plan_without_llm 的函数职责。"""
     normalized = query.lower()
 
     if re.search(r"\d+\s*[\+\-\*/%]\s*\d+", query):
@@ -556,6 +663,7 @@ def generate_plan_without_llm(query):
 
 
 def build_plan_prompt(query):
+    """负责 build_plan_prompt 的函数职责。"""
     return f"""
 You are Mini ChatChat's lightweight planner.
 
@@ -588,6 +696,7 @@ Rules:
 
 
 def generate_plan(query):
+    """负责 generate_plan 的函数职责。"""
     fallback = generate_plan_without_llm(query)
     prompt = build_plan_prompt(query)
 
@@ -615,6 +724,7 @@ def generate_plan(query):
 
 
 def decide_tool_call(query, available_tools):
+    """负责 decide_tool_call 的函数职责。"""
     prompt = build_tool_call_prompt(query, available_tools)
     fallback = choose_tool_without_llm(query, available_tools)
 
@@ -676,6 +786,7 @@ def decide_tool_call(query, available_tools):
 
 
 def build_multi_step_prompt(query, available_tools, steps):
+    """负责 build_multi_step_prompt 的函数职责。"""
     tool_names = [
         normalize_tool_spec(tool)["name"]
         for tool in available_tools
@@ -720,12 +831,16 @@ Required JSON shape:
 
 Rules:
 - Use calculator for arithmetic expressions.
-- Use current_time for time/date questions.
-- Use kb_search for questions that should search the local knowledge base.
+- Use current_time for clock/date questions such as "现在几点", "当前时间", "今天几号", "今天星期几", "time now", "current date", or timezone-specific time questions.
+- For "新西兰", "奥克兰", or "Auckland" time questions, call current_time with {{"timezone": "Pacific/Auckland"}}.
+- For "中国", "北京", "Shanghai", or "Beijing" time questions, call current_time with {{"timezone": "Asia/Shanghai"}}.
+- For UTC time questions, call current_time with {{"timezone": "UTC"}}.
+- Use browser_search for latest news, public web updates, current product prices, recently released information, current events, or explicit web search.
+- Use kb_search for questions about the local knowledge base, project documents, uploaded materials, or user-provided KB content.
 - Use sqlite_readonly_query only for read-only SELECT database questions.
 - Use filesystem_readonly_read only for read-only project file inspection.
 - Use browser_read when the user provides a direct public URL to read.
-- Use browser_search for current public web information or explicit web search.
+- Do not use current_time for news/current-event questions; use browser_search instead.
 - Use mcp.demo.echo only when the user explicitly asks to echo through the demo MCP tool.
 - Use mcp.filesystem.read_file for read-only project file inspection through MCP.
 - Use mcp.sqlite.query when the user explicitly asks for the SQLite MCP tool.
@@ -736,6 +851,8 @@ Rules:
 
 
 def decide_agent_action(query, available_tools, steps):
+    # Agent 每轮只允许一个工具调用；模型不可用或输出非法时回退到确定性路由。
+    """负责 decide_agent_action 的函数职责。"""
     prompt = build_multi_step_prompt(query, available_tools, steps)
     fallback = choose_multi_step_action_without_llm(query, available_tools, steps)
 
@@ -813,7 +930,8 @@ def decide_agent_action(query, available_tools, steps):
     }
 
 
-def apply_tool_defaults(tool_call, query, kb_name):
+def apply_tool_defaults(tool_call, query, kb_name, user_id=None):
+    """负责 apply_tool_defaults 的函数职责。"""
     if tool_call["tool"] == "kb_search":
         arguments = {
             **tool_call.get("arguments", {}),
@@ -822,6 +940,23 @@ def apply_tool_defaults(tool_call, query, kb_name):
 
         if kb_name:
             arguments.setdefault("kb_name", kb_name)
+
+        if user_id is not None:
+            arguments["_user_id"] = user_id
+
+        tool_call = {
+            **tool_call,
+            "arguments": arguments,
+        }
+
+    if tool_call["tool"] == "current_time":
+        arguments = {
+            **tool_call.get("arguments", {}),
+        }
+        timezone_name = infer_timezone_from_query(query)
+
+        if timezone_name:
+            arguments.setdefault("timezone", timezone_name)
 
         tool_call = {
             **tool_call,
@@ -832,6 +967,7 @@ def apply_tool_defaults(tool_call, query, kb_name):
 
 
 def expand_explicit_mcp_tools(query, tools):
+    """负责 expand_explicit_mcp_tools 的函数职责。"""
     if tools is None:
         return None
 
@@ -849,6 +985,7 @@ def expand_explicit_mcp_tools(query, tools):
 
 
 def get_tool_trace_metadata(tool_name):
+    """负责 get_tool_trace_metadata 的函数职责。"""
     spec = resolve_tool(tool_name)
     if spec is None or getattr(spec, "provider", "local") != "mcp":
         return {}
@@ -860,7 +997,8 @@ def get_tool_trace_metadata(tool_name):
     }
 
 
-def run_agent_once(query, kb_name=None, tools=None):
+def run_agent_once(query, kb_name=None, tools=None, user_id=None):
+    """负责 run_agent_once 的函数职责。"""
     tools = expand_explicit_mcp_tools(query, tools)
     available_tools, tools_error = get_available_tool_specs(tools)
     if tools_error:
@@ -895,7 +1033,7 @@ def run_agent_once(query, kb_name=None, tools=None):
             "error": decision["error"],
         }
 
-    tool_call = apply_tool_defaults(tool_call, query, kb_name)
+    tool_call = apply_tool_defaults(tool_call, query, kb_name, user_id=user_id)
     tool_name = tool_call["tool"]
 
     if tool_name == "none":
@@ -941,6 +1079,7 @@ def run_agent_once(query, kb_name=None, tools=None):
 
 
 def summarize_tool_result(tool_result):
+    """负责 summarize_tool_result 的函数职责。"""
     if tool_result is None:
         return ""
 
@@ -952,6 +1091,7 @@ def summarize_tool_result(tool_result):
 
 
 def generate_final_answer(query, tool_call, tool_result):
+    """负责 generate_final_answer 的函数职责。"""
     tool_name = (tool_call or {}).get("tool", "none")
 
     if tool_result is not None and not tool_result.get("ok"):
@@ -1005,6 +1145,7 @@ Final answer:
 
 
 def normalize_max_steps(max_steps):
+    """负责 normalize_max_steps 的函数职责。"""
     try:
         parsed = int(max_steps)
     except (TypeError, ValueError):
@@ -1014,6 +1155,7 @@ def normalize_max_steps(max_steps):
 
 
 def tool_signature(tool_name, arguments):
+    """负责 tool_signature 的函数职责。"""
     return json.dumps(
         {
             "tool": tool_name,
@@ -1025,6 +1167,7 @@ def tool_signature(tool_name, arguments):
 
 
 def summarize_observation(tool_result):
+    """负责 summarize_observation 的函数职责。"""
     if tool_result is None:
         return ""
 
@@ -1040,6 +1183,7 @@ def summarize_observation(tool_result):
 
 
 def sanitize_stream_value(value, max_chars=STREAM_VALUE_MAX_CHARS):
+    """负责 sanitize_stream_value 的函数职责。"""
     if isinstance(value, dict):
         sanitized = {}
         for key, item in value.items():
@@ -1065,11 +1209,14 @@ def sanitize_stream_value(value, max_chars=STREAM_VALUE_MAX_CHARS):
 
 
 def emit_agent_event(event_sink, event):
+    """负责 emit_agent_event 的函数职责。"""
     if event_sink is not None:
+        # SSE trace 仅暴露截断且脱敏后的值，避免工具输出泄漏运行时敏感信息。
         event_sink(sanitize_stream_value(event))
 
 
 def stream_answer_tokens(answer):
+    """负责 stream_answer_tokens 的函数职责。"""
     if not answer:
         return []
 
@@ -1078,6 +1225,7 @@ def stream_answer_tokens(answer):
 
 
 def generate_multi_step_final_answer(query, steps, fallback_answer=""):
+    """负责 generate_multi_step_final_answer 的函数职责。"""
     if fallback_answer:
         return fallback_answer
 
@@ -1126,6 +1274,7 @@ Final answer:
 
 
 def build_multi_step_metadata(result):
+    """负责 build_multi_step_metadata 的函数职责。"""
     return {
         "agent": True,
         "mode": "multi-step",
@@ -1137,6 +1286,7 @@ def build_multi_step_metadata(result):
 
 
 def build_planner_metadata(result):
+    """负责 build_planner_metadata 的函数职责。"""
     return {
         "agent": True,
         "mode": "planner",
@@ -1149,6 +1299,7 @@ def build_planner_metadata(result):
 
 
 def update_plan(planner, agent_result):
+    """负责 update_plan 的函数职责。"""
     steps = [
         {
             **step,
@@ -1232,7 +1383,9 @@ def run_agent_multi_step(
     max_steps=3,
     event_sink=None,
     should_stop=None,
+    user_id=None,
 ):
+    """负责 run_agent_multi_step 的函数职责。"""
     max_steps = normalize_max_steps(max_steps)
     tools = expand_explicit_mcp_tools(query, tools)
     available_tools, tools_error = get_available_tool_specs(tools)
@@ -1260,10 +1413,12 @@ def run_agent_multi_step(
     previous_signature = None
     final_answer = ""
     error = None
+    stopped = False
 
     for step_index in range(1, max_steps + 1):
         if should_stop is not None and should_stop():
             error = "client disconnected"
+            stopped = True
             trace.append({
                 "step": step_index,
                 "event": "error",
@@ -1277,6 +1432,17 @@ def run_agent_multi_step(
         })
         decision = decide_agent_action(query, available_tools, steps)
         action = decision.get("action")
+
+        # 决策 LLM 可能在等待期间遇到断连；结果返回后不再启动新的工具阶段。
+        if should_stop is not None and should_stop():
+            error = "client disconnected"
+            stopped = True
+            trace.append({
+                "step": step_index,
+                "event": "error",
+                "message": error,
+            })
+            break
 
         if decision.get("error"):
             trace.append({
@@ -1308,7 +1474,7 @@ def run_agent_multi_step(
             "arguments": action.get("arguments", {}),
             "reason": action.get("reason", ""),
         }
-        tool_call = apply_tool_defaults(tool_call, query, kb_name)
+        tool_call = apply_tool_defaults(tool_call, query, kb_name, user_id=user_id)
         tool_name = tool_call["tool"]
         arguments = tool_call.get("arguments", {})
 
@@ -1404,7 +1570,12 @@ def run_agent_multi_step(
             "max_steps": max_steps,
         })
 
-    answer = generate_multi_step_final_answer(query, steps, final_answer)
+    # 客户端取消后不能再发起最终 LLM 总结；已在途调用无法由 SDK 强制撤销。
+    answer = "" if stopped else generate_multi_step_final_answer(
+        query,
+        steps,
+        final_answer,
+    )
     trace.append({
         "event": "final_answer",
         "answer": answer,
@@ -1432,7 +1603,9 @@ def run_agent_with_planner(
     max_steps=3,
     event_sink=None,
     should_stop=None,
+    user_id=None,
 ):
+    """负责 run_agent_with_planner 的函数职责。"""
     planner = generate_plan(query)
     trace = [
         {
@@ -1445,6 +1618,16 @@ def run_agent_with_planner(
         "type": "planning",
         "planner": planner,
     })
+    if should_stop is not None and should_stop():
+        return {
+            "answer": "",
+            "steps": [],
+            "trace": trace,
+            "tool_count": 0,
+            "error": "client disconnected",
+            "planner": planner,
+        }
+
     agent_result = run_agent_multi_step(
         query,
         kb_name=kb_name,
@@ -1452,6 +1635,7 @@ def run_agent_with_planner(
         max_steps=max_steps,
         event_sink=event_sink,
         should_stop=should_stop,
+        user_id=user_id,
     )
     planner = update_plan(planner, agent_result)
     emit_agent_event(event_sink, {
@@ -1481,11 +1665,13 @@ def run_agent_with_planner(
     return result
 
 
-def run_agent(query, kb_name=None, tools=None):
+def run_agent(query, kb_name=None, tools=None, user_id=None):
+    """负责 run_agent 的函数职责。"""
     run_once_result = run_agent_once(
         query,
         kb_name=kb_name,
         tools=tools,
+        user_id=user_id,
     )
     trace = [
         {
@@ -1529,6 +1715,7 @@ def run_agent(query, kb_name=None, tools=None):
 
 
 def build_agent_metadata(tool_call, tool_result, trace):
+    """负责 build_agent_metadata 的函数职责。"""
     tool_count = 0
     if tool_call and tool_call.get("tool") != "none" and tool_result is not None:
         tool_count = 1
@@ -1543,15 +1730,25 @@ def build_agent_metadata(tool_call, tool_result, trace):
     }
 
 
-def run_agent_persisted(query, kb_name=None, tools=None, conversation_id=None):
+def run_agent_persisted(query, kb_name=None, tools=None, conversation_id=None, user_id=None):
+    """负责 run_agent_persisted 的函数职责。"""
     if conversation_id is None:
-        conversation_id = create_conversation(query)
+        conversation_id = create_conversation(query, user_id=user_id)
+    elif get_conversation(conversation_id, user_id=user_id) is None:
+        return {
+            "answer": "",
+            "tool_call": None,
+            "tool_result": None,
+            "trace": [],
+            "error": "conversation not found",
+        }
 
-    save_message(conversation_id, "user", query)
+    save_message(conversation_id, "user", query, user_id=user_id)
     result = run_agent(
         query,
         kb_name=kb_name,
         tools=tools,
+        user_id=user_id,
     )
     metadata = build_agent_metadata(
         result.get("tool_call"),
@@ -1563,13 +1760,14 @@ def run_agent_persisted(query, kb_name=None, tools=None, conversation_id=None):
         "assistant",
         result.get("answer") or result.get("error") or "",
         metadata=metadata,
+        user_id=user_id,
     )
 
     return {
         **result,
         "conversation_id": conversation_id,
         "assistant_message_id": assistant_message_id,
-        "chat_history": get_conversation_messages(conversation_id),
+        "chat_history": get_conversation_messages(conversation_id, user_id=user_id),
     }
 
 
@@ -1579,16 +1777,27 @@ def run_agent_multi_step_persisted(
     tools=None,
     max_steps=3,
     conversation_id=None,
+    user_id=None,
 ):
+    """负责 run_agent_multi_step_persisted 的函数职责。"""
     if conversation_id is None:
-        conversation_id = create_conversation(query)
+        conversation_id = create_conversation(query, user_id=user_id)
+    elif get_conversation(conversation_id, user_id=user_id) is None:
+        return {
+            "answer": "",
+            "steps": [],
+            "trace": [],
+            "tool_count": 0,
+            "error": "conversation not found",
+        }
 
-    save_message(conversation_id, "user", query)
+    save_message(conversation_id, "user", query, user_id=user_id)
     result = run_agent_multi_step(
         query,
         kb_name=kb_name,
         tools=tools,
         max_steps=max_steps,
+        user_id=user_id,
     )
     metadata = build_multi_step_metadata(result)
     assistant_message_id = save_message(
@@ -1596,13 +1805,14 @@ def run_agent_multi_step_persisted(
         "assistant",
         result.get("answer") or result.get("error") or "",
         metadata=metadata,
+        user_id=user_id,
     )
 
     return {
         **result,
         "conversation_id": conversation_id,
         "assistant_message_id": assistant_message_id,
-        "chat_history": get_conversation_messages(conversation_id),
+        "chat_history": get_conversation_messages(conversation_id, user_id=user_id),
     }
 
 
@@ -1612,16 +1822,27 @@ def run_agent_planner_persisted(
     tools=None,
     max_steps=3,
     conversation_id=None,
+    user_id=None,
 ):
+    """负责 run_agent_planner_persisted 的函数职责。"""
     if conversation_id is None:
-        conversation_id = create_conversation(query)
+        conversation_id = create_conversation(query, user_id=user_id)
+    elif get_conversation(conversation_id, user_id=user_id) is None:
+        return {
+            "answer": "",
+            "steps": [],
+            "trace": [],
+            "tool_count": 0,
+            "error": "conversation not found",
+        }
 
-    save_message(conversation_id, "user", query)
+    save_message(conversation_id, "user", query, user_id=user_id)
     result = run_agent_with_planner(
         query,
         kb_name=kb_name,
         tools=tools,
         max_steps=max_steps,
+        user_id=user_id,
     )
     metadata = build_planner_metadata(result)
     assistant_message_id = save_message(
@@ -1629,13 +1850,14 @@ def run_agent_planner_persisted(
         "assistant",
         result.get("answer") or result.get("error") or "",
         metadata=metadata,
+        user_id=user_id,
     )
 
     return {
         **result,
         "conversation_id": conversation_id,
         "assistant_message_id": assistant_message_id,
-        "chat_history": get_conversation_messages(conversation_id),
+        "chat_history": get_conversation_messages(conversation_id, user_id=user_id),
     }
 
 
@@ -1647,11 +1869,21 @@ def run_agent_planner_stream_persisted(
     conversation_id=None,
     event_sink=None,
     should_stop=None,
+    user_id=None,
 ):
+    """负责 run_agent_planner_stream_persisted 的函数职责。"""
     if conversation_id is None:
-        conversation_id = create_conversation(query)
+        conversation_id = create_conversation(query, user_id=user_id)
+    elif get_conversation(conversation_id, user_id=user_id) is None:
+        return {
+            "answer": "",
+            "steps": [],
+            "trace": [],
+            "tool_count": 0,
+            "error": "conversation not found",
+        }
 
-    save_message(conversation_id, "user", query)
+    save_message(conversation_id, "user", query, user_id=user_id)
     result = run_agent_with_planner(
         query,
         kb_name=kb_name,
@@ -1659,6 +1891,7 @@ def run_agent_planner_stream_persisted(
         max_steps=max_steps,
         event_sink=event_sink,
         should_stop=should_stop,
+        user_id=user_id,
     )
     metadata = build_planner_metadata(result)
     assistant_message_id = save_message(
@@ -1666,11 +1899,12 @@ def run_agent_planner_stream_persisted(
         "assistant",
         result.get("answer") or result.get("error") or "",
         metadata=metadata,
+        user_id=user_id,
     )
 
     return {
         **result,
         "conversation_id": conversation_id,
         "assistant_message_id": assistant_message_id,
-        "chat_history": get_conversation_messages(conversation_id),
+        "chat_history": get_conversation_messages(conversation_id, user_id=user_id),
     }

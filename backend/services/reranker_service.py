@@ -2,18 +2,21 @@ import numpy as np
 
 
 def _normalize_vectors(vectors):
+    """负责 _normalize_vectors 的函数职责。"""
     norms = np.linalg.norm(vectors, axis=1, keepdims=True)
     norms[norms == 0] = 1
     return vectors / norms
 
 
 def rerank_docs(query, docs, model, top_n=3):
+    """负责 rerank_docs 的函数职责。"""
     if not query or not docs or model is None:
         return docs
 
     top_n = max(1, int(top_n or 3))
     chunks = [doc.get("chunk", "") for doc in docs]
 
+    # 使用归一化向量的点积（余弦相似度）对初检索候选重新排序。
     query_vector = model.encode([query])
     doc_vectors = model.encode(chunks)
 

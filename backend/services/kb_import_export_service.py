@@ -15,13 +15,14 @@ from db import (
     list_file_records,
     upsert_file_record,
 )
+from user_scope import get_user_kb_root, migrate_legacy_demo_files
 
 
-DATA_ROOT = "data"
 EXPORT_VERSION = 1
 
 
 def is_safe_kb_name(kb_name):
+    """负责 is_safe_kb_name 的函数职责。"""
     return (
         bool(kb_name)
         and not os.path.isabs(kb_name)
@@ -31,11 +32,13 @@ def is_safe_kb_name(kb_name):
     )
 
 
-def _kb_path(kb_name):
-    return os.path.join(DATA_ROOT, kb_name)
+def _kb_path(kb_name, user_id=None):
+    """负责 _kb_path 的函数职责。"""
+    return os.path.join(get_user_kb_root(user_id), kb_name)
 
 
-def _build_metadata(kb_name):
+def _build_metadata(kb_name, user_id=None):
+    """负责 _build_metadata 的函数职责。"""
     return {
         "version": EXPORT_VERSION,
         "kb_name": kb_name,
@@ -53,18 +56,21 @@ def _build_metadata(kb_name):
                 "content_path": file["content_path"],
                 "upload_path": file["upload_path"],
             }
-            for file in list_file_records(kb_name)
+            for file in list_file_records(kb_name, user_id=user_id)
         ],
     }
 
 
-def export_kb(kb_name):
+def export_kb(kb_name, user_id=None):
+    """负责 export_kb 的函数职责。"""
+    migrate_legacy_demo_files()
+
     if not is_safe_kb_name(kb_name):
         return {
             "error": "invalid knowledge base name"
         }
 
-    source_root = _kb_path(kb_name)
+    source_root = _kb_path(kb_name, user_id=user_id)
     if not os.path.exists(source_root):
         return {
             "error": "knowledge base not found"
@@ -77,7 +83,7 @@ def export_kb(kb_name):
     )
     export_file.close()
 
-    metadata = _build_metadata(kb_name)
+    metadata = _build_metadata(kb_name, user_id=user_id)
 
     with zipfile.ZipFile(export_file.name, "w", zipfile.ZIP_DEFLATED) as zip_file:
         zip_file.writestr(
@@ -103,6 +109,7 @@ def export_kb(kb_name):
 
 
 def _validate_zip_member(member_name):
+    """负责 _validate_zip_member 的函数职责。"""
     normalized = os.path.normpath(member_name)
     return (
         member_name
@@ -113,6 +120,7 @@ def _validate_zip_member(member_name):
 
 
 def _safe_extract(zip_file, destination):
+    """负责 _safe_extract 的函数职责。"""
     destination_abs = os.path.abspath(destination)
 
     for member in zip_file.infolist():
@@ -130,6 +138,7 @@ def _safe_extract(zip_file, destination):
 
 
 def _copy_kb_directories(extracted_root, target_root):
+    """负责 _copy_kb_directories 的函数职责。"""
     os.makedirs(target_root, exist_ok=True)
 
     for dirname in ("uploads", "content", "vector_store"):
@@ -145,20 +154,22 @@ def _copy_kb_directories(extracted_root, target_root):
             os.makedirs(target, exist_ok=True)
 
 
-def _reset_kb_records(kb_name):
-    delete_file_docs_by_kb(kb_name)
-    delete_files_by_kb(kb_name)
-    delete_kb_record(kb_name)
+def _reset_kb_records(kb_name, user_id=None):
+    """负责 _reset_kb_records 的函数职责。"""
+    delete_file_docs_by_kb(kb_name, user_id=user_id)
+    delete_files_by_kb(kb_name, user_id=user_id)
+    delete_kb_record(kb_name, user_id=user_id)
 
 
-def _restore_file_metadata(kb_name, files):
+def _restore_file_metadata(kb_name, files, user_id=None):
+    """负责 _restore_file_metadata 的函数职责。"""
     for file in files:
         file_name = file.get("file_name")
         if not file_name:
             continue
 
         content_path = (
-            os.path.join(_kb_path(kb_name), "content", file_name)
+            os.path.join(_kb_path(kb_name, user_id=user_id), "content", file_name)
             if file.get("content_path")
             else None
         )
@@ -167,7 +178,7 @@ def _restore_file_metadata(kb_name, files):
         original_upload_path = file.get("upload_path")
         if original_upload_path:
             upload_path = os.path.join(
-                _kb_path(kb_name),
+                _kb_path(kb_name, user_id=user_id),
                 "uploads",
                 os.path.basename(original_upload_path),
             )
@@ -183,10 +194,14 @@ def _restore_file_metadata(kb_name, files):
             chunk_overlap=file.get("chunk_overlap", 50),
             content_path=content_path,
             upload_path=upload_path,
+            user_id=user_id,
         )
 
 
-def import_kb(zip_path, override=False):
+def import_kb(zip_path, override=False, user_id=None):
+    """负责 import_kb 的函数职责。"""
+    migrate_legacy_demo_files()
+
     if not zip_path.endswith(".zip"):
         return {
             "error": "only .zip files are supported"
@@ -214,7 +229,7 @@ def import_kb(zip_path, override=False):
                 "error": "invalid knowledge base name in metadata"
             }
 
-        target_root = _kb_path(kb_name)
+        target_root = _kb_path(kb_name, user_id=user_id)
 
         if os.path.exists(target_root) and not override:
             return {
@@ -225,19 +240,19 @@ def import_kb(zip_path, override=False):
             shutil.rmtree(target_root)
 
         if override:
-            _reset_kb_records(kb_name)
+            _reset_kb_records(kb_name, user_id=user_id)
 
         _copy_kb_directories(extract_root, target_root)
 
         try:
-            create_kb(kb_name)
+            create_kb(kb_name, user_id=user_id)
         except Exception:
             pass
 
-        service = MiniKBService(kb_name)
+        service = MiniKBService(kb_name, user_id=user_id)
         service.rebuild_index()
         service.sync_files_to_db()
-        _restore_file_metadata(kb_name, metadata.get("files", []))
+        _restore_file_metadata(kb_name, metadata.get("files", []), user_id=user_id)
 
         return {
             "kb_name": kb_name,

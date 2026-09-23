@@ -1,0 +1,31 @@
+.ui-stack {
+  display: flex;
+  flex-direction: column;
+}
+
+.ui-stack--align-stretch {
+  align-items: stretch;
+}
+
+.ui-stack--align-start {
+  align-items: flex-start;
+}
+
+.ui-stack--align-center {
+  align-items: center;
+}
+
+.ui-stack--align-end {
+  align-items: flex-end;
+}
+
+.ui-stack--gap-1 { gap: var(--space-1); }
+.ui-stack--gap-2 { gap: var(--space-2); }
+.ui-stack--gap-3 { gap: var(--space-3); }
+.ui-stack--gap-4 { gap: var(--space-4); }
+.ui-stack--gap-5 { gap: var(--space-5); }
+.ui-stack--gap-6 { gap: var(--space-6); }
+.ui-stack--gap-8 { gap: var(--space-8); }
+.ui-stack--gap-10 { gap: var(--space-10); }
+.ui-stack--gap-12 { gap: var(--space-12); }
+.ui-stack--gap-16 { gap: var(--space-16); }

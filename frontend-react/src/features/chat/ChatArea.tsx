@@ -1,14 +1,22 @@
-import { FormEvent, useMemo, useRef, useState } from "react";
-import { AgentTracePanel } from "../../components/AgentTracePanel";
-import { FeedbackControls } from "../../components/FeedbackControls";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { uploadTempFile } from "../../api/chat";
 import { useAgentRun } from "../../hooks/useAgentRun";
 import { useChatStream } from "../../hooks/useChatStream";
+import { useI18n } from "../../i18n";
 import { useConversationStore } from "../../stores/conversationStore";
 import type { AgentRunResponse } from "../../types/agent";
 import type { ChatMode } from "../../types/chat";
 import type { ChatMessage } from "../../types/conversation";
+import { ChatWorkspace, type DetailsTab } from "./ChatWorkspace";
 
+type ChatAreaProps = {
+  onOpenModeGuide?: () => void;
+  preferredMode?: "chat" | "agent";
+};
+
+const chatModes: ChatMode[] = ["local_kb", "search_engine", "temp_kb", "agent"];
+
+/** 用途：负责 buildPersistedAgentResult 的界面或数据处理职责。 */
 function buildPersistedAgentResult(
   message: ChatMessage | undefined
 ): AgentRunResponse | null {
@@ -30,7 +38,12 @@ function buildPersistedAgentResult(
   };
 }
 
-export function ChatArea() {
+/** 用途：负责 ChatArea 的界面或数据处理职责。 */
+export function ChatArea({
+  onOpenModeGuide = () => undefined,
+  preferredMode = "chat"
+}: ChatAreaProps) {
+  const { t } = useI18n();
   const {
     chatMode,
     conversationId,
@@ -57,10 +70,33 @@ export function ChatArea() {
     streamTokenText
   } = useAgentRun();
   const [input, setInput] = useState("");
-  const tempFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [detailsTab, setDetailsTab] = useState<DetailsTab>("sources");
   const [selectedTempFile, setSelectedTempFile] = useState<File | null>(null);
   const [isUploadingTempFile, setIsUploadingTempFile] = useState(false);
   const [tempFileStatus, setTempFileStatus] = useState<string | null>(null);
+  const tempFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  /** 用途：负责 useEffect 的界面或数据处理职责。 */
+  useEffect(() => {
+    if (preferredMode === "agent" && chatMode !== "agent") {
+      /** 用途：负责 setChatMode 的界面或数据处理职责。 */
+      setChatMode("agent");
+    }
+  }, [chatMode, preferredMode, setChatMode]);
+
+  /** 用途：负责 useEffect 的界面或数据处理职责。 */
+  useEffect(() => {
+    if (chatMode !== "agent" && detailsTab === "trace") {
+      /** 用途：负责 setDetailsTab 的界面或数据处理职责。 */
+      setDetailsTab("sources");
+    }
+
+    if (chatMode === "agent" && detailsTab !== "trace") {
+      /** 用途：负责 setDetailsTab 的界面或数据处理职责。 */
+      setDetailsTab("trace");
+    }
+  }, [chatMode, detailsTab]);
+
   const persistedAgentResult = useMemo(() => {
     const selectedMessage = messages.find(
       message =>
@@ -70,25 +106,38 @@ export function ChatArea() {
     );
     const latestAgentMessage = [...messages]
       .reverse()
-      .find(
-        message => message.role === "assistant" && message.metadata?.agent
-      );
+      .find(message => message.role === "assistant" && message.metadata?.agent);
 
     return buildPersistedAgentResult(selectedMessage || latestAgentMessage);
   }, [messages, selectedAssistantMessageId]);
 
-  function switchChatMode(nextMode: ChatMode) {
-    setChatMode(nextMode);
-  }
+  const visibleAgentResult = agentResult || persistedAgentResult;
+  const isSending = isStreaming || isAgentRunning;
+  const hasMessages = messages.length > 0 || Boolean(streamingMessage);
+  const disabledReason =
+    chatMode === "temp_kb" && !tempKbId ? t("chat.disabledTempFile") : null;
+  const activeModeLabel = t(`modes.${chatMode}`);
+  const activeModeDescription =
+    chatMode === "agent"
+      ? t("chat.agentModeDescription")
+      : chatMode === "search_engine"
+        ? t("chat.searchModeDescription")
+        : chatMode === "temp_kb"
+          ? t("chat.tempModeDescription")
+          : t("chat.localModeDescription");
 
+  /** 用途：负责 handleTempFileUpload 的界面或数据处理职责。 */
   async function handleTempFileUpload() {
     if (!selectedTempFile) {
-      setTempFileStatus("Choose a temp file first.");
+      /** 用途：负责 setTempFileStatus 的界面或数据处理职责。 */
+      setTempFileStatus(t("chat.chooseTempFile"));
       return;
     }
 
+    /** 用途：负责 setIsUploadingTempFile 的界面或数据处理职责。 */
     setIsUploadingTempFile(true);
-    setTempFileStatus(`Uploading ${selectedTempFile.name}...`);
+    /** 用途：负责 setTempFileStatus 的界面或数据处理职责。 */
+    setTempFileStatus(t("chat.uploadingTemp", { name: selectedTempFile.name }));
 
     try {
       const response = await uploadTempFile(selectedTempFile);
@@ -96,257 +145,129 @@ export function ChatArea() {
         response.temp_kb_id || response.temp_id || response.kb_name || null;
 
       if (response.error || !nextTempKbId) {
-        setTempFileStatus(response.error || "Temp upload did not return an id.");
+        /** 用途：负责 setTempFileStatus 的界面或数据处理职责。 */
+        setTempFileStatus(response.error || t("chat.tempUploadMissing"));
         return;
       }
 
+      /** 用途：负责 setTempKbId 的界面或数据处理职责。 */
       setTempKbId(nextTempKbId);
+      /** 用途：负责 setTempFileName 的界面或数据处理职责。 */
       setTempFileName(selectedTempFile.name);
+      /** 用途：负责 setTempFileStatus 的界面或数据处理职责。 */
       setTempFileStatus(
-        `${selectedTempFile.name} uploaded. temp_kb_id: ${nextTempKbId}`
+        /** 用途：负责 t 的界面或数据处理职责。 */
+        t("chat.tempUploaded", {
+          name: selectedTempFile.name,
+          id: nextTempKbId
+        })
       );
+      /** 用途：负责 setSelectedTempFile 的界面或数据处理职责。 */
       setSelectedTempFile(null);
       if (tempFileInputRef.current) {
         tempFileInputRef.current.value = "";
       }
     } catch (uploadError) {
+      /** 用途：负责 setTempFileStatus 的界面或数据处理职责。 */
       setTempFileStatus(
-        uploadError instanceof Error
-          ? uploadError.message
-          : "Temp upload failed."
+        uploadError instanceof Error ? uploadError.message : t("chat.tempUploadFailed")
       );
     } finally {
+      /** 用途：负责 setIsUploadingTempFile 的界面或数据处理职责。 */
       setIsUploadingTempFile(false);
     }
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  /** 用途：负责 submitInput 的界面或数据处理职责。 */
+  async function submitInput() {
     const value = input;
+    /** 用途：负责 setInput 的界面或数据处理职责。 */
     setInput("");
 
     if (chatMode === "agent") {
+      /** 用途：负责 setDetailsTab 的界面或数据处理职责。 */
+      setDetailsTab("trace");
       await sendAgentMessage(value);
       return;
     }
 
     await sendMessage(value);
+    /** 用途：负责 setDetailsTab 的界面或数据处理职责。 */
+    setDetailsTab("sources");
   }
 
-  const isSending = isStreaming || isAgentRunning;
-  const shouldShowAgentTrace = chatMode === "agent" || Boolean(persistedAgentResult);
+  /** 用途：负责 focusComposer 的界面或数据处理职责。 */
+  function focusComposer() {
+    window.setTimeout(() => {
+      document.querySelector<HTMLTextAreaElement>(".chat-composer textarea")?.focus();
+    }, 0);
+  }
 
+  /** 用途：负责 handleStartEmptyMode 的界面或数据处理职责。 */
+  function handleStartEmptyMode(nextMode: ChatMode) {
+    /** 用途：负责 setChatMode 的界面或数据处理职责。 */
+    setChatMode(nextMode);
+    if (nextMode === "temp_kb") {
+      window.setTimeout(() => tempFileInputRef.current?.focus(), 0);
+      return;
+    }
+
+    /** 用途：负责 focusComposer 的界面或数据处理职责。 */
+    focusComposer();
+  }
+
+  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <section className="chat-area" aria-label="Chat">
-      <header className="chat-header">
-        <div>
-          <p className="eyebrow">
-            {chatMode}
-            {chatMode === "local_kb" ? ` · ${kbName}` : ""}
-          </p>
-          <h2>
-            {conversationId
-              ? `Conversation ${conversationId}`
-              : "New Conversation"}
-          </h2>
-        </div>
-
-        <div className="chat-controls">
-          <div className="mode-toggle" aria-label="Chat mode">
-            <button
-              className={chatMode === "local_kb" ? "active" : ""}
-              data-testid="chat-mode-local-kb"
-              onClick={() => switchChatMode("local_kb")}
-              type="button"
-            >
-              local_kb
-            </button>
-            <button
-              className={chatMode === "search_engine" ? "active" : ""}
-              data-testid="chat-mode-search-engine"
-              onClick={() => switchChatMode("search_engine")}
-              type="button"
-            >
-              search_engine
-            </button>
-            <button
-              className={chatMode === "temp_kb" ? "active" : ""}
-              data-testid="chat-mode-temp-kb"
-              onClick={() => switchChatMode("temp_kb")}
-              type="button"
-            >
-              temp_kb
-            </button>
-            <button
-              className={chatMode === "agent" ? "active" : ""}
-              data-testid="chat-mode-agent"
-              onClick={() => switchChatMode("agent")}
-              type="button"
-            >
-              agent
-            </button>
-          </div>
-
-          <label>
-            Mode
-            <select
-              onChange={event => {
-                const value = event.target.value;
-                if (
-                  value === "local_kb" ||
-                  value === "search_engine" ||
-                  value === "temp_kb" ||
-                  value === "agent"
-                ) {
-                  switchChatMode(value);
-                }
-              }}
-              data-testid="chat-mode-select"
-              value={chatMode}
-            >
-              <option value="local_kb">local_kb</option>
-              <option value="search_engine">search_engine</option>
-              <option value="temp_kb">temp_kb</option>
-              <option value="agent">agent</option>
-            </select>
-          </label>
-
-          <label>
-            KB
-            <input
-              disabled={chatMode !== "local_kb" && chatMode !== "agent"}
-              onChange={event => setKbName(event.target.value || "default")}
-              value={kbName}
-            />
-          </label>
-        </div>
-      </header>
-
-      {chatMode === "search_engine" && (
-        <div
-          className="mode-status"
-          data-testid="search-engine-mode-status"
-        >
-          Web Search Mode
-        </div>
-      )}
-
-      {chatMode === "temp_kb" && (
-        <div className="temp-file-panel">
-          <div className="mode-status" data-testid="temp-file-mode-status">
-            Temp File Mode
-          </div>
-          <div className="temp-file-upload">
-            <input
-              accept=".txt,.pdf,.docx,.md,.csv"
-              data-testid="temp-file-input"
-              onChange={event => {
-                setSelectedTempFile(event.target.files?.[0] || null);
-              }}
-              ref={tempFileInputRef}
-              type="file"
-            />
-            <button
-              data-testid="temp-file-upload-button"
-              disabled={isUploadingTempFile || !selectedTempFile}
-              onClick={() => {
-                void handleTempFileUpload();
-              }}
-              type="button"
-            >
-              {isUploadingTempFile ? "Uploading" : "Upload Temp File"}
-            </button>
-          </div>
-          <p className="temp-file-status" data-testid="temp-file-status">
-            {tempFileStatus ||
-              (tempKbId && tempFileName
-                ? `${tempFileName} · temp_kb_id: ${tempKbId}`
-                : "Upload a temp file before asking in temp_kb mode.")}
-          </p>
-        </div>
-      )}
-
-      {chatMode === "agent" && (
-        <div className="mode-status" data-testid="agent-mode-status">
-          Agent Mode · tools: calculator, current_time, kb_search, sqlite, filesystem, browser_read
-        </div>
-      )}
-
-      <div className="message-list">
-        {isLoadingMessages && <p className="muted">Loading messages...</p>}
-
-        {!isLoadingMessages && messages.length === 0 && !streamingMessage && (
-          <div className="empty-chat">
-            <h3>Ask a question to start a conversation.</h3>
-            <p>
-              Phase 1 focuses on the React shell, conversation state, and the
-              core chat surface.
-            </p>
-          </div>
-        )}
-
-        {messages.map((message, index) => (
-          <article
-            className={[
-              "message",
-              message.role,
-              message.role === "assistant" &&
-              message.id === selectedAssistantMessageId
-                ? "selected"
-                : ""
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            key={message.id || index}
-            onClick={() => {
-              if (message.role === "assistant" && message.id) {
-                setSelectedAssistantMessageId(message.id);
-              }
-            }}
-          >
-            <span>{message.role}</span>
-            <p>{message.content}</p>
-
-            {message.role === "assistant" && (
-              <FeedbackControls
-                feedbackScore={message.feedback_score}
-                messageId={message.id}
-              />
-            )}
-          </article>
-        ))}
-
-        {streamingMessage && (
-          <article className="message assistant streaming">
-            <span>assistant</span>
-            <p>{streamingMessage}</p>
-          </article>
-        )}
-      </div>
-
-      {shouldShowAgentTrace && (
-        <AgentTracePanel
-          error={agentError}
-          isRunning={isAgentRunning}
-          result={agentResult || persistedAgentResult}
-          streamStatus={streamStatus}
-          streamTokenText={streamTokenText}
-        />
-      )}
-
-      {error && chatMode !== "agent" && <p className="inline-error">{error}</p>}
-
-      <form className="chat-input" onSubmit={handleSubmit}>
-        <input
-          aria-label="Message"
-          onChange={event => setInput(event.target.value)}
-          placeholder="Ask Mini ChatChat..."
-          value={input}
-        />
-        <button disabled={isSending || input.trim().length === 0} type="submit">
-          {isSending ? "Sending" : "Send"}
-        </button>
-      </form>
-    </section>
+    <ChatWorkspace
+      activeModeDescription={activeModeDescription}
+      activeModeLabel={activeModeLabel}
+      agentError={agentError}
+      chatMode={chatMode}
+      chatModes={chatModes}
+      conversationId={conversationId}
+      detailsTab={detailsTab}
+      disabledReason={disabledReason}
+      error={error}
+      hasMessages={hasMessages}
+      input={input}
+      isAgentRunning={isAgentRunning}
+      isLoadingMessages={isLoadingMessages}
+      isSending={isSending}
+      isStreaming={isStreaming}
+      isUploadingTempFile={isUploadingTempFile}
+      kbName={kbName}
+      messages={messages}
+      onChangeDetailsTab={setDetailsTab}
+      onChangeInput={setInput}
+      onChangeKbName={setKbName}
+      onChangeMode={setChatMode}
+      onChangeSelectedTempFile={setSelectedTempFile}
+      onOpenAssistantSources={messageId => {
+        /** 用途：负责 setSelectedAssistantMessageId 的界面或数据处理职责。 */
+        setSelectedAssistantMessageId(messageId);
+        /** 用途：负责 setDetailsTab 的界面或数据处理职责。 */
+        setDetailsTab("sources");
+      }}
+      onOpenModeGuide={onOpenModeGuide}
+      onSelectAssistantMessage={setSelectedAssistantMessageId}
+      onStartEmptyMode={handleStartEmptyMode}
+      onSubmit={() => {
+        void submitInput();
+      }}
+      onTempFileUpload={() => {
+        void handleTempFileUpload();
+      }}
+      preferredMode={preferredMode}
+      selectedAssistantMessageId={selectedAssistantMessageId}
+      selectedTempFile={selectedTempFile}
+      streamStatus={streamStatus}
+      streamTokenText={streamTokenText}
+      streamingMessage={streamingMessage}
+      tempFileInputRef={tempFileInputRef}
+      tempFileName={tempFileName}
+      tempFileStatus={tempFileStatus}
+      tempKbId={tempKbId}
+      visibleAgentResult={visibleAgentResult}
+    />
   );
 }

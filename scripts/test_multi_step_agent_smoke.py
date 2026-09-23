@@ -4,6 +4,8 @@ import sys
 
 import requests
 
+from smoke_auth import auth_headers
+
 
 API_BASE = os.getenv(
     "MINI_CHATCHAT_API_BASE",
@@ -19,10 +21,12 @@ FORBIDDEN_TEXT = (
 
 
 def pass_step(message):
+    """负责 pass_step 的函数职责。"""
     print(f"[PASS] {message}")
 
 
 def fail_step(message, response=None):
+    """负责 fail_step 的函数职责。"""
     print(f"[FAIL] {message}")
 
     if response is not None:
@@ -33,10 +37,15 @@ def fail_step(message, response=None):
 
 
 def request(method, path, **kwargs):
+    """负责 request 的函数职责。"""
+    headers = kwargs.pop("headers", {})
+    headers = {**auth_headers(), **headers}
+
     try:
         return requests.request(
             method,
             f"{API_BASE}{path}",
+            headers=headers,
             timeout=180,
             **kwargs,
         )
@@ -49,12 +58,14 @@ def request(method, path, **kwargs):
 
 
 def assert_safe_response(response, step_name):
+    """负责 assert_safe_response 的函数职责。"""
     for text in FORBIDDEN_TEXT:
         if text.lower() in response.text.lower():
             fail_step(f"{step_name}: forbidden text found: {text}", response)
 
 
 def expect_ok_json(response, step_name):
+    """负责 expect_ok_json 的函数职责。"""
     assert_safe_response(response, step_name)
 
     if response.status_code != 200:
@@ -67,6 +78,7 @@ def expect_ok_json(response, step_name):
 
 
 def run_multi_step_agent():
+    """负责 run_multi_step_agent 的函数职责。"""
     response = request(
         "POST",
         "/agent/run_multi",
@@ -137,6 +149,7 @@ def run_multi_step_agent():
 
 
 def find_conversation(conversation_id):
+    """负责 find_conversation 的函数职责。"""
     response = request("GET", "/conversations")
     data = expect_ok_json(response, "GET /conversations")
     conversations = data.get("conversations") or []
@@ -157,6 +170,7 @@ def find_conversation(conversation_id):
 
 
 def get_assistant_message(conversation_id, assistant_message_id):
+    """负责 get_assistant_message 的函数职责。"""
     response = request("GET", f"/conversations/{conversation_id}/messages")
     data = expect_ok_json(
         response,
@@ -179,6 +193,7 @@ def get_assistant_message(conversation_id, assistant_message_id):
 
 
 def assert_multi_step_metadata(message, expected_run, response, label):
+    """负责 assert_multi_step_metadata 的函数职责。"""
     metadata = message.get("metadata")
     if not isinstance(metadata, dict):
         fail_step(f"{label}: metadata missing or not an object", response)
@@ -223,6 +238,7 @@ def assert_multi_step_metadata(message, expected_run, response, label):
 
 
 def main():
+    """负责 main 的函数职责。"""
     print(f"API_BASE={API_BASE}")
     run_data = run_multi_step_agent()
     conversation_id = run_data["conversation_id"]

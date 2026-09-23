@@ -1,0 +1,64 @@
+.ui-status-badge {
+  align-items: center;
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-badge);
+  font-weight: var(--font-weight-semibold);
+  gap: var(--space-1);
+  line-height: var(--line-height-compact);
+  max-width: 100%;
+}
+
+.ui-status-badge--sm {
+  min-height: 22px;
+  padding: 0 var(--space-2);
+}
+
+.ui-status-badge--md {
+  min-height: 26px;
+  padding: 0 var(--space-3);
+}
+
+.ui-status-badge__dot {
+  background: currentColor;
+  border-radius: var(--radius-circle);
+  height: 6px;
+  width: 6px;
+}
+
+.ui-status-badge--neutral,
+.ui-status-badge--unavailable {
+  background: var(--color-bg-subtle);
+  color: var(--color-text-muted);
+}
+
+.ui-status-badge--info,
+.ui-status-badge--running {
+  background: var(--color-info-soft);
+  color: var(--color-info);
+}
+
+.ui-status-badge--success,
+.ui-status-badge--completed,
+.ui-status-badge--healthy,
+.ui-status-badge--indexed,
+.ui-status-badge--ok {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.ui-status-badge--warning,
+.ui-status-badge--pending,
+.ui-status-badge--uploaded,
+.ui-status-badge--degraded {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+}
+
+.ui-status-badge--danger,
+.ui-status-badge--failed,
+.ui-status-badge--error {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}

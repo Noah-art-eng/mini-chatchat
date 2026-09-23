@@ -4,9 +4,9 @@ Last updated: 2026-06-30
 
 ## Summary
 
-Mini ChatChat is now a functional ChatChat-inspired RAG product with local KB chat, temporary file chat, search-engine mode, React UI, conversation history, KB management, import/export, retrieval enhancement, health checks, Docker Compose startup, and a unified smoke test runner.
+Mini ChatChat is now a functional ChatChat-inspired RAG and Agent product with local KB chat, temporary file chat, search-engine mode, React UI, conversation history, KB management, import/export, retrieval enhancement, authentication, OAuth, health checks, production Docker Compose, reverse proxy support, backup/restore scripts, deployment docs, and a unified smoke test runner.
 
-The RAG core and deployment baseline are considered feature-complete for the current phase. The next stage should focus on Phase 5 Agent Foundation.
+The RAG core, Agent foundation, authentication foundation, and single-host production deployment baseline are considered feature-complete for the current phase. The next stage should focus on real deployment rehearsal and targeted production hardening.
 
 ## Completed Backend Features
 
@@ -74,6 +74,16 @@ Deployment:
 - Backend Dockerfile.
 - React frontend Dockerfile.
 - `docker-compose.yml`.
+- `docker-compose.dev.yml`.
+- `docker-compose.prod.yml`.
+- nginx frontend reverse proxy for `/api`.
+- Request ID response header.
+- Structured JSON request logs.
+- Runtime metadata in health responses.
+- Backup and restore scripts.
+- `.env.production.example`.
+- Deployment docs under `docs/deployment/`.
+- Production checklist.
 - Runtime data mounted through volumes:
   - `backend/data`
   - `backend/uploads`
@@ -82,6 +92,17 @@ Deployment:
   - backend on `127.0.0.1:8000`
   - frontend on `127.0.0.1:5173`
   - health checks pass
+
+Authentication:
+
+- Email registration/login.
+- HttpOnly refresh cookie.
+- Refresh token rotation.
+- Multi-device session management.
+- Account page.
+- User data isolation.
+- Google OAuth.
+- GitHub OAuth.
 
 ## Completed Frontend Features
 
@@ -135,6 +156,12 @@ Core smoke scripts:
 - `scripts/test_mcp_adapter_smoke.py`
 - `scripts/test_sqlite_tool_smoke.py`
 - `scripts/test_filesystem_tool_smoke.py`
+- `scripts/test_oauth_smoke.py`
+- `scripts/test_account_session_smoke.py`
+- `scripts/test_auth_session_smoke.py`
+- `scripts/test_email_auth_isolation_smoke.py`
+- `scripts/test_browser_search_tool_smoke.py`
+- `scripts/test_browser_read_tool_smoke.py`
 
 Stable fixture:
 
@@ -190,8 +217,10 @@ Other:
 Deployment:
 
 - Docker image size is large because `sentence-transformers` pulls PyTorch and CUDA/NVIDIA dependencies in the Linux container.
-- Deployment docs can be expanded for VPS/cloud production.
-- Production CORS and reverse proxy settings still need hardening.
+- Docker image size is still a deferred optimization even after CPU-wheel install.
+- Real VPS/cloud deployment rehearsal is still pending.
+- SQLite is still a single-host storage choice, not a multi-node production database.
+- OAuth state is in memory and should move to Redis or DB TTL storage for multi-process deployments.
 
 Agent:
 

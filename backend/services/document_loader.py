@@ -7,11 +7,13 @@ from rag import load_pdf
 
 
 def load_text(file_path):
+    """负责 load_text 的函数职责。"""
     with open(file_path, "r", encoding="utf-8") as file:
         return file.read()
 
 
 def load_docx(file_path):
+    """负责 load_docx 的函数职责。"""
     document = Document(file_path)
     paragraphs = [
         paragraph.text
@@ -22,6 +24,7 @@ def load_docx(file_path):
 
 
 def load_csv(file_path):
+    """负责 load_csv 的函数职责。"""
     rows = []
 
     with open(file_path, "r", encoding="utf-8", newline="") as file:
@@ -34,6 +37,7 @@ def load_csv(file_path):
 
 
 def load_file(file_path):
+    """负责 load_file 的函数职责。"""
     ext = os.path.splitext(file_path)[1].lower()
 
     if ext in [".txt", ".md"]:

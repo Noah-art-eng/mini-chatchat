@@ -1,0 +1,16 @@
+.ui-inline-error {
+  border: var(--border-width-default) var(--border-style-default)
+    var(--ui-inline-error-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+
+.ui-inline-error--danger {
+  --ui-inline-error-border: var(--color-danger-soft);
+  background: var(--color-danger-soft);
+}
+
+.ui-inline-error--warning {
+  --ui-inline-error-border: var(--color-warning-soft);
+  background: var(--color-warning-soft);
+}

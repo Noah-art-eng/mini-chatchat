@@ -1,0 +1,199 @@
+/* Mini ChatChat Design Tokens v1
+   New UI foundation components must use these semantic tokens.
+   Legacy aliases remain for existing pages until page-level refactors remove them. */
+
+:root {
+  color-scheme: light;
+
+  --color-bg-app: #f8f8f3;
+  --color-bg-sidebar: #f0f4ee;
+  --color-bg-surface: #ffffff;
+  --color-bg-subtle: #f3f6f1;
+  --color-bg-elevated: #ffffff;
+  --color-bg-hover: #eaf3ed;
+  --color-bg-selected: #e0f0e8;
+
+  --color-text-primary: #232b27;
+  --color-text-secondary: #53615a;
+  --color-text-muted: #7d8a83;
+  --color-text-disabled: #a7b0aa;
+  --color-text-inverse: #ffffff;
+
+  --color-border-default: #dce5de;
+  --color-border-subtle: #e9eee9;
+  --color-border-strong: #c4d4ca;
+  --color-border-focus: #4d8c70;
+
+  --color-brand-primary: #3f7d62;
+  --color-brand-hover: #4d8c70;
+  --color-brand-active: #2f604c;
+  --color-brand-soft: #e8f3ee;
+
+  --color-accent-primary: #6fb7a1;
+  --color-accent-hover: #4f9d86;
+  --color-accent-soft: #eef8f4;
+
+  --color-success: #27845c;
+  --color-success-soft: #e7f5ed;
+  --color-warning: #a76a21;
+  --color-warning-soft: #fff2dd;
+  --color-danger: #c94d4d;
+  --color-danger-soft: #fdecec;
+  --color-info: #3e70a8;
+  --color-info-soft: #eaf2fa;
+
+  --font-family-sans: Inter, ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-family-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo,
+    monospace;
+  --font-size-display: 48px;
+  --font-size-heading: 36px;
+  --font-size-title: 22px;
+  --font-size-body: 15px;
+  --font-size-body-small: 14px;
+  --font-size-label: 12px;
+  --font-size-caption: 12px;
+  --font-size-badge: 11px;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 650;
+  --font-weight-bold: 760;
+  --line-height-display: 1.04;
+  --line-height-heading: 1.12;
+  --line-height-body: 1.62;
+  --line-height-compact: 1.32;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
+  --radius-circle: 50%;
+
+  --shadow-none: none;
+  --shadow-xs: 0 1px 2px rgba(35, 43, 39, 0.04);
+  --shadow-sm: 0 8px 20px rgba(35, 43, 39, 0.06);
+  --shadow-md: 0 18px 48px rgba(35, 43, 39, 0.08);
+  --shadow-lg: 0 30px 80px rgba(35, 43, 39, 0.1);
+  --shadow-focus: 0 0 0 4px rgba(77, 140, 112, 0.18);
+
+  --border-width-default: 1px;
+  --border-width-strong: 2px;
+  --border-style-default: solid;
+
+  --motion-duration-fast: 120ms;
+  --motion-duration-normal: 190ms;
+  --motion-duration-slow: 280ms;
+  --motion-ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-ease-emphasized: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  --control-height-sm: 32px;
+  --control-height-md: 40px;
+  --control-height-lg: 48px;
+  --icon-size-sm: 16px;
+  --icon-size-md: 20px;
+  --icon-size-lg: 28px;
+  --icon-container-sm: 32px;
+  --icon-container-md: 40px;
+  --icon-container-lg: 48px;
+  --icon-tone-file: var(--color-accent-primary);
+  --icon-tone-knowledge: var(--color-brand-primary);
+  --icon-tone-database: var(--color-info);
+  --icon-tone-browser: var(--color-accent-primary);
+  --icon-tone-mcp: var(--color-brand-hover);
+  --icon-tone-system: var(--color-warning);
+  --icon-tone-file-soft: var(--color-accent-soft);
+  --icon-tone-knowledge-soft: var(--color-brand-soft);
+  --icon-tone-database-soft: var(--color-info-soft);
+  --icon-tone-browser-soft: var(--color-accent-soft);
+  --icon-tone-mcp-soft: var(--color-brand-soft);
+  --icon-tone-system-soft: var(--color-warning-soft);
+  --sidebar-width: 236px;
+  --sidebar-collapsed-width: 72px;
+  --context-panel-width: 360px;
+  --content-max-width: 1320px;
+  --chat-message-max-width: 760px;
+  --composer-max-width: 760px;
+
+  --breakpoint-mobile: 480px;
+  --breakpoint-tablet: 768px;
+  --breakpoint-laptop: 1024px;
+  --breakpoint-desktop: 1280px;
+  --breakpoint-wide: 1440px;
+  --topbar-height: 64px;
+  --page-header-min-height: 96px;
+  --panel-gap: var(--space-6);
+  --workspace-padding-x: var(--space-8);
+  --workspace-padding-y: var(--space-6);
+  --dialog-width-sm: 420px;
+  --dialog-width-md: 560px;
+  --dialog-width-lg: 720px;
+  --toast-offset-x: var(--space-6);
+  --toast-offset-y: var(--space-6);
+  --table-row-height: 56px;
+  --list-row-height: 48px;
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --bottom-sheet-max-height: min(720px, 88vh);
+
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-dropdown: 30;
+  --z-overlay: 50;
+  --z-dialog: 70;
+  --z-toast: 90;
+  --z-tooltip: 100;
+
+  /* Legacy aliases for pre-refactor pages. */
+  --font-sans: var(--font-family-sans);
+  --bg: var(--color-bg-app);
+  --surface: var(--color-bg-surface);
+  --surface-subtle: var(--color-bg-subtle);
+  --surface-strong: var(--color-bg-selected);
+  --border: var(--color-border-default);
+  --border-strong: var(--color-border-strong);
+  --text: var(--color-text-primary);
+  --text-muted: var(--color-text-secondary);
+  --text-soft: var(--color-text-muted);
+  --primary: var(--color-brand-primary);
+  --primary-strong: var(--color-brand-active);
+  --primary-soft: var(--color-brand-soft);
+  --secondary: var(--color-accent-primary);
+  --secondary-soft: var(--color-accent-soft);
+  --accent: var(--color-accent-primary);
+  --accent-soft: var(--color-accent-soft);
+  --success: var(--color-success);
+  --success-soft: var(--color-success-soft);
+  --warning: var(--color-warning);
+  --warning-soft: var(--color-warning-soft);
+  --danger: var(--color-danger);
+  --danger-soft: var(--color-danger-soft);
+  --shadow: var(--shadow-md);
+  --shadow-soft: var(--shadow-sm);
+  --radius: var(--radius-sm);
+  --rail-width: var(--sidebar-width);
+  --conversation-width: 292px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
+}

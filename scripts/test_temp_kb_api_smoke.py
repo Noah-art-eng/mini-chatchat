@@ -22,10 +22,12 @@ FORBIDDEN_TEXT = (
 
 
 def pass_step(message):
+    """负责 pass_step 的函数职责。"""
     print(f"[PASS] {message}")
 
 
 def fail_step(message, response=None):
+    """负责 fail_step 的函数职责。"""
     print(f"[FAIL] {message}")
 
     if response is not None:
@@ -36,6 +38,7 @@ def fail_step(message, response=None):
 
 
 def request(method, path, **kwargs):
+    """负责 request 的函数职责。"""
     try:
         return requests.request(
             method,
@@ -52,12 +55,14 @@ def request(method, path, **kwargs):
 
 
 def assert_safe_response(response, step_name):
+    """负责 assert_safe_response 的函数职责。"""
     for text in FORBIDDEN_TEXT:
         if text.lower() in response.text.lower():
             fail_step(f"{step_name}: forbidden text found: {text}", response)
 
 
 def parse_json(response, step_name):
+    """负责 parse_json 的函数职责。"""
     try:
         return response.json()
     except ValueError:
@@ -65,6 +70,7 @@ def parse_json(response, step_name):
 
 
 def expect_ok_json(response, step_name):
+    """负责 expect_ok_json 的函数职责。"""
     assert_safe_response(response, step_name)
 
     if response.status_code != 200:
@@ -79,6 +85,7 @@ def expect_ok_json(response, step_name):
 
 
 def summarize_sources(sources):
+    """负责 summarize_sources 的函数职责。"""
     if not sources:
         return "sources=0"
 
@@ -92,6 +99,7 @@ def summarize_sources(sources):
 
 
 def upload_temp_file():
+    """负责 upload_temp_file 的函数职责。"""
     if not SAMPLE_FILE.exists():
         fail_step(f"missing test file: {SAMPLE_FILE}")
 
@@ -114,6 +122,7 @@ def upload_temp_file():
 
 
 def check_temp_kb_return_direct(temp_kb_id):
+    """负责 check_temp_kb_return_direct 的函数职责。"""
     payload = {
         "mode": "temp_kb",
         "temp_kb_id": temp_kb_id,
@@ -150,6 +159,7 @@ def check_temp_kb_return_direct(temp_kb_id):
 
 
 def check_temp_kb_answer(temp_kb_id):
+    """负责 check_temp_kb_answer 的函数职责。"""
     payload = {
         "mode": "temp_kb",
         "temp_kb_id": temp_kb_id,
@@ -177,6 +187,7 @@ def check_temp_kb_answer(temp_kb_id):
 
 
 def main():
+    """负责 main 的函数职责。"""
     print(f"API_BASE={API_BASE}")
     temp_kb_id = upload_temp_file()
     check_temp_kb_return_direct(temp_kb_id)

@@ -13,9 +13,11 @@ const AGENT_TOOLS = [
   "kb_search",
   "sqlite_readonly_query",
   "filesystem_readonly_read",
-  "browser_read"
+  "browser_read",
+  "browser_search"
 ];
 
+/** 用途：负责 useAgentRun 的界面或数据处理职责。 */
 export function useAgentRun() {
   const {
     conversationId,
@@ -32,6 +34,7 @@ export function useAgentRun() {
   const [streamStatus, setStreamStatus] = useState<string | null>(null);
   const [streamTokenText, setStreamTokenText] = useState("");
 
+  /** 用途：负责 upsertStep 的界面或数据处理职责。 */
   function upsertStep(steps: AgentStep[] | undefined, nextStep: AgentStep) {
     const current = steps || [];
     const index = current.findIndex(step => step.step === nextStep.step);
@@ -43,9 +46,12 @@ export function useAgentRun() {
     );
   }
 
+  /** 用途：负责 applyStreamEvent 的界面或数据处理职责。 */
   function applyStreamEvent(event: AgentStreamEvent) {
     if (event.type === "planning") {
+      /** 用途：负责 setStreamStatus 的界面或数据处理职责。 */
       setStreamStatus("Planning");
+      /** 用途：负责 setAgentResult 的界面或数据处理职责。 */
       setAgentResult({
         answer: "",
         planner: event.planner,
@@ -58,7 +64,9 @@ export function useAgentRun() {
     }
 
     if (event.type === "step_start") {
+      /** 用途：负责 setStreamStatus 的界面或数据处理职责。 */
       setStreamStatus(`Step ${event.step}`);
+      /** 用途：负责 setAgentResult 的界面或数据处理职责。 */
       setAgentResult(current => ({
         answer: current?.answer || "",
         planner: current?.planner || null,
@@ -74,7 +82,9 @@ export function useAgentRun() {
     }
 
     if (event.type === "tool_call") {
+      /** 用途：负责 setStreamStatus 的界面或数据处理职责。 */
       setStreamStatus("Tool Call");
+      /** 用途：负责 setAgentResult 的界面或数据处理职责。 */
       setAgentResult(current => ({
         answer: current?.answer || "",
         planner: current?.planner || null,
@@ -96,7 +106,9 @@ export function useAgentRun() {
     }
 
     if (event.type === "tool_result") {
+      /** 用途：负责 setStreamStatus 的界面或数据处理职责。 */
       setStreamStatus("Tool Result");
+      /** 用途：负责 setAgentResult 的界面或数据处理职责。 */
       setAgentResult(current => {
         const toolCall =
           current?.tool_call || {
@@ -134,7 +146,9 @@ export function useAgentRun() {
     }
 
     if (event.type === "planner_update") {
+      /** 用途：负责 setStreamStatus 的界面或数据处理职责。 */
       setStreamStatus("Planner Update");
+      /** 用途：负责 setAgentResult 的界面或数据处理职责。 */
       setAgentResult(current => ({
         answer: current?.answer || "",
         planner: event.planner,
@@ -152,8 +166,11 @@ export function useAgentRun() {
     }
 
     if (event.type === "token") {
+      /** 用途：负责 setStreamStatus 的界面或数据处理职责。 */
       setStreamStatus("Final Answer Token Streaming");
+      /** 用途：负责 setStreamTokenText 的界面或数据处理职责。 */
       setStreamTokenText(current => current + event.content);
+      /** 用途：负责 setAgentResult 的界面或数据处理职责。 */
       setAgentResult(current => ({
         answer: `${current?.answer || ""}${event.content}`,
         planner: current?.planner || null,
@@ -168,20 +185,29 @@ export function useAgentRun() {
     }
 
     if (event.type === "error") {
+      /** 用途：负责 setStreamStatus 的界面或数据处理职责。 */
       setStreamStatus("Error");
+      /** 用途：负责 setError 的界面或数据处理职责。 */
       setError(event.error);
     }
   }
 
+  /** 用途：负责 sendAgentMessage 的界面或数据处理职责。 */
   async function sendAgentMessage(query: string) {
     const trimmedQuery = query.trim();
     if (!trimmedQuery || isRunning) return;
 
+    /** 用途：负责 setError 的界面或数据处理职责。 */
     setError(null);
+    /** 用途：负责 setAgentResult 的界面或数据处理职责。 */
     setAgentResult(null);
+    /** 用途：负责 setStreamStatus 的界面或数据处理职责。 */
     setStreamStatus("Planning");
+    /** 用途：负责 setStreamTokenText 的界面或数据处理职责。 */
     setStreamTokenText("");
+    /** 用途：负责 setStreamingMessage 的界面或数据处理职责。 */
     setStreamingMessage("Thinking...");
+    /** 用途：负责 setMessages 的界面或数据处理职责。 */
     setMessages([
       ...messages,
       {
@@ -189,6 +215,7 @@ export function useAgentRun() {
         content: trimmedQuery
       }
     ]);
+    /** 用途：负责 setIsRunning 的界面或数据处理职责。 */
     setIsRunning(true);
     const finalResultRef: { current: AgentRunResponse | null } = {
       current: null
@@ -204,9 +231,11 @@ export function useAgentRun() {
           max_steps: 3
         },
         event => {
+          /** 用途：负责 applyStreamEvent 的界面或数据处理职责。 */
           applyStreamEvent(event);
           if (event.type === "done") {
             finalResultRef.current = event.result;
+            /** 用途：负责 setStreamStatus 的界面或数据处理职责。 */
             setStreamStatus("Done");
           }
         }
@@ -216,15 +245,19 @@ export function useAgentRun() {
       if (!result) {
         throw new Error("Agent stream finished without a done event.");
       }
+      /** 用途：负责 setAgentResult 的界面或数据处理职责。 */
       setAgentResult(result);
       if (result.conversation_id) {
+        /** 用途：负责 setConversationId 的界面或数据处理职责。 */
         setConversationId(result.conversation_id);
       }
 
       if (result.error) {
+        /** 用途：负责 setError 的界面或数据处理职责。 */
         setError(result.error);
       }
 
+      /** 用途：负责 setMessages 的界面或数据处理职责。 */
       setMessages([
         ...messages,
         {
@@ -252,7 +285,9 @@ export function useAgentRun() {
     } catch (agentError) {
       const message =
         agentError instanceof Error ? agentError.message : "Agent request failed.";
+      /** 用途：负责 setError 的界面或数据处理职责。 */
       setError(message);
+      /** 用途：负责 setMessages 的界面或数据处理职责。 */
       setMessages([
         ...messages,
         {
@@ -265,8 +300,11 @@ export function useAgentRun() {
         }
       ]);
     } finally {
+      /** 用途：负责 setStreamingMessage 的界面或数据处理职责。 */
       setStreamingMessage("");
+      /** 用途：负责 setIsRunning 的界面或数据处理职责。 */
       setIsRunning(false);
+      /** 用途：负责 setStreamStatus 的界面或数据处理职责。 */
       setStreamStatus(null);
     }
   }

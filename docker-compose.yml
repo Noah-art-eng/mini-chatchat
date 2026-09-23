@@ -1,37 +1,14 @@
 services:
   backend:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-    env_file:
-      - .env
-    environment:
-      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
-      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
-      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-chat}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
-      OPENAI_MODEL: ${OPENAI_MODEL:-}
-      EMBEDDING_MODEL_NAME: ${EMBEDDING_MODEL:-all-MiniLM-L6-v2}
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./backend/data:/app/backend/data
-      - ./backend/uploads:/app/backend/uploads
-      - ./backend/mini.db:/app/backend/mini.db
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 60s
+    extends:
+      file: docker-compose.dev.yml
+      service: backend
 
   frontend:
-    build:
-      context: ./frontend-react
-      args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://127.0.0.1:8000}
-    ports:
-      - "5173:80"
-    depends_on:
-      - backend
+    extends:
+      file: docker-compose.dev.yml
+      service: frontend
+
+networks:
+  mini-chatchat:
+    driver: bridge

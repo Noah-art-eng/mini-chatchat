@@ -81,6 +81,7 @@ FORBIDDEN_TEXT = (
 
 @dataclass(frozen=True)
 class StdioMCPServerConfig:
+    """负责 StdioMCPServerConfig 的类职责。"""
     server_name: str
     command: str
     args: list[str]
@@ -92,7 +93,9 @@ class StdioMCPServerConfig:
 
 
 class StdioMCPServer:
+    """负责 StdioMCPServer 的类职责。"""
     def __init__(self, config: StdioMCPServerConfig):
+        """负责 __init__ 的函数职责。"""
         self.config = config
         self.name = config.server_name
         self._process: subprocess.Popen | None = None
@@ -108,6 +111,7 @@ class StdioMCPServer:
         self._tool_cache: list[MCPToolSpec] | None = None
 
     def list_tools(self) -> list[MCPToolSpec]:
+        """负责 list_tools 的函数职责。"""
         self._ensure_started()
         response = self._request("tools/list", {}, timeout=self.config.call_timeout)
         tools = response.get("tools")
@@ -124,6 +128,7 @@ class StdioMCPServer:
         return specs
 
     def call_tool(self, tool_name: str, arguments: dict) -> MCPToolResult:
+        """负责 call_tool 的函数职责。"""
         self._ensure_started()
         spec = self._get_cached_tool(tool_name)
         if spec is None:
@@ -160,6 +165,7 @@ class StdioMCPServer:
         )
 
     def status(self) -> dict:
+        """负责 status 的函数职责。"""
         with self._lock:
             running = self._process is not None and self._process.poll() is None
             initialized = self._initialized and running
@@ -180,6 +186,7 @@ class StdioMCPServer:
         return data
 
     def shutdown(self) -> dict:
+        """负责 shutdown 的函数职责。"""
         with self._lock:
             process = self._process
             self._process = None
@@ -204,6 +211,7 @@ class StdioMCPServer:
         return self.status()
 
     def _ensure_started(self):
+        """负责 _ensure_started 的函数职责。"""
         with self._lock:
             if self._process is not None and self._process.poll() is None and self._initialized:
                 return
@@ -258,6 +266,7 @@ class StdioMCPServer:
             raise
 
     def _initialize(self):
+        """负责 _initialize 的函数职责。"""
         response = self._request(
             "initialize",
             {
@@ -278,6 +287,7 @@ class StdioMCPServer:
             self._initialized = True
 
     def _request(self, method: str, params: dict, timeout: float) -> dict:
+        """负责 _request 的函数职责。"""
         with self._lock:
             request_id = self._next_id
             self._next_id += 1
@@ -317,6 +327,7 @@ class StdioMCPServer:
         return result
 
     def _send_notification(self, method: str, params: dict):
+        """负责 _send_notification 的函数职责。"""
         self._write_message({
             "jsonrpc": JSONRPC_VERSION,
             "method": method,
@@ -324,6 +335,7 @@ class StdioMCPServer:
         })
 
     def _write_message(self, payload: dict):
+        """负责 _write_message 的函数职责。"""
         process = self._process
         if process is None or process.stdin is None:
             raise RuntimeError("MCP server process is not running")
@@ -333,6 +345,7 @@ class StdioMCPServer:
         process.stdin.flush()
 
     def _read_stdout_loop(self):
+        """负责 _read_stdout_loop 的函数职责。"""
         process = self._process
         if process is None or process.stdout is None:
             return
@@ -356,6 +369,7 @@ class StdioMCPServer:
                 self._notifications.put(message)
 
     def _read_message(self, stream) -> dict | None:
+        """负责 _read_message 的函数职责。"""
         body = stream.readline()
         if not body:
             return None
@@ -365,6 +379,7 @@ class StdioMCPServer:
             return None
 
     def _read_stderr_loop(self):
+        """负责 _read_stderr_loop 的函数职责。"""
         process = self._process
         if process is None or process.stderr is None:
             return
@@ -378,6 +393,7 @@ class StdioMCPServer:
                 self._stderr_tail = (self._stderr_tail + text)[-MAX_STDERR_CHARS:]
 
     def _validate_config(self):
+        """负责 _validate_config 的函数职责。"""
         command = self.config.command
         if command not in ALLOWED_COMMANDS:
             raise ValueError("MCP server command is not allowed")
@@ -423,6 +439,7 @@ class StdioMCPServer:
                 raise ValueError("MCP server database path is not allowed")
 
     def _normalize_tool(self, tool: dict) -> MCPToolSpec | None:
+        """负责 _normalize_tool 的函数职责。"""
         name = tool.get("name")
         if not isinstance(name, str) or not name:
             return None
@@ -454,6 +471,7 @@ class StdioMCPServer:
         )
 
     def _validate_tool_arguments(self, tool_name: str, arguments: dict) -> str | None:
+        """负责 _validate_tool_arguments 的函数职责。"""
         if self.name != "sqlite":
             return None
 
@@ -474,6 +492,7 @@ class StdioMCPServer:
         return None
 
     def _validate_sqlite_query(self, sql: str) -> str | None:
+        """负责 _validate_sqlite_query 的函数职责。"""
         stripped = sql.strip()
         if not stripped:
             return "sql is required"
@@ -491,6 +510,7 @@ class StdioMCPServer:
         return None
 
     def _get_cached_tool(self, tool_name: str) -> MCPToolSpec | None:
+        """负责 _get_cached_tool 的函数职责。"""
         specs = self._tool_cache
         if specs is None:
             specs = self.list_tools()
@@ -501,6 +521,7 @@ class StdioMCPServer:
         return None
 
     def _normalize_tool_result(self, response: dict) -> dict:
+        """负责 _normalize_tool_result 的函数职责。"""
         content = response.get("content")
         texts = []
         structured = response.get("structuredContent")
@@ -526,6 +547,7 @@ class StdioMCPServer:
         return result
 
     def _metadata(self, tool_name: str) -> dict:
+        """负责 _metadata 的函数职责。"""
         return {
             "server": self.name,
             "tool": tool_name,
@@ -538,6 +560,7 @@ class StdioMCPServer:
         }
 
     def _error(self, message: str, tool_name: str) -> MCPToolResult:
+        """负责 _error 的函数职责。"""
         return MCPToolResult(
             ok=False,
             error=self._sanitize_text(message),
@@ -545,6 +568,7 @@ class StdioMCPServer:
         )
 
     def _sanitize_text(self, text: str | None) -> str | None:
+        """负责 _sanitize_text 的函数职责。"""
         if text is None:
             return None
 

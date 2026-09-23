@@ -20,6 +20,7 @@ MAX_ABSOLUTE_VALUE = 10 ** 12
 
 
 def evaluate_node(node):
+    """负责 evaluate_node 的函数职责。"""
     if isinstance(node, ast.Expression):
         return evaluate_node(node.body)
 
@@ -42,11 +43,13 @@ def evaluate_node(node):
 
 
 def validate_result_size(value):
+    """负责 validate_result_size 的函数职责。"""
     if abs(value) > MAX_ABSOLUTE_VALUE:
         raise ValueError("result is too large")
 
 
 def execute_calculator(arguments: dict) -> ToolResult:
+    """负责 execute_calculator 的函数职责。"""
     expression = arguments.get("expression")
 
     if not isinstance(expression, str) or not expression.strip():
@@ -79,6 +82,7 @@ def execute_calculator(arguments: dict) -> ToolResult:
 
 
 def get_calculator_tool() -> ToolSpec:
+    """负责 get_calculator_tool 的函数职责。"""
     return ToolSpec(
         name="calculator",
         description="Safely evaluate a basic math expression.",

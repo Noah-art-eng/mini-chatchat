@@ -4,6 +4,8 @@ import sys
 
 import requests
 
+from smoke_auth import auth_headers
+
 
 API_BASE = os.getenv(
     "MINI_CHATCHAT_API_BASE",
@@ -21,10 +23,12 @@ FORBIDDEN_TEXT = (
 
 
 def pass_step(message):
+    """负责 pass_step 的函数职责。"""
     print(f"[PASS] {message}")
 
 
 def fail_step(message, response=None):
+    """负责 fail_step 的函数职责。"""
     print(f"[FAIL] {message}")
 
     if response is not None:
@@ -35,10 +39,15 @@ def fail_step(message, response=None):
 
 
 def request(method, path, **kwargs):
+    """负责 request 的函数职责。"""
+    headers = kwargs.pop("headers", {})
+    headers = {**auth_headers(), **headers}
+
     try:
         return requests.request(
             method,
             f"{API_BASE}{path}",
+            headers=headers,
             timeout=180,
             **kwargs,
         )
@@ -51,12 +60,14 @@ def request(method, path, **kwargs):
 
 
 def assert_safe_response(response, step_name):
+    """负责 assert_safe_response 的函数职责。"""
     for text in FORBIDDEN_TEXT:
         if text.lower() in response.text.lower():
             fail_step(f"{step_name}: forbidden text found: {text}", response)
 
 
 def expect_ok_json(response, step_name):
+    """负责 expect_ok_json 的函数职责。"""
     assert_safe_response(response, step_name)
 
     if response.status_code != 200:
@@ -69,6 +80,7 @@ def expect_ok_json(response, step_name):
 
 
 def check_servers():
+    """负责 check_servers 的函数职责。"""
     response = request("GET", "/agent/mcp/servers")
     data = expect_ok_json(response, "GET /agent/mcp/servers")
     servers = data.get("servers") or []
@@ -89,6 +101,7 @@ def check_servers():
 
 
 def check_mcp_tools():
+    """负责 check_mcp_tools 的函数职责。"""
     response = request("GET", "/agent/mcp/tools")
     data = expect_ok_json(response, "GET /agent/mcp/tools")
     tools = data.get("tools") or []
@@ -109,6 +122,7 @@ def check_mcp_tools():
 
 
 def check_registry_sees_mcp_and_local():
+    """负责 check_registry_sees_mcp_and_local 的函数职责。"""
     response = request("GET", "/agent/tools")
     data = expect_ok_json(response, "GET /agent/tools")
     tools = data.get("tools") or []
@@ -125,6 +139,7 @@ def check_registry_sees_mcp_and_local():
 
 
 def check_mcp_call():
+    """负责 check_mcp_call 的函数职责。"""
     response = request(
         "POST",
         "/agent/mcp/tools/mcp.demo.echo/run",
@@ -159,6 +174,7 @@ def check_mcp_call():
 
 
 def check_rejections():
+    """负责 check_rejections 的函数职责。"""
     cases = [
         ("unknown server", "/agent/mcp/tools/mcp.unknown.echo/run"),
         ("unknown tool", "/agent/mcp/tools/mcp.demo.unknown/run"),
@@ -187,6 +203,7 @@ def check_rejections():
 
 
 def check_agent_plan_run_mcp():
+    """负责 check_agent_plan_run_mcp 的函数职责。"""
     response = request(
         "POST",
         "/agent/plan_run",
@@ -257,6 +274,7 @@ def check_agent_plan_run_mcp():
 
 
 def check_local_tool_still_works():
+    """负责 check_local_tool_still_works 的函数职责。"""
     response = request(
         "POST",
         "/agent/tools/calculator/run",
@@ -275,6 +293,7 @@ def check_local_tool_still_works():
 
 
 def main():
+    """负责 main 的函数职责。"""
     print(f"API_BASE={API_BASE}")
     check_servers()
     check_mcp_tools()

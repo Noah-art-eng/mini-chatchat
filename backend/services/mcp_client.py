@@ -79,9 +79,11 @@ BLOCKED_PATH_NAMES = {
 
 
 class DemoMCPServer:
+    """负责 DemoMCPServer 的类职责。"""
     name = "demo"
 
     def list_tools(self) -> list[MCPToolSpec]:
+        """负责 list_tools 的函数职责。"""
         return [
             MCPToolSpec(
                 server_name=self.name,
@@ -124,6 +126,7 @@ class DemoMCPServer:
         ]
 
     def call_tool(self, tool_name: str, arguments: dict) -> MCPToolResult:
+        """负责 call_tool 的函数职责。"""
         if tool_name == "echo":
             message = arguments.get("message")
             if not isinstance(message, str) or not message.strip():
@@ -164,6 +167,7 @@ class DemoMCPServer:
         )
 
     def _metadata(self, tool_name: str) -> dict:
+        """负责 _metadata 的函数职责。"""
         return {
             "server": self.name,
             "tool": tool_name,
@@ -174,9 +178,11 @@ class DemoMCPServer:
 
 
 class FilesystemMCPServer:
+    """负责 FilesystemMCPServer 的类职责。"""
     name = "filesystem"
 
     def list_tools(self) -> list[MCPToolSpec]:
+        """负责 list_tools 的函数职责。"""
         return [
             MCPToolSpec(
                 server_name=self.name,
@@ -232,6 +238,7 @@ class FilesystemMCPServer:
         ]
 
     def call_tool(self, tool_name: str, arguments: dict) -> MCPToolResult:
+        """负责 call_tool 的函数职责。"""
         if tool_name == "read_file":
             return self._read_file(arguments)
 
@@ -245,6 +252,7 @@ class FilesystemMCPServer:
         )
 
     def _read_file(self, arguments: dict) -> MCPToolResult:
+        """负责 _read_file 的函数职责。"""
         path = arguments.get("path")
         if not isinstance(path, str):
             return self._error("path must be a string", "read_file")
@@ -285,6 +293,7 @@ class FilesystemMCPServer:
         )
 
     def _list_dir(self, arguments: dict) -> MCPToolResult:
+        """负责 _list_dir 的函数职责。"""
         path = arguments.get("path")
         if not isinstance(path, str):
             return self._error("path must be a string", "list_dir")
@@ -324,6 +333,7 @@ class FilesystemMCPServer:
         )
 
     def _validate_file_path(self, path: str) -> str | None:
+        """负责 _validate_file_path 的函数职责。"""
         common_error = self._validate_common_path(path)
         if common_error:
             return common_error
@@ -343,6 +353,7 @@ class FilesystemMCPServer:
         return None
 
     def _validate_dir_path(self, path: str) -> str | None:
+        """负责 _validate_dir_path 的函数职责。"""
         common_error = self._validate_common_path(path)
         if common_error:
             return common_error
@@ -358,6 +369,7 @@ class FilesystemMCPServer:
         return None
 
     def _validate_common_path(self, path: str) -> str | None:
+        """负责 _validate_common_path 的函数职责。"""
         if not path.strip():
             return "path is required"
 
@@ -376,15 +388,18 @@ class FilesystemMCPServer:
         return None
 
     def _normalize_path(self, path: str) -> str:
+        """负责 _normalize_path 的函数职责。"""
         normalized = path.replace("\\", "/").strip()
         if normalized in {"", "."}:
             return "."
         return normalized.strip("/")
 
     def _resolve_path(self, path: str) -> str:
+        """负责 _resolve_path 的函数职责。"""
         return os.path.abspath(os.path.join(PROJECT_ROOT, self._normalize_path(path)))
 
     def _error(self, message: str, tool_name: str) -> MCPToolResult:
+        """负责 _error 的函数职责。"""
         return MCPToolResult(
             ok=False,
             error=message,
@@ -392,6 +407,7 @@ class FilesystemMCPServer:
         )
 
     def _metadata(self, tool_name: str) -> dict:
+        """负责 _metadata 的函数职责。"""
         return {
             "server": self.name,
             "tool": tool_name,
@@ -402,7 +418,9 @@ class FilesystemMCPServer:
 
 
 class MCPClient:
+    """负责 MCPClient 的类职责。"""
     def __init__(self, servers: dict[str, object] | None = None):
+        """负责 __init__ 的函数职责。"""
         self.servers = servers or {
             "demo": DemoMCPServer(),
             "filesystem": FilesystemMCPServer(),
@@ -461,6 +479,7 @@ class MCPClient:
         }
 
     def list_servers(self) -> list[dict]:
+        """负责 list_servers 的函数职责。"""
         servers = []
         for server_name in sorted(self.servers):
             server = self.servers[server_name]
@@ -479,6 +498,7 @@ class MCPClient:
         return servers
 
     def discover_tools(self, server_name: str | None = None) -> list[MCPToolSpec]:
+        """负责 discover_tools 的函数职责。"""
         server_names = [server_name] if server_name else sorted(self.servers)
         tools: list[MCPToolSpec] = []
 
@@ -505,6 +525,7 @@ class MCPClient:
         return tools
 
     def call_tool(self, qualified_name: str, arguments: dict | None = None) -> MCPToolResult:
+        """负责 call_tool 的函数职责。"""
         parsed = self._parse_qualified_name(qualified_name)
         if parsed is None:
             return self._error(f"MCP tool not allowed or not found: {qualified_name}")
@@ -539,6 +560,7 @@ class MCPClient:
         return self._sanitize_result(result, server_name, tool_name)
 
     def get_tool(self, qualified_name: str) -> MCPToolSpec | None:
+        """负责 get_tool 的函数职责。"""
         parsed = self._parse_qualified_name(qualified_name)
         if parsed is None:
             return None
@@ -551,6 +573,7 @@ class MCPClient:
         return None
 
     def shutdown_server(self, server_name: str) -> dict:
+        """负责 shutdown_server 的函数职责。"""
         if server_name not in ALLOWED_MCP_SERVERS:
             return {
                 "server": server_name,
@@ -587,12 +610,14 @@ class MCPClient:
         }
 
     def _safe_tool_count(self, server_name: str) -> int:
+        """负责 _safe_tool_count 的函数职责。"""
         try:
             return len(self.discover_tools(server_name))
         except Exception:
             return 0
 
     def _with_timeout(self, func: Callable):
+        """负责 _with_timeout 的函数职责。"""
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         future = executor.submit(func)
         try:
@@ -601,6 +626,7 @@ class MCPClient:
             executor.shutdown(wait=False, cancel_futures=True)
 
     def _parse_qualified_name(self, qualified_name: str) -> tuple[str, str] | None:
+        """负责 _parse_qualified_name 的函数职责。"""
         parts = qualified_name.split(".")
         if len(parts) == 3 and parts[0] == "mcp":
             return parts[1], parts[2]
@@ -611,12 +637,14 @@ class MCPClient:
         return None
 
     def _is_allowed(self, server_name: str, tool_name: str) -> bool:
+        """负责 _is_allowed 的函数职责。"""
         return (
             server_name in ALLOWED_MCP_SERVERS
             and tool_name in ALLOWED_MCP_TOOLS.get(server_name, set())
         )
 
     def _is_allowed_spec(self, tool: MCPToolSpec) -> bool:
+        """负责 _is_allowed_spec 的函数职责。"""
         return (
             self._is_allowed(tool.server_name, tool.tool_name)
             and tool.provider == "mcp"
@@ -631,6 +659,7 @@ class MCPClient:
         server_name: str,
         tool_name: str,
     ) -> MCPToolResult:
+        """负责 _sanitize_result 的函数职责。"""
         error = self._sanitize_text(result.error)
         metadata = {
             "server": server_name,
@@ -651,6 +680,7 @@ class MCPClient:
         )
 
     def _sanitize_data(self, value):
+        """负责 _sanitize_data 的函数职责。"""
         if isinstance(value, str):
             return self._sanitize_text(value)
 
@@ -669,6 +699,7 @@ class MCPClient:
         return value
 
     def _sanitize_metadata(self, metadata: dict) -> dict:
+        """负责 _sanitize_metadata 的函数职责。"""
         blocked = {
             "command",
             "cmd",
@@ -685,6 +716,7 @@ class MCPClient:
         }
 
     def _sanitize_text(self, text: str | None) -> str | None:
+        """负责 _sanitize_text 的函数职责。"""
         if text is None:
             return None
 
@@ -694,6 +726,7 @@ class MCPClient:
         return sanitized
 
     def _error(self, message: str) -> MCPToolResult:
+        """负责 _error 的函数职责。"""
         return MCPToolResult(
             ok=False,
             error=self._sanitize_text(message),
