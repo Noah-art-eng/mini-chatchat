@@ -2,16 +2,7 @@ from services.kb_service import MiniKBService
 from db import user_owns_kb
 
 from .types import ToolResult, ToolSpec
-
-
-def is_safe_kb_name(kb_name: str) -> bool:
-    """负责 is_safe_kb_name 的函数职责。"""
-    return (
-        bool(kb_name)
-        and ".." not in kb_name
-        and "/" not in kb_name
-        and "\\" not in kb_name
-    )
+from path_security import is_safe_kb_name
 
 
 def normalize_top_k(value) -> int:

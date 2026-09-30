@@ -16,25 +16,15 @@ from db import (
     upsert_file_record,
 )
 from user_scope import get_user_kb_root, migrate_legacy_demo_files
+from path_security import is_safe_kb_name, safe_join
 
 
 EXPORT_VERSION = 1
 
 
-def is_safe_kb_name(kb_name):
-    """负责 is_safe_kb_name 的函数职责。"""
-    return (
-        bool(kb_name)
-        and not os.path.isabs(kb_name)
-        and ".." not in kb_name
-        and "/" not in kb_name
-        and "\\" not in kb_name
-    )
-
-
 def _kb_path(kb_name, user_id=None):
     """负责 _kb_path 的函数职责。"""
-    return os.path.join(get_user_kb_root(user_id), kb_name)
+    return safe_join(get_user_kb_root(user_id), kb_name, field_name="kb_name")
 
 
 def _build_metadata(kb_name, user_id=None):

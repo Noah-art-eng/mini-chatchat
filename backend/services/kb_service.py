@@ -21,6 +21,7 @@ from db import (
     delete_file_docs
 )
 from user_scope import get_user_kb_root, migrate_legacy_demo_files
+from path_security import safe_join
 
 TOKEN_PATTERN = re.compile(r"[a-zA-Z0-9_]+|[\u4e00-\u9fff]")
 
@@ -596,7 +597,7 @@ class MiniKBService:
         Delete a document from the KB and rebuild the index.
         Returns a result dict suitable for passing straight back to the client.
         """
-        path = os.path.join(self.content_path, filename)
+        path = safe_join(self.content_path, filename, field_name="filename")
 
         if not os.path.exists(path):
             return {"error": "file not found"}

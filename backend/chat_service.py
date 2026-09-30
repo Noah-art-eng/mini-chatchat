@@ -14,6 +14,7 @@ from services.document_loader import load_file
 from services.kb_service import MiniKBService
 from services.reranker_service import rerank_docs
 from services.search_service import search_web
+from path_security import safe_join, validate_filename
 from db import (
     create_conversation,
     save_message,
@@ -583,9 +584,9 @@ def create_temp_kb_from_upload(
     user_id=None,
 ):
     """负责 create_temp_kb_from_upload 的函数职责。"""
+    filename = validate_filename(filename or "uploaded.txt")
     migrate_legacy_demo_files()
 
-    filename = filename or "uploaded.txt"
     ext = os.path.splitext(filename)[1].lower()
 
     if ext not in [".txt", ".pdf", ".docx", ".md", ".csv"]:
@@ -607,13 +608,13 @@ def create_temp_kb_from_upload(
     ):
         os.makedirs(path, exist_ok=True)
 
-    original_path = os.path.join(upload_path, filename)
+    original_path = safe_join(upload_path, filename, field_name="filename")
     with open(original_path, "wb") as f:
         f.write(content)
 
     text = load_file(original_path)
     txt_filename = f"{os.path.splitext(filename)[0]}.txt"
-    txt_path = os.path.join(content_path, txt_filename)
+    txt_path = safe_join(content_path, txt_filename, field_name="filename")
 
     with open(txt_path, "w", encoding="utf-8") as f:
         f.write(text)

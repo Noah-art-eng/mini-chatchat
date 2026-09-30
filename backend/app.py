@@ -1,7 +1,7 @@
 from fastapi import Depends, FastAPI, File, UploadFile, Form, HTTPException, Request, Response
 from starlette.background import BackgroundTask
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, FileResponse, RedirectResponse
+from fastapi.responses import StreamingResponse, FileResponse, RedirectResponse, JSONResponse
 from pydantic import BaseModel, Field, ValidationError
 from dotenv import load_dotenv
 import json
@@ -97,6 +97,14 @@ from auth.dependencies import (
 from auth.jwt import create_access_token
 from auth.models import CurrentUser
 from auth.password import hash_password, verify_password
+from path_security import (
+    PathValidationError,
+    is_safe_filename,
+    is_safe_kb_name,
+    safe_join,
+    validate_filename,
+    validate_kb_name,
+)
 from auth.permissions import Permission, has_permission
 from auth.session import (
     create_login_session,
@@ -161,6 +169,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(PathValidationError)
+async def path_validation_error_handler(request: Request, exc: PathValidationError):
+    """将路径边界错误转换为不暴露内部路径的稳定 HTTP 400。"""
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
 
 
 @app.middleware("http")
@@ -1554,23 +1568,25 @@ async def upload(
     """负责 upload 的函数职责。"""
     require_permission(current_user, Permission.CAN_MANAGE_KB)
     validate_chunk_settings(chunk_size, chunk_overlap)
+    filename = validate_filename(file.filename or "uploaded.txt")
     scoped_service = get_scoped_kb_service(current_user)
     user_id = get_scoped_user_id(current_user)
     content = await file.read()
-    filename = file.filename or "uploaded.txt"
     ext = os.path.splitext(filename)[1].lower()
 
     if ext not in SUPPORTED_EXTS:
         return {"message": "Only .txt, .pdf, .docx, .md and .csv files are supported."}
 
-    upload_path = os.path.join(
+    upload_path = safe_join(
         scoped_service.upload_path,
-        filename
+        filename,
+        field_name="filename",
     )
     txt_filename = f"{os.path.splitext(filename)[0]}.txt"
-    txt_path = os.path.join(
+    txt_path = safe_join(
         scoped_service.content_path,
-        txt_filename
+        txt_filename,
+        field_name="filename",
     )
 
     if (
@@ -1660,6 +1676,7 @@ async def temp_upload(
 ):
     """负责 temp_upload 的函数职责。"""
     validate_chunk_settings(chunk_size, chunk_overlap)
+    validate_filename(file.filename or "uploaded.txt")
     content = await file.read()
     return await asyncio.to_thread(
         create_temp_kb_from_upload,
@@ -1691,11 +1708,6 @@ def list_documents(current_user: CurrentUser = Depends(get_current_user_optional
     return {"files": scoped_service.list_documents()}
 
 
-def is_safe_filename(filename: str):
-    """负责 is_safe_filename 的函数职责。"""
-    return ".." not in filename and "/" not in filename and "\\" not in filename
-
-
 def get_content_txt_filename(filename: str):
     """负责 get_content_txt_filename 的函数职责。"""
     return (
@@ -1707,26 +1719,29 @@ def get_content_txt_filename(filename: str):
 
 def find_reindex_source_file(filename: str, scoped_service: MiniKBService):
     """负责 find_reindex_source_file 的函数职责。"""
-    upload_path = os.path.join(
+    upload_path = safe_join(
         scoped_service.upload_path,
-        filename
+        filename,
+        field_name="filename",
     )
 
     if os.path.exists(upload_path):
         return upload_path
 
     content_filename = get_content_txt_filename(filename)
-    content_path = os.path.join(
+    content_path = safe_join(
         scoped_service.content_path,
-        content_filename
+        content_filename,
+        field_name="filename",
     )
 
     if os.path.exists(content_path):
         return content_path
 
-    direct_content_path = os.path.join(
+    direct_content_path = safe_join(
         scoped_service.content_path,
-        filename
+        filename,
+        field_name="filename",
     )
 
     if os.path.exists(direct_content_path):
@@ -1747,9 +1762,10 @@ def download_document(
     if not is_safe_filename(filename):
         raise HTTPException(status_code=400, detail="invalid filename")
 
-    upload_path = os.path.join(
+    upload_path = safe_join(
         scoped_service.upload_path,
-        filename
+        filename,
+        field_name="filename",
     )
 
     txt_filename = (
@@ -1757,9 +1773,10 @@ def download_document(
         if filename.endswith(".txt")
         else f"{os.path.splitext(filename)[0]}.txt"
     )
-    content_path = os.path.join(
+    content_path = safe_join(
         scoped_service.content_path,
-        txt_filename
+        txt_filename,
+        field_name="filename",
     )
 
     if os.path.exists(upload_path):
@@ -1863,6 +1880,7 @@ def delete_document(
 ):
     """负责 delete_document 的函数职责。"""
     require_permission(current_user, Permission.CAN_MANAGE_KB)
+    validate_filename(filename)
     result = get_scoped_kb_service(current_user).delete_document(filename)
 
     if result.get("error"):
@@ -1905,7 +1923,7 @@ def delete_knowledge_base(
             "error": "default knowledge base cannot be deleted"
         }
 
-    if ".." in kb_name or "/" in kb_name or "\\" in kb_name:
+    if not is_safe_kb_name(kb_name):
         raise HTTPException(status_code=400, detail="invalid knowledge base name")
 
     if not user_owns_kb(kb_name, user_id=user_id):
@@ -1915,7 +1933,7 @@ def delete_knowledge_base(
     delete_files_by_kb(kb_name, user_id=user_id)
     delete_kb_record(kb_name, user_id=user_id)
 
-    kb_path = os.path.join(get_user_kb_root(user_id), kb_name)
+    kb_path = safe_join(get_user_kb_root(user_id), kb_name, field_name="kb_name")
 
     if os.path.exists(kb_path):
         shutil.rmtree(kb_path)
@@ -1958,7 +1976,7 @@ async def import_knowledge_base(
 ):
     """负责 import_knowledge_base 的函数职责。"""
     require_permission(current_user, Permission.CAN_MANAGE_KB)
-    filename = file.filename or ""
+    filename = validate_filename(file.filename or "")
 
     if not filename.endswith(".zip"):
         return {
@@ -1988,7 +2006,8 @@ def create_knowledge_base(
     require_permission(current_user, Permission.CAN_MANAGE_KB)
     user_id = get_scoped_user_id(current_user)
 
-    kb_path = os.path.join(get_user_kb_root(user_id), request.kb_name)
+    kb_name = validate_kb_name(request.kb_name)
+    kb_path = safe_join(get_user_kb_root(user_id), kb_name, field_name="kb_name")
 
     os.makedirs(
         os.path.join(kb_path, "content"),
@@ -2005,10 +2024,10 @@ def create_knowledge_base(
         exist_ok=True
     )
 
-    create_kb(request.kb_name, user_id=user_id)
+    create_kb(kb_name, user_id=user_id)
 
     return {
-        "message": f"{request.kb_name} created"
+        "message": f"{kb_name} created"
     }
 
 @app.post("/sync_files")
@@ -2025,6 +2044,7 @@ def get_file_docs(
     current_user: CurrentUser = Depends(get_current_user_optional),
 ):
     """负责 get_file_docs 的函数职责。"""
+    validate_filename(filename)
     scoped_service = get_scoped_kb_service(current_user)
     txt_filename = get_content_txt_filename(filename)
     documents = scoped_service.list_documents()
