@@ -17,6 +17,14 @@ from db import (
 )
 from user_scope import get_user_kb_root, migrate_legacy_demo_files
 from path_security import is_safe_kb_name, safe_join
+from resource_limits import (
+    MAX_ZIP_COMPRESSION_RATIO,
+    MAX_ZIP_MEMBER_BYTES,
+    MAX_ZIP_MEMBER_COUNT,
+    MAX_ZIP_TOTAL_UNCOMPRESSED_BYTES,
+    ZIP_RATIO_MIN_UNCOMPRESSED_BYTES,
+    ResourceLimitError,
+)
 
 
 EXPORT_VERSION = 1
@@ -112,6 +120,8 @@ def _validate_zip_member(member_name):
 def _safe_extract(zip_file, destination):
     """负责 _safe_extract 的函数职责。"""
     destination_abs = os.path.abspath(destination)
+    member_count = 0
+    total_uncompressed_bytes = 0
 
     for member in zip_file.infolist():
         if not _validate_zip_member(member.filename):
@@ -123,6 +133,31 @@ def _safe_extract(zip_file, destination):
 
         if os.path.commonpath([destination_abs, target_path]) != destination_abs:
             raise ValueError(f"unsafe zip path: {member.filename}")
+
+        if member.is_dir():
+            continue
+
+        member_count += 1
+        if member_count > MAX_ZIP_MEMBER_COUNT:
+            raise ResourceLimitError("zip member count exceeds configured limit")
+
+        if member.file_size > MAX_ZIP_MEMBER_BYTES:
+            raise ResourceLimitError("zip member exceeds configured limit")
+
+        total_uncompressed_bytes += member.file_size
+        if total_uncompressed_bytes > MAX_ZIP_TOTAL_UNCOMPRESSED_BYTES:
+            raise ResourceLimitError("zip extracted size exceeds configured limit")
+
+        if member.file_size >= ZIP_RATIO_MIN_UNCOMPRESSED_BYTES:
+            if member.compress_size == 0:
+                if member.file_size > 0:
+                    raise ResourceLimitError(
+                        "zip compression ratio exceeds configured limit"
+                    )
+            elif member.file_size / member.compress_size > MAX_ZIP_COMPRESSION_RATIO:
+                raise ResourceLimitError(
+                    "zip compression ratio exceeds configured limit"
+                )
 
     zip_file.extractall(destination)
 

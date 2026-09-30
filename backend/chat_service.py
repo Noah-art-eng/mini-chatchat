@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import uuid
 
 from fastapi.responses import StreamingResponse
@@ -15,6 +16,7 @@ from services.kb_service import MiniKBService
 from services.reranker_service import rerank_docs
 from services.search_service import search_web
 from path_security import safe_join, validate_filename
+from resource_limits import install_staged_file
 from db import (
     create_conversation,
     save_message,
@@ -577,13 +579,13 @@ def run_kb_chat(request, client, user_id=None):
 
 
 def create_temp_kb_from_upload(
-    content,
+    staged_path,
     filename,
     chunk_size=300,
     chunk_overlap=50,
     user_id=None,
 ):
-    """负责 create_temp_kb_from_upload 的函数职责。"""
+    """从已完成大小校验的 staging 文件创建临时知识库。"""
     filename = validate_filename(filename or "uploaded.txt")
     migrate_legacy_demo_files()
 
@@ -601,31 +603,35 @@ def create_temp_kb_from_upload(
     content_path = os.path.join(temp_kb_path, "content")
     vector_store_path = os.path.join(temp_kb_path, "vector_store")
 
-    for path in (
-        upload_path,
-        content_path,
-        vector_store_path,
-    ):
-        os.makedirs(path, exist_ok=True)
+    try:
+        for path in (
+            upload_path,
+            content_path,
+            vector_store_path,
+        ):
+            os.makedirs(path, exist_ok=True)
 
-    original_path = safe_join(upload_path, filename, field_name="filename")
-    with open(original_path, "wb") as f:
-        f.write(content)
+        original_path = safe_join(upload_path, filename, field_name="filename")
+        install_staged_file(staged_path, original_path)
 
-    text = load_file(original_path)
-    txt_filename = f"{os.path.splitext(filename)[0]}.txt"
-    txt_path = safe_join(content_path, txt_filename, field_name="filename")
+        text = load_file(original_path)
+        txt_filename = f"{os.path.splitext(filename)[0]}.txt"
+        txt_path = safe_join(content_path, txt_filename, field_name="filename")
 
-    with open(txt_path, "w", encoding="utf-8") as f:
-        f.write(text)
+        with open(txt_path, "w", encoding="utf-8") as f:
+            f.write(text)
 
-    temp_kb_services[(user_id, temp_kb_id)] = MiniKBService(
-        temp_kb_id,
-        root_path=temp_root_path,
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
-        user_id=user_id,
-    )
+        temp_kb_services[(user_id, temp_kb_id)] = MiniKBService(
+            temp_kb_id,
+            root_path=temp_root_path,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            user_id=user_id,
+        )
+    except Exception:
+        temp_kb_services.pop((user_id, temp_kb_id), None)
+        shutil.rmtree(temp_kb_path, ignore_errors=True)
+        raise
 
     return {
         "temp_kb_id": temp_kb_id,

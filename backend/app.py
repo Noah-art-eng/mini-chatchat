@@ -10,7 +10,6 @@ import asyncio
 import queue
 import sqlite3
 import shutil
-import tempfile
 import threading
 import uuid
 import re
@@ -105,6 +104,15 @@ from path_security import (
     validate_filename,
     validate_kb_name,
 )
+from resource_limits import (
+    MAX_DOCUMENT_UPLOAD_BYTES,
+    MAX_TEMP_UPLOAD_BYTES,
+    MAX_ZIP_UPLOAD_BYTES,
+    ResourceLimitError,
+    install_staged_file,
+    remove_file_quietly,
+    stage_upload,
+)
 from auth.permissions import Permission, has_permission
 from auth.session import (
     create_login_session,
@@ -175,6 +183,12 @@ app.add_middleware(
 async def path_validation_error_handler(request: Request, exc: PathValidationError):
     """将路径边界错误转换为不暴露内部路径的稳定 HTTP 400。"""
     return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(ResourceLimitError)
+async def resource_limit_error_handler(request: Request, exc: ResourceLimitError):
+    """将上传资源超限转换为不暴露临时路径的稳定 HTTP 413。"""
+    return JSONResponse(status_code=413, content={"detail": str(exc)})
 
 
 @app.middleware("http")
@@ -1569,100 +1583,109 @@ async def upload(
     require_permission(current_user, Permission.CAN_MANAGE_KB)
     validate_chunk_settings(chunk_size, chunk_overlap)
     filename = validate_filename(file.filename or "uploaded.txt")
-    scoped_service = get_scoped_kb_service(current_user)
-    user_id = get_scoped_user_id(current_user)
-    content = await file.read()
     ext = os.path.splitext(filename)[1].lower()
 
     if ext not in SUPPORTED_EXTS:
         return {"message": "Only .txt, .pdf, .docx, .md and .csv files are supported."}
 
-    upload_path = safe_join(
-        scoped_service.upload_path,
-        filename,
-        field_name="filename",
-    )
-    txt_filename = f"{os.path.splitext(filename)[0]}.txt"
-    txt_path = safe_join(
-        scoped_service.content_path,
-        txt_filename,
-        field_name="filename",
-    )
-
-    if (
-        not override
-        and (
-            os.path.exists(upload_path)
-            or os.path.exists(txt_path)
-        )
-    ):
-        return {
-            "error": f"{filename} already exists"
-        }
-
-    if override:
-        delete_file_record(
-            scoped_service.kb_name,
-            txt_filename,
-            user_id=user_id,
-        )
-        delete_file_docs(
-            scoped_service.kb_name,
-            txt_filename,
-            user_id=user_id,
-        )
-
-    with open(upload_path, "wb") as f:
-        f.write(content)
-
-    upsert_file_record(
-        scoped_service.kb_name,
-        txt_filename,
-        os.path.getsize(upload_path),
-        0,
-        status="uploaded",
-        error=None,
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
-        content_path=txt_path,
-        upload_path=upload_path,
-        user_id=user_id,
+    staged = await stage_upload(
+        file,
+        max_bytes=MAX_DOCUMENT_UPLOAD_BYTES,
+        error_message="document upload exceeds configured limit",
+        suffix=ext,
     )
 
     try:
-        # 解析、embedding、FAISS/BM25 重建均可能耗时，不占用 async 事件循环。
-        await asyncio.to_thread(
-            process_uploaded_document,
-            scoped_service,
-            upload_path,
-            txt_path,
-            chunk_size,
-            chunk_overlap,
+        scoped_service = get_scoped_kb_service(current_user)
+        user_id = get_scoped_user_id(current_user)
+        upload_path = safe_join(
+            scoped_service.upload_path,
+            filename,
+            field_name="filename",
+        )
+        txt_filename = f"{os.path.splitext(filename)[0]}.txt"
+        txt_path = safe_join(
+            scoped_service.content_path,
+            txt_filename,
+            field_name="filename",
         )
 
-        txt_size = os.path.getsize(txt_path)
+        if (
+            not override
+            and (
+                os.path.exists(upload_path)
+                or os.path.exists(txt_path)
+            )
+        ):
+            return {
+                "error": f"{filename} already exists"
+            }
 
-        scoped_service.save_file_record(
-            os.path.basename(txt_path),
-            txt_size,
-            status="indexed",
-            error=None,
-            content_path=txt_path,
-            upload_path=upload_path,
-        )
-    except Exception as exc:
-        error_message = str(exc)
-        update_file_status(
+        # 只有完整上传并通过大小检查后，才替换正式文件和更新旧记录。
+        await asyncio.to_thread(install_staged_file, staged.path, upload_path)
+
+        if override:
+            delete_file_record(
+                scoped_service.kb_name,
+                txt_filename,
+                user_id=user_id,
+            )
+            delete_file_docs(
+                scoped_service.kb_name,
+                txt_filename,
+                user_id=user_id,
+            )
+
+        upsert_file_record(
             scoped_service.kb_name,
             txt_filename,
-            "failed",
-            error_message,
+            staged.size,
+            0,
+            status="uploaded",
+            error=None,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            content_path=txt_path,
+            upload_path=upload_path,
             user_id=user_id,
         )
-        return {
-            "error": error_message,
-            "message": f"{filename} upload failed"
-        }
+
+        try:
+            # 解析、embedding、FAISS/BM25 重建均可能耗时，不占用 async 事件循环。
+            await asyncio.to_thread(
+                process_uploaded_document,
+                scoped_service,
+                upload_path,
+                txt_path,
+                chunk_size,
+                chunk_overlap,
+            )
+
+            txt_size = os.path.getsize(txt_path)
+
+            scoped_service.save_file_record(
+                os.path.basename(txt_path),
+                txt_size,
+                status="indexed",
+                error=None,
+                content_path=txt_path,
+                upload_path=upload_path,
+            )
+        except Exception as exc:
+            error_message = str(exc)
+            update_file_status(
+                scoped_service.kb_name,
+                txt_filename,
+                "failed",
+                error_message,
+                user_id=user_id,
+            )
+            return {
+                "error": error_message,
+                "message": f"{filename} upload failed"
+            }
+    finally:
+        remove_file_quietly(staged.path)
 
     return {"message": f"{filename} uploaded and indexed successfully"}
 
@@ -1676,16 +1699,24 @@ async def temp_upload(
 ):
     """负责 temp_upload 的函数职责。"""
     validate_chunk_settings(chunk_size, chunk_overlap)
-    validate_filename(file.filename or "uploaded.txt")
-    content = await file.read()
-    return await asyncio.to_thread(
-        create_temp_kb_from_upload,
-        content,
-        file.filename,
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
-        user_id=get_scoped_user_id(current_user),
+    filename = validate_filename(file.filename or "uploaded.txt")
+    staged = await stage_upload(
+        file,
+        max_bytes=MAX_TEMP_UPLOAD_BYTES,
+        error_message="document upload exceeds configured limit",
+        suffix=os.path.splitext(filename)[1].lower(),
     )
+    try:
+        return await asyncio.to_thread(
+            create_temp_kb_from_upload,
+            staged.path,
+            filename,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            user_id=get_scoped_user_id(current_user),
+        )
+    finally:
+        remove_file_quietly(staged.path)
 
 
 @app.post("/file_chat")
@@ -1983,19 +2014,22 @@ async def import_knowledge_base(
             "error": "only .zip files are supported"
         }
 
-    with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as temp_file:
-        temp_path = temp_file.name
-        temp_file.write(await file.read())
+    staged = await stage_upload(
+        file,
+        max_bytes=MAX_ZIP_UPLOAD_BYTES,
+        error_message="zip upload exceeds configured limit",
+        suffix=".zip",
+    )
 
     try:
-        return import_kb(
-            temp_path,
+        return await asyncio.to_thread(
+            import_kb,
+            staged.path,
             override=override,
             user_id=get_scoped_user_id(current_user),
         )
     finally:
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
+        remove_file_quietly(staged.path)
 
 @app.post("/knowledge_bases")
 def create_knowledge_base(
