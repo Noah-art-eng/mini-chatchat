@@ -378,7 +378,11 @@ class StreamingUploadTest(unittest.IsolatedAsyncioTestCase):
         with (
             patch.object(chat_service, "get_temp_root_path", return_value=str(temp_root)),
             patch.object(chat_service, "migrate_legacy_demo_files"),
-            patch.object(chat_service, "load_file", side_effect=RuntimeError("parse failed")),
+            patch.object(
+                chat_service,
+                "parse_file_to_text_file",
+                side_effect=RuntimeError("parse failed"),
+            ),
             self.assertRaises(RuntimeError),
         ):
             chat_service.create_temp_kb_from_upload(

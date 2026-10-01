@@ -11,7 +11,7 @@ from model_config import (
     get_default_max_tokens
 )
 from rag import build_context, generate_answer, stream_answer
-from services.document_loader import load_file
+from services.document_loader import parse_file_to_text_file
 from services.kb_service import MiniKBService
 from services.reranker_service import rerank_docs
 from services.search_service import search_web
@@ -614,12 +614,9 @@ def create_temp_kb_from_upload(
         original_path = safe_join(upload_path, filename, field_name="filename")
         install_staged_file(staged_path, original_path)
 
-        text = load_file(original_path)
         txt_filename = f"{os.path.splitext(filename)[0]}.txt"
         txt_path = safe_join(content_path, txt_filename, field_name="filename")
-
-        with open(txt_path, "w", encoding="utf-8") as f:
-            f.write(text)
+        parse_file_to_text_file(original_path, txt_path)
 
         temp_kb_services[(user_id, temp_kb_id)] = MiniKBService(
             temp_kb_id,

@@ -25,7 +25,7 @@ from model_config import (
     get_default_max_tokens,
     get_embedding_model_name
 )
-from services.document_loader import load_file
+from services.document_loader import parse_file_to_text_file
 from services.kb_service import MiniKBService
 from services.kb_import_export_service import (
     export_kb,
@@ -451,10 +451,7 @@ def process_uploaded_document(
     chunk_overlap: int,
 ) -> None:
     """同步解析与重建工作；由上传接口放入线程池执行。"""
-    text = load_file(upload_path)
-
-    with open(txt_path, "w", encoding="utf-8") as file:
-        file.write(text)
+    parse_file_to_text_file(upload_path, txt_path)
 
     scoped_service.chunk_size = chunk_size
     scoped_service.chunk_overlap = chunk_overlap
@@ -1860,10 +1857,7 @@ def reindex_document(
             user_id=user_id,
         )
 
-        text = load_file(source_path)
-
-        with open(txt_path, "w", encoding="utf-8") as f:
-            f.write(text)
+        parse_file_to_text_file(source_path, txt_path)
 
         scoped_service.chunk_size = request.chunk_size
         scoped_service.chunk_overlap = request.chunk_overlap
