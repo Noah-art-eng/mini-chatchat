@@ -1,15 +1,12 @@
 from fastapi import Depends, FastAPI, File, UploadFile, Form, HTTPException, Request
 from starlette.background import BackgroundTask
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
-from pydantic import ValidationError
+from fastapi.responses import FileResponse, JSONResponse
 from dotenv import load_dotenv
-import json
 import os
 import asyncio
 import sqlite3
 import shutil
-import uuid
 import time
 from model_config import (
     get_openai_client,
@@ -29,7 +26,6 @@ from services.kb_import_export_service import (
     import_kb
 )
 from chat_service import (
-    RAG_STREAM_ERROR_MESSAGE,
     create_temp_kb_from_upload,
     run_local_kb_chat,
     run_temp_kb_chat,
@@ -47,14 +43,8 @@ from db import (
     delete_kb_record,
     delete_files_by_kb,
     delete_file_docs_by_kb,
-    update_message_feedback,
     upsert_file_record,
     update_file_status,
-    list_conversations,
-    get_conversation,
-    get_conversation_messages,
-    update_conversation_title,
-    delete_conversation,
     get_connection,
     user_owns_kb,
 )
@@ -90,14 +80,13 @@ from auth.security import (
 )
 from api.routes.agent import router as agent_router
 from api.routes.auth import router as auth_router
+from api.routes.conversations import router as conversation_router
+from api.routes.openai_compat import create_openai_compat_router
 from api.schemas import (
     ChatRequest,
     CreateKBRequest,
-    ConversationUpdateRequest,
-    FeedbackRequest,
     FileChatRequest,
     KBChatRequest,
-    OpenAIChatCompletionRequest,
     ReindexFileRequest,
     SearchDocsRequest,
     SwitchKBRequest,
@@ -140,6 +129,7 @@ app.add_middleware(
 )
 app.include_router(auth_router)
 app.include_router(agent_router)
+app.include_router(conversation_router)
 
 
 @app.exception_handler(PathValidationError)
@@ -185,6 +175,7 @@ async def request_id_and_access_log(request: Request, call_next):
     return response
 
 client = get_openai_client()
+app.include_router(create_openai_compat_router(client))
 kb_service = MiniKBService()
 current_kb_by_scope = {}
 
@@ -477,321 +468,6 @@ def get_models():
             "default_model": get_embedding_model_name()
         }
     }
-
-def get_last_user_message(messages):
-    """负责 get_last_user_message 的函数职责。"""
-    for message in reversed(messages):
-        if message.get("role") == "user":
-            return message.get("content", "")
-
-    return ""
-
-
-def build_kb_chat_request_from_openai(request: OpenAIChatCompletionRequest):
-    """负责 build_kb_chat_request_from_openai 的函数职责。"""
-    extra_body = request.extra_body or {}
-    query = get_last_user_message(request.messages)
-
-    try:
-        return KBChatRequest(
-            query=query,
-            mode=extra_body.get("mode", "local_kb"),
-            kb_name=extra_body.get("kb_name", "default"),
-            temp_kb_id=extra_body.get("temp_kb_id"),
-            top_k=extra_body.get("top_k", 3),
-            score_threshold=extra_body.get("score_threshold", 0.8),
-            prompt_name=extra_body.get("prompt_name", "default"),
-            stream=request.stream,
-            model=request.model,
-            temperature=request.temperature,
-            max_tokens=request.max_tokens,
-            return_direct=extra_body.get("return_direct", False),
-            conversation_id=extra_body.get("conversation_id"),
-            rerank=extra_body.get("rerank", False),
-            rerank_top_n=extra_body.get("rerank_top_n", 3),
-            file_name=extra_body.get("file_name"),
-            source=extra_body.get("source"),
-            metadata_filter=extra_body.get("metadata_filter"),
-        )
-    except ValidationError as exc:
-        # OpenAI 兼容入口手工构造请求模型，需显式保留 422 语义。
-        raise HTTPException(status_code=422, detail=exc.errors()) from exc
-
-
-def build_openai_completion_response(completion_id, model, result):
-    """负责 build_openai_completion_response 的函数职责。"""
-    return {
-        "id": completion_id,
-        "object": "chat.completion",
-        "model": model,
-        "choices": [
-            {
-                "index": 0,
-                "message": {
-                    "role": "assistant",
-                    "content": result.get("answer", "")
-                },
-                "finish_reason": "stop"
-            }
-        ],
-        "sources": result.get("sources", []),
-        "assistant_message_id": result.get("assistant_message_id")
-    }
-
-
-def build_openai_streaming_response(completion_id, model, internal_response):
-    """负责 build_openai_streaming_response 的函数职责。"""
-    async def event_stream():
-        """负责 event_stream 的函数职责。"""
-        buffer = ""
-        stream_failed = False
-
-        async for chunk in internal_response.body_iterator:
-            if isinstance(chunk, bytes):
-                buffer += chunk.decode("utf-8")
-            else:
-                buffer += str(chunk)
-
-            events = buffer.split("\n\n")
-            buffer = events.pop()
-
-            for event_text in events:
-                lines = [
-                    line
-                    for line in event_text.split("\n")
-                    if line.startswith("data:")
-                ]
-
-                for line in lines:
-                    payload = line.replace("data:", "", 1).strip()
-
-                    try:
-                        event = json.loads(payload)
-                    except json.JSONDecodeError:
-                        continue
-
-                    if event.get("type") == "token":
-                        chunk_data = {
-                            "id": completion_id,
-                            "object": "chat.completion.chunk",
-                            "model": model,
-                            "choices": [
-                                {
-                                    "delta": {
-                                        "content": event.get("content", "")
-                                    },
-                                    "index": 0,
-                                    "finish_reason": None
-                                }
-                            ]
-                        }
-                        yield f"data: {json.dumps(chunk_data)}\n\n"
-
-                    if event.get("type") == "error":
-                        stream_failed = True
-                        error_data = {
-                            "error": {
-                                "message": RAG_STREAM_ERROR_MESSAGE,
-                                "type": "server_error",
-                                "code": "rag_stream_error",
-                            }
-                        }
-                        yield f"data: {json.dumps(error_data)}\n\n"
-
-                    if event.get("type") == "done":
-                        if not stream_failed:
-                            yield "data: [DONE]\n\n"
-
-    return StreamingResponse(
-        event_stream(),
-        media_type="text/event-stream"
-    )
-
-
-def build_openai_static_streaming_response(completion_id, model, result):
-    """负责 build_openai_static_streaming_response 的函数职责。"""
-    async def event_stream():
-        """负责 event_stream 的函数职责。"""
-        content = result.get("answer", "")
-
-        if content:
-            chunk_data = {
-                "id": completion_id,
-                "object": "chat.completion.chunk",
-                "model": model,
-                "choices": [
-                    {
-                        "delta": {
-                            "content": content
-                        },
-                        "index": 0,
-                        "finish_reason": None
-                    }
-                ]
-            }
-            yield f"data: {json.dumps(chunk_data)}\n\n"
-
-        yield "data: [DONE]\n\n"
-
-    return StreamingResponse(
-        event_stream(),
-        media_type="text/event-stream"
-    )
-
-
-@app.post("/chat/completions")
-def chat_completions(
-    request: OpenAIChatCompletionRequest,
-    current_user: CurrentUser = Depends(get_current_user_optional),
-):
-    """负责 chat_completions 的函数职责。"""
-    query = get_last_user_message(request.messages)
-
-    if not query:
-        return {
-            "error": "messages must contain at least one user message"
-        }
-
-    completion_id = f"chatcmpl-{uuid.uuid4()}"
-    kb_request = build_kb_chat_request_from_openai(request)
-    result = run_kb_chat(
-        kb_request,
-        client,
-        user_id=get_scoped_user_id(current_user),
-    )
-
-    if request.stream and isinstance(result, StreamingResponse):
-        return build_openai_streaming_response(
-            completion_id,
-            request.model,
-            result
-        )
-
-    if request.stream:
-        return build_openai_static_streaming_response(
-            completion_id,
-            request.model,
-            result
-        )
-
-    return build_openai_completion_response(
-        completion_id,
-        request.model,
-        result
-    )
-
-
-@app.post("/chat/feedback")
-def chat_feedback(
-    request: FeedbackRequest,
-    current_user: CurrentUser = Depends(get_current_user_optional),
-):
-    """负责 chat_feedback 的函数职责。"""
-    if request.score not in [1, -1]:
-        return {
-            "error": "score must be 1 or -1"
-        }
-
-    updated = update_message_feedback(
-        request.message_id,
-        request.score,
-        request.reason,
-        user_id=get_scoped_user_id(current_user),
-    )
-
-    if not updated:
-        raise HTTPException(status_code=404, detail="message not found")
-
-    return {
-        "message": "feedback saved",
-        "message_id": request.message_id,
-        "feedback_score": request.score,
-        "feedback_reason": request.reason
-    }
-
-
-@app.get("/conversations")
-def get_conversations(current_user: CurrentUser = Depends(get_current_user_optional)):
-    """负责 get_conversations 的函数职责。"""
-    return {
-        "conversations": list_conversations(user_id=get_scoped_user_id(current_user))
-    }
-
-
-@app.get("/conversations/{conversation_id}/messages")
-def get_conversation_history(
-    conversation_id: int,
-    current_user: CurrentUser = Depends(get_current_user_optional),
-):
-    """负责 get_conversation_history 的函数职责。"""
-    user_id = get_scoped_user_id(current_user)
-
-    if get_conversation(conversation_id, user_id=user_id) is None:
-        raise HTTPException(status_code=404, detail="conversation not found")
-
-    return {
-        "conversation_id": conversation_id,
-        "messages": get_conversation_messages(
-            conversation_id,
-            user_id=user_id,
-        )
-    }
-
-
-@app.patch("/conversations/{conversation_id}")
-def update_conversation(
-    conversation_id: int,
-    request: ConversationUpdateRequest,
-    current_user: CurrentUser = Depends(get_current_user_optional),
-):
-    """负责 update_conversation 的函数职责。"""
-    title = request.title.strip()
-
-    if not title:
-        raise HTTPException(
-            status_code=400,
-            detail="title cannot be empty"
-        )
-
-    conversation = update_conversation_title(
-        conversation_id,
-        title,
-        user_id=get_scoped_user_id(current_user),
-    )
-
-    if conversation is None:
-        raise HTTPException(
-            status_code=404,
-            detail="conversation not found"
-        )
-
-    return {
-        "conversation": conversation
-    }
-
-
-@app.delete("/conversations/{conversation_id}")
-def remove_conversation(
-    conversation_id: int,
-    current_user: CurrentUser = Depends(get_current_user_optional),
-):
-    """负责 remove_conversation 的函数职责。"""
-    deleted = delete_conversation(
-        conversation_id,
-        user_id=get_scoped_user_id(current_user),
-    )
-
-    if not deleted:
-        raise HTTPException(
-            status_code=404,
-            detail="conversation not found"
-        )
-
-    return {
-        "message": "conversation deleted",
-        "conversation_id": conversation_id
-    }
-
 
 @app.post("/chat")
 def chat(

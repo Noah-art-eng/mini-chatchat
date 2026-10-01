@@ -35,7 +35,7 @@ import services.kb_service as kb_service_module  # noqa: E402
 
 kb_service_module.get_embedding_model = lambda _name: FakeEmbeddingModel()
 
-from app import build_openai_streaming_response  # noqa: E402
+from api.routes.openai_compat import build_openai_streaming_response  # noqa: E402
 from chat_service import RAG_STREAM_ERROR_MESSAGE, build_streaming_response  # noqa: E402
 
 
