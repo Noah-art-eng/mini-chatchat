@@ -16,14 +16,20 @@ backend/temp/
 backend/uploads/
 backend/__pycache__/
 backend/**/__pycache__/
-frontend/**/__pycache__/
 frontend-react/node_modules/
 frontend-react/dist/
+/frontend-react/tmp/
 node_modules/
 dist/
 frontend-react/**/*.tsbuildinfo
 frontend-react/vite.config.js
 frontend-react/vite.config.d.ts
+
+# Local runtime and generated data
+/data/
+/runtime/
+/backups/
+/tmp/
 
 .DS_Store
 

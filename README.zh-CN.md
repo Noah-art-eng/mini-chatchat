@@ -272,6 +272,18 @@ RESTORE_CONFIRM=yes scripts/restore.sh backups/mini-chatchat-YYYYMMDDTHHMMSSZ.ta
 
 本地开发使用 local 命令，私有演示使用 Docker。
 
+### 同时启动后端和前端
+
+完成下方后端与前端依赖安装后，在仓库根目录运行：
+
+```bash
+./start.sh
+```
+
+当前正式前端是 `frontend-react/` 下的 React 应用。脚本会在 `http://127.0.0.1:8000` 启动后端、在 `http://127.0.0.1:5173` 启动前端，按 `Ctrl+C` 会同时停止两者。脚本只检查依赖，不会自动安装。
+
+首次使用知识库时可能需要下载配置的 Embedding 模型。LLM Chat 和 Agent 调用需要有效的 Provider 凭据与模型配置；MCP 集成是可选能力，不是启动和使用普通 Chat/KB 流程的前置条件。
+
 ### Local backend
 
 ```bash
@@ -358,7 +370,6 @@ curl http://127.0.0.1/api/health
 ```text
 backend/          FastAPI app, auth, RAG, DB, services, tools, MCP adapters
 frontend-react/   React + TypeScript product UI
-frontend/         Legacy plain HTML/CSS/JS frontend
 scripts/          Smoke tests, backup, restore
 docs/             Architecture, roadmap, deployment, refactor, release docs
 runtime/          Local production runtime data, ignored by Git

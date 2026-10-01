@@ -272,6 +272,18 @@ RESTORE_CONFIRM=yes scripts/restore.sh backups/mini-chatchat-YYYYMMDDTHHMMSSZ.ta
 
 Use the local path for development and Docker for a private demo.
 
+### Start backend and frontend together
+
+After installing the backend and frontend dependencies shown below, start both services from the repository root:
+
+```bash
+./start.sh
+```
+
+The maintained frontend is the React application in `frontend-react/`. The script starts the backend at `http://127.0.0.1:8000` and the frontend at `http://127.0.0.1:5173`; `Ctrl+C` stops both. It checks dependencies but does not install them automatically.
+
+The first knowledge-base use may download the configured embedding model. LLM Chat and Agent calls require valid provider credentials and model configuration. MCP integrations are optional and are not required to start or use ordinary Chat/KB flows.
+
 ### Local backend
 
 ```bash
@@ -358,7 +370,6 @@ The repository separates backend services, React UI, docs, scripts, and runtime 
 ```text
 backend/          FastAPI app, auth, RAG, DB, services, tools, MCP adapters
 frontend-react/   React + TypeScript product UI
-frontend/         Legacy plain HTML/CSS/JS frontend
 scripts/          Smoke tests, backup, restore
 docs/             Architecture, roadmap, deployment, refactor, release docs
 runtime/          Local production runtime data, ignored by Git

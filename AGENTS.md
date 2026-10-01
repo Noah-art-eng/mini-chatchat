@@ -55,13 +55,17 @@ python3 -m py_compile scripts/test_kb_import_export.py
 python3 scripts/test_kb_import_export.py
 ```
 
-Frontend syntax:
+Frontend checks:
 
 ```bash
-node --check frontend/app.js
+cd frontend-react
+npm run typecheck
+npm run lint
+npm test
+npm run build
 ```
 
-When changing both backend and frontend, run both Python compile checks and `node --check`.
+When changing both backend and frontend, run both Python compile checks and the relevant React checks.
 
 ## Backend Boundaries
 
@@ -82,13 +86,13 @@ Runtime data lives under `backend/data/` and must remain ignored.
 
 ## Frontend Boundaries
 
-The current frontend is plain HTML/CSS/JS:
+The maintained frontend is the React + TypeScript application under `frontend-react/`:
 
-- `frontend/index.html`
-- `frontend/app.js`
-- `frontend/style.css`
+- `frontend-react/src/api/`: backend API clients and SSE parsing
+- `frontend-react/src/hooks/`: reusable chat and Agent streaming state
+- `frontend-react/src/components/`: product UI components
 
-Do not keep adding complex UI state to the plain JS frontend indefinitely. The next UI phase should move to React with explicit state boundaries for:
+Keep explicit state boundaries for:
 
 - KB selection
 - chat mode
