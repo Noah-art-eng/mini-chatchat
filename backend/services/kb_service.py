@@ -91,7 +91,6 @@ class MiniKBService:
         chunk_overlap: int = 50,
         user_id=None,
     ):
-        """负责 __init__ 的函数职责。"""
         migrate_legacy_demo_files()
         self.kb_name = kb_name
         self.user_id = user_id
@@ -100,14 +99,12 @@ class MiniKBService:
         self.chunk_overlap = chunk_overlap
         self.mutation_lock = get_kb_mutation_lock(user_id, kb_name)
 
-        # Directory paths
         self.root_path = root_path or get_user_kb_root(user_id)
         self.kb_path = os.path.join(self.root_path, kb_name)
         self.content_path = os.path.join(self.kb_path, "content")
         self.upload_path = os.path.join(self.kb_path, "uploads")
         self.vector_store_path = os.path.join(self.kb_path, "vector_store")
 
-        # Create all directories on first use
         for path in (
             self.content_path,
             self.upload_path,
@@ -118,7 +115,6 @@ class MiniKBService:
         # 同一模型名共享权重；KB 仍各自维护独立的文档、索引和 BM25 状态。
         self.model = get_embedding_model(self.embedding_model_name)
 
-        # In-memory state; rebuilt whenever the KB changes
         self.documents: list = []
         self.chunks: list = []
         self.index = None
@@ -149,12 +145,10 @@ class MiniKBService:
 
     @property
     def index_file_path(self) -> str:
-        """负责 index_file_path 的函数职责。"""
         return os.path.join(self.vector_store_path, "index.faiss")
 
     @property
     def chunks_file_path(self) -> str:
-        """负责 chunks_file_path 的函数职责。"""
         return os.path.join(self.vector_store_path, "chunks.json")
 
     @property
@@ -163,7 +157,6 @@ class MiniKBService:
         return os.path.join(self.vector_store_path, "metadata.json")
 
     def _get_file_chunks(self, filename: str) -> list:
-        """负责 _get_file_chunks 的函数职责。"""
         return [
             chunk
             for chunk in self.chunks
@@ -171,7 +164,6 @@ class MiniKBService:
         ]
     
     def get_chunk_by_id(self, chunk_id: int) -> dict:
-        """负责 get_chunk_by_id 的函数职责。"""
         for chunk in self.chunks:
             if chunk.get("chunk_id") == chunk_id:
                 return {
@@ -193,7 +185,6 @@ class MiniKBService:
         content_path: str | None = None,
         upload_path: str | None = None,
     ) -> None:
-        """Write knowledge_file + file_doc records for one content file."""
         file_chunks = self._get_file_chunks(filename)
 
         upsert_file_record(
@@ -221,7 +212,6 @@ class MiniKBService:
             )
 
     def sync_files_to_db(self):
-        """负责 sync_files_to_db 的函数职责。"""
         self.rebuild_and_sync()
 
     # ------------------------------------------------------------------
@@ -229,12 +219,10 @@ class MiniKBService:
     # ------------------------------------------------------------------
 
     def load_documents(self) -> list:
-        """Read all .txt files from the content directory."""
         self.documents = load_documents(self.content_path)
         return self.documents
 
     def split_documents(self) -> list:
-        """Split raw documents into fixed-size overlapping chunks."""
         self.chunks = split_documents(
             self.documents,
             chunk_size=self.chunk_size,
@@ -244,7 +232,6 @@ class MiniKBService:
         return self.chunks
 
     def save_vector_store(self) -> None:
-        """Persist the FAISS index and chunk metadata to vector_store."""
         os.makedirs(self.vector_store_path, exist_ok=True)
 
         chunks_metadata = [
@@ -412,7 +399,6 @@ class MiniKBService:
             return False
 
     def load_vector_store(self) -> None:
-        """Load the FAISS index and chunk metadata from vector_store."""
         with open(self.chunks_file_path, "r", encoding="utf-8") as file:
             self.chunks = json.load(file)
 
@@ -461,7 +447,6 @@ class MiniKBService:
         self._build_bm25_index()
 
     def build_index(self) -> None:
-        """Load documents → split → build FAISS index from scratch."""
         try:
             all_files = os.listdir(self.content_path)
         except FileNotFoundError:
@@ -694,11 +679,9 @@ class MiniKBService:
         return True
 
     def _tokenize_for_bm25(self, text: str) -> list[str]:
-        """负责 _tokenize_for_bm25 的函数职责。"""
         return TOKEN_PATTERN.findall((text or "").lower())
 
     def _build_bm25_index(self) -> None:
-        """Build lightweight BM25 statistics for current chunks."""
         self._bm25_docs = []
         self._bm25_doc_freqs = Counter()
         self._bm25_idf = {}
@@ -731,7 +714,6 @@ class MiniKBService:
             )
 
     def _bm25_score(self, query_tokens: list[str], chunk_index: int) -> float:
-        """负责 _bm25_score 的函数职责。"""
         if not query_tokens or not self._bm25_docs:
             return 0.0
 
@@ -761,7 +743,6 @@ class MiniKBService:
         return score
 
     def _metadata_matches(self, chunk: dict, metadata_filter: dict | None) -> bool:
-        """负责 _metadata_matches 的函数职责。"""
         if not metadata_filter:
             return True
 
@@ -777,7 +758,6 @@ class MiniKBService:
         return True
 
     def _filtered_chunk_indexes(self, metadata_filter: dict | None) -> list[int]:
-        """负责 _filtered_chunk_indexes 的函数职责。"""
         return [
             index
             for index, chunk in enumerate(self.chunks)
@@ -790,7 +770,6 @@ class MiniKBService:
         candidate_k: int,
         allowed_indexes: set[int],
     ) -> dict[int, float]:
-        """负责 _bm25_candidates 的函数职责。"""
         query_tokens = self._tokenize_for_bm25(query)
 
         if not query_tokens:
@@ -815,7 +794,6 @@ class MiniKBService:
         allowed_indexes: set[int],
         metadata_filter: dict | None = None,
     ) -> dict[int, float]:
-        """负责 _vector_candidates 的函数职责。"""
         if self.index is None or not self.chunks:
             return {}
 
@@ -851,7 +829,6 @@ class MiniKBService:
         bm25_score: float,
         hybrid_score: float,
     ) -> dict:
-        """负责 _format_search_result 的函数职责。"""
         chunk = self.chunks[chunk_index]
 
         return {
@@ -866,7 +843,6 @@ class MiniKBService:
         }
 
     def _dedup_key(self, result: dict) -> tuple:
-        """负责 _dedup_key 的函数职责。"""
         source = result.get("source") or ""
         chunk_id = result.get("chunk_id")
 
@@ -881,7 +857,6 @@ class MiniKBService:
 
     def _deduplicate_results(self, results: list[dict]) -> list[dict]:
         # 混合检索候选可能指向同一 source/chunk，只保留综合分最高的一项。
-        """负责 _deduplicate_results 的函数职责。"""
         deduped_by_key = {}
 
         for result in results:
@@ -1038,7 +1013,6 @@ class MiniKBService:
         }
 
     def list_documents(self) -> list:
-        """负责 list_documents 的函数职责。"""
         return list_file_records(self.kb_name, user_id=self.user_id)
 
     def delete_document(self, filename: str) -> dict:
@@ -1069,7 +1043,6 @@ class MiniKBService:
         content_path=None,
         upload_path=None,
     ):
-        """负责 save_file_record 的函数职责。"""
         self._persist_file_to_db(
             filename,
             file_size,

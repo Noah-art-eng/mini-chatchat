@@ -15,7 +15,6 @@ function isAbortError(error: unknown) {
   return error instanceof Error && error.name === "AbortError";
 }
 
-/** 用途：负责 useChatStream 的界面或数据处理职责。 */
 export function useChatStream() {
   const {
     appendStreamingMessage,
@@ -72,13 +71,11 @@ export function useChatStream() {
     };
   }, []);
 
-  /** 用途：负责 sendMessage 的界面或数据处理职责。 */
   async function sendMessage(query: string) {
     const trimmedQuery = query.trim();
     if (!trimmedQuery) return;
 
     if (chatMode === "temp_kb" && !tempKbId) {
-      /** 用途：负责 setError 的界面或数据处理职责。 */
       setError("Please upload a temp file first.");
       return;
     }
@@ -93,15 +90,10 @@ export function useChatStream() {
     };
     activeRunRef.current = run;
 
-    /** 用途：负责 setError 的界面或数据处理职责。 */
     setError(null);
-    /** 用途：负责 setSources 的界面或数据处理职责。 */
     setSources([]);
-    /** 用途：负责 setSelectedAssistantMessageId 的界面或数据处理职责。 */
     setSelectedAssistantMessageId(null);
-    /** 用途：负责 setStreamingMessage 的界面或数据处理职责。 */
     setStreamingMessage("");
-    /** 用途：负责 setMessages 的界面或数据处理职责。 */
     setMessages([
       ...messages,
       {
@@ -109,7 +101,6 @@ export function useChatStream() {
         content: trimmedQuery
       }
     ]);
-    /** 用途：负责 setIsStreaming 的界面或数据处理职责。 */
     setIsStreaming(true);
 
     let assistantText = "";
@@ -144,43 +135,35 @@ export function useChatStream() {
 
         if ("conversation_id" in event && event.conversation_id) {
           run.serverConversationId = event.conversation_id;
-          /** 用途：负责 setConversationId 的界面或数据处理职责。 */
           setConversationId(event.conversation_id);
           localStorage.setItem(
             "mini-chatchat:lastConversationId",
-            /** 用途：负责 String 的界面或数据处理职责。 */
             String(event.conversation_id)
           );
         }
 
         if (event.type === "sources") {
           currentSources = event.sources;
-          /** 用途：负责 setSources 的界面或数据处理职责。 */
           setSources(event.sources);
         }
 
         if (event.type === "token") {
           assistantText += event.content;
-          /** 用途：负责 appendStreamingMessage 的界面或数据处理职责。 */
           appendStreamingMessage(event.content);
         }
 
         if (event.type === "error") {
-          /** 用途：负责 setError 的界面或数据处理职责。 */
           setError(event.message);
           assistantText = event.message;
-          /** 用途：负责 setStreamingMessage 的界面或数据处理职责。 */
           setStreamingMessage(event.message);
         }
 
         if (event.type === "done") {
           assistantMessageId = event.assistant_message_id;
           if (event.conversation_id) {
-            /** 用途：负责 setConversationId 的界面或数据处理职责。 */
             setConversationId(event.conversation_id);
             localStorage.setItem(
               "mini-chatchat:lastConversationId",
-              /** 用途：负责 String 的界面或数据处理职责。 */
               String(event.conversation_id)
             );
           }
@@ -197,7 +180,6 @@ export function useChatStream() {
         sources: currentSources
       };
 
-      /** 用途：负责 setMessages 的界面或数据处理职责。 */
       setMessages([
         ...messages,
         {
@@ -207,10 +189,8 @@ export function useChatStream() {
         assistantMessage
       ]);
       if (assistantMessageId) {
-        /** 用途：负责 setSelectedAssistantMessageId 的界面或数据处理职责。 */
         setSelectedAssistantMessageId(assistantMessageId);
       }
-      /** 用途：负责 setStreamingMessage 的界面或数据处理职责。 */
       setStreamingMessage("");
       await refreshConversations();
     } catch (chatError) {
@@ -218,11 +198,8 @@ export function useChatStream() {
 
       const message =
         chatError instanceof Error ? chatError.message : "Chat failed.";
-      /** 用途：负责 setError 的界面或数据处理职责。 */
       setError(message);
-      /** 用途：负责 setStreamingMessage 的界面或数据处理职责。 */
       setStreamingMessage(message);
-      /** 用途：负责 setMessages 的界面或数据处理职责。 */
       setMessages([
         ...messages,
         {
@@ -239,9 +216,7 @@ export function useChatStream() {
     } finally {
       if (isCurrentRun(run)) {
         activeRunRef.current = null;
-        /** 用途：负责 setStreamingMessage 的界面或数据处理职责。 */
         setStreamingMessage("");
-        /** 用途：负责 setIsStreaming 的界面或数据处理职责。 */
         setIsStreaming(false);
       }
     }

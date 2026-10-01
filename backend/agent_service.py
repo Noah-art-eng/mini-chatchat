@@ -65,7 +65,6 @@ STREAM_REDACTED_KEYS = {
 
 def get_available_tool_specs(tool_names=None):
     # 显式指定本地工具时无需探测 MCP，避免无关的 MCP 冷启动拖慢 Agent。
-    """负责 get_available_tool_specs 的函数职责。"""
     if tool_names is not None and all(
         not str(name).startswith("mcp.") for name in tool_names
     ):
@@ -98,7 +97,6 @@ def get_available_tool_specs(tool_names=None):
 
 
 def generate_plan(query):
-    """负责 generate_plan 的函数职责。"""
     fallback = generate_plan_without_llm(query)
     prompt = build_plan_prompt(query)
 
@@ -126,7 +124,6 @@ def generate_plan(query):
 
 
 def decide_tool_call(query, available_tools):
-    """负责 decide_tool_call 的函数职责。"""
     prompt = build_tool_call_prompt(query, available_tools)
     fallback = choose_tool_without_llm(query, available_tools)
 
@@ -189,7 +186,6 @@ def decide_tool_call(query, available_tools):
 
 def decide_agent_action(query, available_tools, steps):
     # Agent 每轮只允许一个工具调用；模型不可用或输出非法时回退到确定性路由。
-    """负责 decide_agent_action 的函数职责。"""
     prompt = build_multi_step_prompt(query, available_tools, steps)
     fallback = choose_multi_step_action_without_llm(query, available_tools, steps)
 
@@ -268,7 +264,6 @@ def decide_agent_action(query, available_tools, steps):
 
 
 def apply_tool_defaults(tool_call, query, kb_name, user_id=None):
-    """负责 apply_tool_defaults 的函数职责。"""
     if tool_call["tool"] == "kb_search":
         arguments = {
             **tool_call.get("arguments", {}),
@@ -304,7 +299,6 @@ def apply_tool_defaults(tool_call, query, kb_name, user_id=None):
 
 
 def expand_explicit_mcp_tools(query, tools):
-    """负责 expand_explicit_mcp_tools 的函数职责。"""
     if tools is None:
         return None
 
@@ -322,7 +316,6 @@ def expand_explicit_mcp_tools(query, tools):
 
 
 def get_tool_trace_metadata(tool_name):
-    """负责 get_tool_trace_metadata 的函数职责。"""
     spec = resolve_tool(tool_name)
     if spec is None or getattr(spec, "provider", "local") != "mcp":
         return {}
@@ -335,7 +328,6 @@ def get_tool_trace_metadata(tool_name):
 
 
 def run_agent_once(query, kb_name=None, tools=None, user_id=None):
-    """负责 run_agent_once 的函数职责。"""
     tools = expand_explicit_mcp_tools(query, tools)
     available_tools, tools_error = get_available_tool_specs(tools)
     if tools_error:
@@ -416,7 +408,6 @@ def run_agent_once(query, kb_name=None, tools=None, user_id=None):
 
 
 def summarize_tool_result(tool_result):
-    """负责 summarize_tool_result 的函数职责。"""
     if tool_result is None:
         return ""
 
@@ -428,7 +419,6 @@ def summarize_tool_result(tool_result):
 
 
 def generate_final_answer(query, tool_call, tool_result):
-    """负责 generate_final_answer 的函数职责。"""
     tool_name = (tool_call or {}).get("tool", "none")
 
     if tool_result is not None and not tool_result.get("ok"):
@@ -464,7 +454,6 @@ def generate_final_answer(query, tool_call, tool_result):
 
 
 def normalize_max_steps(max_steps):
-    """负责 normalize_max_steps 的函数职责。"""
     try:
         parsed = int(max_steps)
     except (TypeError, ValueError):
@@ -474,7 +463,6 @@ def normalize_max_steps(max_steps):
 
 
 def tool_signature(tool_name, arguments):
-    """负责 tool_signature 的函数职责。"""
     return json.dumps(
         {
             "tool": tool_name,
@@ -486,7 +474,6 @@ def tool_signature(tool_name, arguments):
 
 
 def summarize_observation(tool_result):
-    """负责 summarize_observation 的函数职责。"""
     if tool_result is None:
         return ""
 
@@ -502,7 +489,6 @@ def summarize_observation(tool_result):
 
 
 def sanitize_stream_value(value, max_chars=STREAM_VALUE_MAX_CHARS):
-    """负责 sanitize_stream_value 的函数职责。"""
     if isinstance(value, dict):
         sanitized = {}
         for key, item in value.items():
@@ -528,14 +514,12 @@ def sanitize_stream_value(value, max_chars=STREAM_VALUE_MAX_CHARS):
 
 
 def emit_agent_event(event_sink, event):
-    """负责 emit_agent_event 的函数职责。"""
     if event_sink is not None:
         # SSE trace 仅暴露截断且脱敏后的值，避免工具输出泄漏运行时敏感信息。
         event_sink(sanitize_stream_value(event))
 
 
 def stream_answer_tokens(answer):
-    """负责 stream_answer_tokens 的函数职责。"""
     if not answer:
         return []
 
@@ -544,7 +528,6 @@ def stream_answer_tokens(answer):
 
 
 def generate_multi_step_final_answer(query, steps, fallback_answer=""):
-    """负责 generate_multi_step_final_answer 的函数职责。"""
     if fallback_answer:
         return fallback_answer
 
@@ -574,7 +557,6 @@ def generate_multi_step_final_answer(query, steps, fallback_answer=""):
 
 
 def build_multi_step_metadata(result):
-    """负责 build_multi_step_metadata 的函数职责。"""
     return {
         "agent": True,
         "mode": "multi-step",
@@ -586,7 +568,6 @@ def build_multi_step_metadata(result):
 
 
 def build_planner_metadata(result):
-    """负责 build_planner_metadata 的函数职责。"""
     return {
         "agent": True,
         "mode": "planner",
@@ -599,7 +580,6 @@ def build_planner_metadata(result):
 
 
 def update_plan(planner, agent_result):
-    """负责 update_plan 的函数职责。"""
     steps = [
         {
             **step,
@@ -685,7 +665,6 @@ def run_agent_multi_step(
     should_stop=None,
     user_id=None,
 ):
-    """负责 run_agent_multi_step 的函数职责。"""
     max_steps = normalize_max_steps(max_steps)
     tools = expand_explicit_mcp_tools(query, tools)
     available_tools, tools_error = get_available_tool_specs(tools)
@@ -905,7 +884,6 @@ def run_agent_with_planner(
     should_stop=None,
     user_id=None,
 ):
-    """负责 run_agent_with_planner 的函数职责。"""
     planner = generate_plan(query)
     trace = [
         {
@@ -966,7 +944,6 @@ def run_agent_with_planner(
 
 
 def run_agent(query, kb_name=None, tools=None, user_id=None):
-    """负责 run_agent 的函数职责。"""
     run_once_result = run_agent_once(
         query,
         kb_name=kb_name,
@@ -1015,7 +992,6 @@ def run_agent(query, kb_name=None, tools=None, user_id=None):
 
 
 def build_agent_metadata(tool_call, tool_result, trace):
-    """负责 build_agent_metadata 的函数职责。"""
     tool_count = 0
     if tool_call and tool_call.get("tool") != "none" and tool_result is not None:
         tool_count = 1
@@ -1031,7 +1007,6 @@ def build_agent_metadata(tool_call, tool_result, trace):
 
 
 def run_agent_persisted(query, kb_name=None, tools=None, conversation_id=None, user_id=None):
-    """负责 run_agent_persisted 的函数职责。"""
     if conversation_id is None:
         conversation_id = create_conversation(query, user_id=user_id)
     elif get_conversation(conversation_id, user_id=user_id) is None:
@@ -1079,7 +1054,6 @@ def run_agent_multi_step_persisted(
     conversation_id=None,
     user_id=None,
 ):
-    """负责 run_agent_multi_step_persisted 的函数职责。"""
     if conversation_id is None:
         conversation_id = create_conversation(query, user_id=user_id)
     elif get_conversation(conversation_id, user_id=user_id) is None:
@@ -1124,7 +1098,6 @@ def run_agent_planner_persisted(
     conversation_id=None,
     user_id=None,
 ):
-    """负责 run_agent_planner_persisted 的函数职责。"""
     if conversation_id is None:
         conversation_id = create_conversation(query, user_id=user_id)
     elif get_conversation(conversation_id, user_id=user_id) is None:
@@ -1171,7 +1144,6 @@ def run_agent_planner_stream_persisted(
     should_stop=None,
     user_id=None,
 ):
-    """负责 run_agent_planner_stream_persisted 的函数职责。"""
     if conversation_id is None:
         conversation_id = create_conversation(query, user_id=user_id)
     elif get_conversation(conversation_id, user_id=user_id) is None:
