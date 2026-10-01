@@ -5,7 +5,7 @@
 Mini ChatChat is a full-stack AI knowledge workspace built with FastAPI, React, FAISS, SQLite, and OpenAI-compatible model providers.
 
 ![Release](https://img.shields.io/badge/release-v1.0.0--rc.1-2f6f5f)
-![Smoke tests](https://img.shields.io/badge/smoke_tests-30%2F30-2f6f5f)
+![Smoke tests](https://img.shields.io/badge/smoke_tests-suite-2f6f5f)
 ![Docker](https://img.shields.io/badge/docker-compose-2f6f5f)
 ![License](https://img.shields.io/badge/license-not_selected-lightgrey)
 
@@ -35,14 +35,14 @@ The demo covers:
 Mini ChatChat focuses on product-grade full-stack AI engineering rather than hiding the core flow behind a framework.
 
 - Inspectable retrieval-augmented generation (RAG) pipeline without LangChain
-- FAISS + BM25 hybrid search, metadata filters, rerank, deduplication, and token budget
+- FAISS + BM25 hybrid search, metadata filters, rerank, deduplication, and an estimated context token budget based on a character heuristic
 - Streaming answers with source persistence, conversation history, and feedback
 - Local knowledge base, web search, and temporary file chat modes
 - Agent planner, Tool Registry, readonly MCP tools, and tool trace restore
 - Email auth, HttpOnly refresh cookie, session management, OAuth infrastructure, and user isolation
 - React + TypeScript product UI with design system, onboarding, bilingual interface, and account pages
 - Docker Compose, nginx proxy, health checks, backup/restore scripts, and deployment docs
-- 30/30 smoke tests covering RAG, auth, Agent, MCP, tools, and deployment-critical APIs
+- A smoke suite covering provider configuration, core APIs, RAG, auth, Agent, MCP, and tools
 
 ## Core Features
 
@@ -50,7 +50,7 @@ Mini ChatChat includes the core workflows expected from a ChatChat-style AI know
 
 - **Chat modes**: local KB, web search, temp file chat, and Agent mode
 - **Knowledge base**: upload, document list, reindex, delete, import, export, and source inspection
-- **Retrieval**: FAISS vector search, BM25 lexical search, hybrid ranking, metadata filter, rerank, deduplication, and context budget
+- **Retrieval**: FAISS vector search, BM25 lexical search, hybrid ranking, metadata filter, rerank, deduplication, and an estimated context budget
 - **Conversations**: history, rename, delete, updated time, feedback, and assistant source metadata
 - **Agent**: one-shot and multi-step tool use, planner metadata, Tool Registry, browser search/read, filesystem readonly, SQLite readonly, and MCP adapter paths
 - **Authentication**: email registration/login, refresh rotation, session list, logout other devices, account profile, Google/GitHub OAuth infrastructure, and user data isolation
@@ -102,10 +102,17 @@ flowchart LR
 
 Key backend modules:
 
-- `backend/app.py`: FastAPI routes and request models
+- `backend/app.py`: application assembly plus the remaining Chat, RAG, KB, upload, conversation, and OpenAI-compatible routes
+- `backend/api/schemas.py`: API request and response schemas
+- `backend/api/routes/auth.py`: authentication, OAuth, session, and preference routes
+- `backend/api/routes/agent.py`: Agent, Tool, and MCP routes
 - `backend/chat_service.py`: local KB, temp KB, search, streaming, conversation persistence
-- `backend/rag.py`: splitting, prompt context, token budget, answer generation
-- `backend/db.py`: SQLite schema, migrations, users, sessions, conversations, KB metadata
+- `backend/rag.py`: splitting, prompt context, estimated token budgeting, and answer generation
+- `backend/db.py`: compatibility facade for the existing database API
+- `backend/persistence/`: SQLite connection/schema handling and Auth, Conversation, and Knowledge Base persistence
+- `backend/agent_fallback.py`: deterministic Agent fallback routing
+- `backend/agent_protocol.py`: Agent prompt construction and structured-output parsing
+- `backend/agent_service.py`: Agent runtime and orchestration
 - `backend/auth/`: password hashing, JSON Web Token (JWT), refresh sessions, OAuth, permissions
 - `backend/user_scope.py`: user-scoped database and file paths
 - `backend/services/kb_service.py`: FAISS persistence, hybrid search, metadata filters, deduplication
@@ -141,7 +148,7 @@ Implemented retrieval behavior:
 - Optional metadata filtering by file/source
 - Lightweight embedding rerank
 - Duplicate chunk removal
-- Prompt context token budget
+- Estimated prompt-context token budget using a character-based heuristic rather than an exact tokenizer
 - Return-direct retrieval mode for debugging without calling the model
 
 ## Agent / Tools / MCP
@@ -214,7 +221,8 @@ Current release candidate evidence:
 
 - Typecheck, lint, Vitest, and production build passed
 - Backend compile passed for release-touched modules
-- Smoke runner passed 30/30 tests
+- The smoke runner covers provider/model checks, React core APIs, conversations and auth, temp KB and RAG behavior, KB import/export, Agent flows, tool execution, and MCP adapters
+- Real stdio MCP smoke tests may additionally require external runtimes and packages such as `npx`
 - Docker dev/prod builds passed
 - Browser QA captured desktop, tablet, and mobile screenshots
 - `npm audit` and `npm audit --omit=dev` reported 0 vulnerabilities in the React project
@@ -319,9 +327,9 @@ Do not commit real secrets. Use `.env.example`, `.env.production.example`, and [
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
 | `GITHUB_CLIENT_ID` | GitHub OAuth client ID |
 | `GITHUB_CLIENT_SECRET` | GitHub OAuth client secret |
-| `DATA_DIR` | Knowledge-base data root |
-| `UPLOAD_DIR` | Upload storage path |
-| `DATABASE_PATH` | SQLite database path |
+| `MINI_CHATCHAT_DATA_ROOT` | Knowledge-base data root |
+| `MINI_CHATCHAT_UPLOADS_DIR` | Upload storage path |
+| `MINI_CHATCHAT_DB_PATH` | SQLite database path |
 
 ## Demo Walkthrough
 

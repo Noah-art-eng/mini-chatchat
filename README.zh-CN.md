@@ -5,7 +5,7 @@
 Mini ChatChat 是一个基于 FastAPI、React、FAISS、SQLite 和 OpenAI-compatible 模型服务构建的全栈 AI 知识工作台。
 
 ![发布版本](https://img.shields.io/badge/release-v1.0.0--rc.1-2f6f5f)
-![Smoke tests](https://img.shields.io/badge/smoke_tests-30%2F30-2f6f5f)
+![Smoke tests](https://img.shields.io/badge/smoke_tests-suite-2f6f5f)
 ![Docker](https://img.shields.io/badge/docker-compose-2f6f5f)
 ![License](https://img.shields.io/badge/license-not_selected-lightgrey)
 
@@ -35,14 +35,14 @@ Mini ChatChat 是一个基于 FastAPI、React、FAISS、SQLite 和 OpenAI-compat
 Mini ChatChat 更关注完整的全栈 AI 产品工程，而不是把核心链路全部隐藏在框架后面。
 
 - 不依赖 LangChain 的可读 RAG 主链路
-- FAISS + BM25 Hybrid Search、元数据过滤、rerank、去重和上下文 token 预算
+- FAISS + BM25 Hybrid Search、元数据过滤、rerank、去重和基于字符启发式估算的上下文 token 预算
 - 流式回答、来源持久化、会话历史和反馈
 - 本地知识库、联网搜索和临时文件问答
 - Agent planner、Tool Registry、只读 MCP 工具和工具 trace 恢复
 - 邮箱认证、HttpOnly refresh cookie、Session 管理、OAuth 基础设施和用户数据隔离
 - React + TypeScript 产品界面、设计系统、Onboarding、双语界面和账户页面
 - Docker Compose、nginx 代理、健康检查、备份/恢复脚本和部署文档
-- 30/30 Smoke Tests，覆盖 RAG、认证、Agent、MCP、工具和部署关键 API
+- Smoke suite 覆盖 provider 配置、核心 API、RAG、认证、Agent、MCP 和工具
 
 ## 核心功能
 
@@ -50,7 +50,7 @@ Mini ChatChat 覆盖了 ChatChat 风格 AI 知识工作台的核心工作流。
 
 - **聊天模式**：本地知识库、联网搜索、临时文件问答和 Agent 模式
 - **知识库**：上传、文档列表、重建索引、删除、导入、导出和来源查看
-- **检索**：FAISS 向量检索、BM25 关键词检索、混合排序、元数据过滤、rerank、去重和上下文预算
+- **检索**：FAISS 向量检索、BM25 关键词检索、混合排序、元数据过滤、rerank、去重和估算的上下文预算
 - **会话**：历史记录、重命名、删除、更新时间、反馈和 assistant 来源 metadata
 - **Agent**：单步与多步工具调用、planner metadata、Tool Registry、网页搜索/读取、文件只读、SQLite 只读和 MCP adapter 路径
 - **认证**：邮箱注册/登录、refresh rotation、Session 列表、退出其他设备、账户资料、Google/GitHub OAuth 基础设施和用户数据隔离
@@ -102,10 +102,17 @@ flowchart LR
 
 关键后端模块：
 
-- `backend/app.py`：FastAPI 路由和请求模型
+- `backend/app.py`：应用装配，以及仍保留的 Chat、RAG、KB、上传、会话和 OpenAI-compatible 路由
+- `backend/api/schemas.py`：API request/response schemas
+- `backend/api/routes/auth.py`：认证、OAuth、Session 和偏好设置路由
+- `backend/api/routes/agent.py`：Agent、Tool 和 MCP 路由
 - `backend/chat_service.py`：本地 KB、临时 KB、搜索、流式响应和会话持久化
-- `backend/rag.py`：切分、prompt context、token 预算和回答生成
-- `backend/db.py`：SQLite schema、迁移、用户、Session、会话和 KB metadata
+- `backend/rag.py`：切分、prompt context、估算 token 预算和回答生成
+- `backend/db.py`：现有数据库 API 的 compatibility facade
+- `backend/persistence/`：SQLite connection/schema，以及 Auth、Conversation 和 Knowledge Base persistence
+- `backend/agent_fallback.py`：Agent deterministic fallback routing
+- `backend/agent_protocol.py`：Agent prompt 构建和 structured-output 解析
+- `backend/agent_service.py`：Agent runtime 和 orchestration
 - `backend/auth/`：密码哈希、JSON Web Token (JWT)、refresh session、OAuth 和权限
 - `backend/user_scope.py`：用户隔离的数据和文件路径
 - `backend/services/kb_service.py`：FAISS 持久化、混合检索、元数据过滤和去重
@@ -141,7 +148,7 @@ Question -> Retrieve -> Filter -> Rerank -> Deduplicate -> Budget -> Prompt -> L
 - 可选按文件/source 过滤
 - 轻量 embedding rerank
 - 重复 chunk 去重
-- Prompt context token 预算
+- Prompt context token 预算采用字符启发式估算，不使用精确 tokenizer
 - Return-direct 检索模式，可在不调用模型的情况下调试来源
 
 ## Agent / Tools / MCP
@@ -214,7 +221,8 @@ python3 scripts/run_smoke_tests.py
 
 - Typecheck、lint、Vitest 和生产构建已通过
 - 发布相关后端模块 compile 已通过
-- Smoke runner 通过 30/30
+- Smoke runner 覆盖 provider/model 检查、React 核心 API、会话与认证、临时 KB 与 RAG 行为、KB 导入导出、Agent 流程、工具执行和 MCP adapter
+- 真实 stdio MCP smoke tests 还可能依赖 `npx` 等外部运行环境和软件包
 - Docker dev/prod build 已通过
 - Browser QA 已生成桌面、平板和移动端截图
 - React 项目 `npm audit` 和 `npm audit --omit=dev` 均为 0 vulnerabilities
@@ -319,9 +327,9 @@ curl http://127.0.0.1/api/health
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
 | `GITHUB_CLIENT_ID` | GitHub OAuth client ID |
 | `GITHUB_CLIENT_SECRET` | GitHub OAuth client secret |
-| `DATA_DIR` | 知识库数据根目录 |
-| `UPLOAD_DIR` | 上传文件存储路径 |
-| `DATABASE_PATH` | SQLite 数据库路径 |
+| `MINI_CHATCHAT_DATA_ROOT` | 知识库数据根目录 |
+| `MINI_CHATCHAT_UPLOADS_DIR` | 上传文件存储路径 |
+| `MINI_CHATCHAT_DB_PATH` | SQLite 数据库路径 |
 
 ## Demo Walkthrough
 
