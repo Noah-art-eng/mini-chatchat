@@ -1,538 +1,40 @@
-import json
 import os
 import sqlite3
-from contextvars import ContextVar
 from datetime import datetime
-from functools import wraps
+from persistence.connection import connection_scope, open_connection
+from persistence.conversations import (
+    create_conversation as _create_conversation,
+    decode_metadata,
+    delete_conversation as _delete_conversation,
+    encode_metadata,
+    get_conversation as _get_conversation,
+    get_conversation_messages as _get_conversation_messages,
+    list_conversations as _list_conversations,
+    save_message as _save_message,
+    update_conversation_title as _update_conversation_title,
+    update_message_feedback as _update_message_feedback,
+)
+from persistence.schema import (
+    ensure_user_scoped_unique_constraints,
+    has_unique_index,
+    init_db as initialize_schema,
+)
 from user_scope import DEMO_USER_EMAIL
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.getenv("MINI_CHATCHAT_DB_PATH", os.path.join(BASE_DIR, "mini.db"))
 _DEMO_USER_ID_CACHE = None
-_ACTIVE_CONNECTIONS = ContextVar("active_db_connections", default=None)
-
-
-def connection_scope(func):
-    """确保一个 DB 方法创建的连接在返回或抛异常时都被关闭。"""
-    @wraps(func)
-    def wrapped(*args, **kwargs):
-        connections = []
-        token = _ACTIVE_CONNECTIONS.set(connections)
-        try:
-            return func(*args, **kwargs)
-        except BaseException:
-            for connection in reversed(connections):
-                try:
-                    connection.rollback()
-                except sqlite3.Error:
-                    pass
-            raise
-        finally:
-            for connection in reversed(connections):
-                try:
-                    connection.close()
-                except sqlite3.Error:
-                    pass
-            _ACTIVE_CONNECTIONS.reset(token)
-
-    return wrapped
 
 
 def get_connection():
-    """创建启用 FK 的连接，并登记到当前 DB 方法的统一清理范围。"""
-    db_dir = os.path.dirname(DB_PATH)
-    if db_dir:
-        os.makedirs(db_dir, exist_ok=True)
-    connection = sqlite3.connect(DB_PATH)
-    try:
-        connection.execute("PRAGMA foreign_keys = ON")
-    except BaseException:
-        connection.close()
-        raise
-
-    active_connections = _ACTIVE_CONNECTIONS.get()
-    if active_connections is not None:
-        active_connections.append(connection)
-    return connection
-
-
-def has_unique_index(cursor, table_name, expected_columns):
-    """负责 has_unique_index 的函数职责。"""
-    cursor.execute(f"PRAGMA index_list({table_name})")
-    indexes = cursor.fetchall()
-
-    for index in indexes:
-        index_name = index[1]
-        is_unique = bool(index[2])
-
-        if not is_unique:
-            continue
-
-        cursor.execute(f"PRAGMA index_info({index_name})")
-        columns = [row[2] for row in cursor.fetchall()]
-
-        if columns == expected_columns:
-            return True
-
-    return False
-
-
-def ensure_user_scoped_unique_constraints(cursor, demo_user_id):
-    """负责 ensure_user_scoped_unique_constraints 的函数职责。"""
-    if not has_unique_index(cursor, "knowledge_base", ["user_id", "kb_name"]):
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS knowledge_base_new (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                kb_name TEXT NOT NULL,
-                embed_model TEXT NOT NULL,
-                create_time TEXT NOT NULL,
-                user_id INTEGER NOT NULL,
-                UNIQUE(user_id, kb_name)
-            )
-        """)
-        cursor.execute("""
-            INSERT OR IGNORE INTO knowledge_base_new (
-                id,
-                kb_name,
-                embed_model,
-                create_time,
-                user_id
-            )
-            SELECT
-                id,
-                kb_name,
-                embed_model,
-                create_time,
-                COALESCE(user_id, ?)
-            FROM knowledge_base
-        """, (
-            demo_user_id,
-        ))
-        cursor.execute("DROP TABLE knowledge_base")
-        cursor.execute("ALTER TABLE knowledge_base_new RENAME TO knowledge_base")
-
-    if not has_unique_index(
-        cursor,
-        "knowledge_file",
-        ["user_id", "kb_name", "file_name"],
-    ):
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS knowledge_file_new (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                kb_name TEXT NOT NULL,
-                file_name TEXT NOT NULL,
-                file_size INTEGER NOT NULL,
-                docs_count INTEGER NOT NULL,
-                update_time TEXT NOT NULL,
-                status TEXT DEFAULT 'indexed',
-                error TEXT DEFAULT NULL,
-                chunk_size INTEGER DEFAULT 300,
-                chunk_overlap INTEGER DEFAULT 50,
-                content_path TEXT DEFAULT NULL,
-                upload_path TEXT DEFAULT NULL,
-                user_id INTEGER NOT NULL,
-                UNIQUE(user_id, kb_name, file_name)
-            )
-        """)
-        cursor.execute("""
-            INSERT OR IGNORE INTO knowledge_file_new (
-                id,
-                kb_name,
-                file_name,
-                file_size,
-                docs_count,
-                update_time,
-                status,
-                error,
-                chunk_size,
-                chunk_overlap,
-                content_path,
-                upload_path,
-                user_id
-            )
-            SELECT
-                id,
-                kb_name,
-                file_name,
-                file_size,
-                docs_count,
-                update_time,
-                status,
-                error,
-                chunk_size,
-                chunk_overlap,
-                content_path,
-                upload_path,
-                COALESCE(user_id, ?)
-            FROM knowledge_file
-        """, (
-            demo_user_id,
-        ))
-        cursor.execute("DROP TABLE knowledge_file")
-        cursor.execute("ALTER TABLE knowledge_file_new RENAME TO knowledge_file")
+    """通过当前 facade 的 DB_PATH 创建连接，保留测试和部署时的动态配置。"""
+    return open_connection(DB_PATH)
 
 
 @connection_scope
 def init_db():
-    """负责 init_db 的函数职责。"""
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS knowledge_base (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            kb_name TEXT UNIQUE NOT NULL,
-            embed_model TEXT NOT NULL,
-            create_time TEXT NOT NULL
-        )
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS knowledge_file (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        kb_name TEXT NOT NULL,
-        file_name TEXT NOT NULL,
-        file_size INTEGER NOT NULL,
-        docs_count INTEGER NOT NULL,
-        update_time TEXT NOT NULL,
-        status TEXT DEFAULT 'indexed',
-        error TEXT DEFAULT NULL,
-        chunk_size INTEGER DEFAULT 300,
-        chunk_overlap INTEGER DEFAULT 50,
-        content_path TEXT DEFAULT NULL,
-        upload_path TEXT DEFAULT NULL,
-        UNIQUE(kb_name, file_name)
-    )
-""")
-
-    cursor.execute("""
-CREATE TABLE IF NOT EXISTS file_doc (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    kb_name TEXT NOT NULL,
-    file_name TEXT NOT NULL,
-    chunk_id INTEGER NOT NULL
-)
-""")
-
-    cursor.execute("""
-CREATE TABLE IF NOT EXISTS conversation (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
-    create_time TEXT NOT NULL,
-    updated_time TEXT NOT NULL
-)
-""")
-
-    cursor.execute("""
-CREATE TABLE IF NOT EXISTS message (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    conversation_id INTEGER NOT NULL,
-    role TEXT NOT NULL,
-    content TEXT NOT NULL,
-    feedback_score INTEGER DEFAULT NULL,
-    feedback_reason TEXT DEFAULT NULL,
-    metadata TEXT DEFAULT NULL,
-    create_time TEXT NOT NULL
-)
-""")
-
-    cursor.execute("""
-CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT UNIQUE DEFAULT NULL,
-    display_name TEXT DEFAULT NULL,
-    avatar_url TEXT DEFAULT NULL,
-    auth_provider TEXT NOT NULL,
-    password_hash TEXT DEFAULT NULL,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    is_guest INTEGER NOT NULL DEFAULT 0,
-    is_active INTEGER NOT NULL DEFAULT 1
-)
-""")
-
-    cursor.execute("""
-CREATE TABLE IF NOT EXISTS user_preferences (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL UNIQUE,
-    language TEXT DEFAULT NULL,
-    developer_mode INTEGER NOT NULL DEFAULT 0,
-    onboarding_completed INTEGER NOT NULL DEFAULT 0,
-    theme TEXT NOT NULL DEFAULT 'light',
-    preferred_model TEXT DEFAULT NULL,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-)
-""")
-
-    cursor.execute("""
-CREATE TABLE IF NOT EXISTS auth_sessions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id TEXT UNIQUE NOT NULL,
-    user_id INTEGER NOT NULL,
-    refresh_token_hash TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    expires_at TEXT NOT NULL,
-    revoked_at TEXT DEFAULT NULL,
-    last_used_at TEXT DEFAULT NULL,
-    user_agent TEXT DEFAULT NULL,
-    ip_address TEXT DEFAULT NULL,
-    is_active INTEGER NOT NULL DEFAULT 1,
-    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-)
-""")
-
-    cursor.execute("""
-CREATE TABLE IF NOT EXISTS oauth_accounts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    provider TEXT NOT NULL,
-    provider_user_id TEXT NOT NULL,
-    provider_email TEXT DEFAULT NULL,
-    provider_display_name TEXT DEFAULT NULL,
-    provider_avatar TEXT DEFAULT NULL,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    UNIQUE(provider, provider_user_id),
-    UNIQUE(user_id, provider),
-    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-)
-""")
-
-    cursor.execute("PRAGMA table_info(message)")
-    message_columns = [
-        row[1]
-        for row in cursor.fetchall()
-    ]
-
-    if "feedback_score" not in message_columns:
-        cursor.execute("""
-            ALTER TABLE message
-            ADD COLUMN feedback_score INTEGER DEFAULT NULL
-        """)
-
-    if "feedback_reason" not in message_columns:
-        cursor.execute("""
-            ALTER TABLE message
-            ADD COLUMN feedback_reason TEXT DEFAULT NULL
-        """)
-
-    if "metadata" not in message_columns:
-        cursor.execute("""
-            ALTER TABLE message
-            ADD COLUMN metadata TEXT DEFAULT NULL
-        """)
-
-    cursor.execute("PRAGMA table_info(users)")
-    user_columns = [
-        row[1]
-        for row in cursor.fetchall()
-    ]
-
-    user_migrations = {
-        "email": "TEXT DEFAULT NULL",
-        "display_name": "TEXT DEFAULT NULL",
-        "avatar_url": "TEXT DEFAULT NULL",
-        "auth_provider": "TEXT NOT NULL DEFAULT 'email'",
-        "password_hash": "TEXT DEFAULT NULL",
-        "created_at": "TEXT",
-        "updated_at": "TEXT",
-        "is_guest": "INTEGER NOT NULL DEFAULT 0",
-        "is_active": "INTEGER NOT NULL DEFAULT 1",
-    }
-
-    for column, definition in user_migrations.items():
-        if column not in user_columns:
-            cursor.execute(f"""
-                ALTER TABLE users
-                ADD COLUMN {column} {definition}
-            """)
-
-    cursor.execute("""
-        UPDATE users
-        SET created_at = COALESCE(created_at, ?),
-            updated_at = COALESCE(updated_at, ?)
-        WHERE created_at IS NULL OR updated_at IS NULL
-    """, (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-    ))
-
-    cursor.execute("PRAGMA table_info(user_preferences)")
-    preference_columns = [
-        row[1]
-        for row in cursor.fetchall()
-    ]
-
-    preference_migrations = {
-        "user_id": "INTEGER NOT NULL DEFAULT 0",
-        "language": "TEXT DEFAULT NULL",
-        "developer_mode": "INTEGER NOT NULL DEFAULT 0",
-        "onboarding_completed": "INTEGER NOT NULL DEFAULT 0",
-        "theme": "TEXT NOT NULL DEFAULT 'light'",
-        "preferred_model": "TEXT DEFAULT NULL",
-        "created_at": "TEXT",
-        "updated_at": "TEXT",
-    }
-
-    for column, definition in preference_migrations.items():
-        if column not in preference_columns:
-            cursor.execute(f"""
-                ALTER TABLE user_preferences
-                ADD COLUMN {column} {definition}
-            """)
-
-    cursor.execute("""
-        UPDATE user_preferences
-        SET created_at = COALESCE(created_at, ?),
-            updated_at = COALESCE(updated_at, ?)
-        WHERE created_at IS NULL OR updated_at IS NULL
-    """, (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-    ))
-
-    cursor.execute("PRAGMA table_info(conversation)")
-    conversation_columns = [
-        row[1]
-        for row in cursor.fetchall()
-    ]
-
-    if "updated_time" not in conversation_columns:
-        cursor.execute("""
-            ALTER TABLE conversation
-            ADD COLUMN updated_time TEXT
-        """)
-        cursor.execute("""
-            UPDATE conversation
-            SET updated_time = create_time
-            WHERE updated_time IS NULL
-        """)
-
-    ownership_migrations = {
-        "conversation": "INTEGER DEFAULT NULL",
-        "message": "INTEGER DEFAULT NULL",
-        "knowledge_base": "INTEGER DEFAULT NULL",
-        "knowledge_file": "INTEGER DEFAULT NULL",
-        "file_doc": "INTEGER DEFAULT NULL",
-    }
-
-    for table_name, definition in ownership_migrations.items():
-        cursor.execute(f"PRAGMA table_info({table_name})")
-        table_columns = [
-            row[1]
-            for row in cursor.fetchall()
-        ]
-
-        if "user_id" not in table_columns:
-            cursor.execute(f"""
-                ALTER TABLE {table_name}
-                ADD COLUMN user_id {definition}
-            """)
-
-    cursor.execute("PRAGMA table_info(knowledge_file)")
-    knowledge_file_columns = [
-        row[1]
-        for row in cursor.fetchall()
-    ]
-
-    knowledge_file_migrations = {
-        "status": "TEXT DEFAULT 'indexed'",
-        "error": "TEXT DEFAULT NULL",
-        "chunk_size": "INTEGER DEFAULT 300",
-        "chunk_overlap": "INTEGER DEFAULT 50",
-        "content_path": "TEXT DEFAULT NULL",
-        "upload_path": "TEXT DEFAULT NULL",
-    }
-
-    for column, definition in knowledge_file_migrations.items():
-        if column not in knowledge_file_columns:
-            cursor.execute(f"""
-                ALTER TABLE knowledge_file
-                ADD COLUMN {column} {definition}
-            """)
-
-
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    cursor.execute("""
-        INSERT OR IGNORE INTO users (
-            email,
-            display_name,
-            avatar_url,
-            auth_provider,
-            password_hash,
-            created_at,
-            updated_at,
-            is_guest,
-            is_active
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (
-        DEMO_USER_EMAIL,
-        "Demo User",
-        None,
-        "demo",
-        None,
-        now,
-        now,
-        0,
-        1,
-    ))
-
-    cursor.execute("""
-        SELECT id
-        FROM users
-        WHERE email = ?
-    """, (
-        DEMO_USER_EMAIL,
-    ))
-    demo_user_id = cursor.fetchone()[0]
-
-    cursor.execute("""
-        INSERT OR IGNORE INTO user_preferences (
-            user_id,
-            language,
-            developer_mode,
-            onboarding_completed,
-            theme,
-            preferred_model,
-            created_at,
-            updated_at
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """, (
-        demo_user_id,
-        None,
-        0,
-        0,
-        "light",
-        None,
-        now,
-        now,
-    ))
-
-    for table_name in (
-        "conversation",
-        "message",
-        "knowledge_base",
-        "knowledge_file",
-        "file_doc",
-    ):
-        cursor.execute(f"""
-            UPDATE {table_name}
-            SET user_id = ?
-            WHERE user_id IS NULL
-        """, (
-            demo_user_id,
-        ))
-
-    ensure_user_scoped_unique_constraints(cursor, demo_user_id)
-
-    conn.commit()
-    conn.close()
+    """使用当前连接配置初始化 schema，并执行原有兼容迁移。"""
+    return initialize_schema(get_connection, DEMO_USER_EMAIL)
 
 
 @connection_scope
@@ -1593,323 +1095,86 @@ def create_kb(kb_name, user_id=None):
 
 @connection_scope
 def create_conversation(title=None, user_id=None):
-    """负责 create_conversation 的函数职责。"""
-    resolved_user_id = resolve_user_id(user_id)
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    conversation_title = title or "New Conversation"
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    cursor.execute("""
-        INSERT INTO conversation (
-            title,
-            create_time,
-            updated_time,
-            user_id
-        )
-        VALUES (?, ?, ?, ?)
-    """, (
-        conversation_title,
-        now,
-        now,
-        resolved_user_id,
-    ))
-
-    conversation_id = cursor.lastrowid
-
-    conn.commit()
-    conn.close()
-
-    return conversation_id
+    """通过兼容 facade 创建当前用户的会话。"""
+    return _create_conversation(get_connection, resolve_user_id, title, user_id)
 
 
 @connection_scope
 def list_conversations(user_id=None):
-    """负责 list_conversations 的函数职责。"""
-    resolved_user_id = resolve_user_id(user_id)
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT id, title, create_time, updated_time
-        FROM conversation
-        WHERE user_id = ?
-        ORDER BY updated_time DESC, id DESC
-    """, (
-        resolved_user_id,
-    ))
-
-    rows = cursor.fetchall()
-    conn.close()
-
-    return [
-        {
-            "id": row[0],
-            "title": row[1],
-            "create_time": row[2],
-            "updated_time": row[3]
-        }
-        for row in rows
-    ]
+    """通过兼容 facade 返回当前用户的会话列表。"""
+    return _list_conversations(get_connection, resolve_user_id, user_id)
 
 
 @connection_scope
 def get_conversation(conversation_id, user_id=None):
-    """负责 get_conversation 的函数职责。"""
-    resolved_user_id = resolve_user_id(user_id)
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT id, title, create_time, updated_time
-        FROM conversation
-        WHERE id = ? AND user_id = ?
-    """, (
+    """通过兼容 facade 读取当前用户的指定会话。"""
+    return _get_conversation(
+        get_connection,
+        resolve_user_id,
         conversation_id,
-        resolved_user_id,
-    ))
-
-    row = cursor.fetchone()
-    conn.close()
-
-    if row is None:
-        return None
-
-    return {
-        "id": row[0],
-        "title": row[1],
-        "create_time": row[2],
-        "updated_time": row[3]
-    }
+        user_id,
+    )
 
 
 @connection_scope
 def update_conversation_title(conversation_id, title, user_id=None):
-    """负责 update_conversation_title 的函数职责。"""
-    resolved_user_id = resolve_user_id(user_id)
-    conn = get_connection()
-    cursor = conn.cursor()
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    cursor.execute("""
-        UPDATE conversation
-        SET title = ?,
-            updated_time = ?
-        WHERE id = ? AND user_id = ?
-    """, (
-        title,
-        now,
+    """通过兼容 facade 更新当前用户的会话标题。"""
+    return _update_conversation_title(
+        get_connection,
+        resolve_user_id,
         conversation_id,
-        resolved_user_id,
-    ))
-
-    updated = cursor.rowcount
-    conn.commit()
-    conn.close()
-
-    if not updated:
-        return None
-
-    return get_conversation(conversation_id, user_id=resolved_user_id)
+        title,
+        user_id,
+    )
 
 
 @connection_scope
 def delete_conversation(conversation_id, user_id=None):
-    """负责 delete_conversation 的函数职责。"""
-    resolved_user_id = resolve_user_id(user_id)
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT id
-        FROM conversation
-        WHERE id = ? AND user_id = ?
-    """, (
+    """通过兼容 facade 删除当前用户的会话及其消息。"""
+    return _delete_conversation(
+        get_connection,
+        resolve_user_id,
         conversation_id,
-        resolved_user_id,
-    ))
-
-    if cursor.fetchone() is None:
-        conn.close()
-        return False
-
-    cursor.execute("""
-        DELETE FROM message
-        WHERE conversation_id = ? AND user_id = ?
-    """, (
-        conversation_id,
-        resolved_user_id,
-    ))
-
-    cursor.execute("""
-        DELETE FROM conversation
-        WHERE id = ? AND user_id = ?
-    """, (
-        conversation_id,
-        resolved_user_id,
-    ))
-
-    conn.commit()
-    conn.close()
-
-    return True
-
-
-def encode_metadata(metadata):
-    """负责 encode_metadata 的函数职责。"""
-    if metadata is None:
-        return None
-
-    return json.dumps(metadata, ensure_ascii=False)
-
-
-def decode_metadata(metadata_text):
-    """负责 decode_metadata 的函数职责。"""
-    if not metadata_text:
-        return None
-
-    try:
-        return json.loads(metadata_text)
-    except (TypeError, json.JSONDecodeError):
-        return None
+        user_id,
+    )
 
 
 @connection_scope
 def save_message(conversation_id, role, content, metadata=None, user_id=None):
-    # 每次写消息同步更新时间；assistant 的 sources/agent trace 统一放 metadata 以便历史回放。
-    """负责 save_message 的函数职责。"""
-    resolved_user_id = resolve_user_id(user_id)
-    conn = get_connection()
-    cursor = conn.cursor()
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    metadata_text = encode_metadata(metadata)
-
-    cursor.execute("""
-        SELECT id
-        FROM conversation
-        WHERE id = ? AND user_id = ?
-    """, (
-        conversation_id,
-        resolved_user_id,
-    ))
-
-    if cursor.fetchone() is None:
-        conn.close()
-        return None
-
-    cursor.execute("""
-        INSERT INTO message (
-            conversation_id,
-            role,
-            content,
-            metadata,
-            create_time,
-            user_id
-        )
-        VALUES (?, ?, ?, ?, ?, ?)
-    """, (
+    """通过兼容 facade 保存消息并更新会话时间。"""
+    return _save_message(
+        get_connection,
+        resolve_user_id,
         conversation_id,
         role,
         content,
-        metadata_text,
-        now,
-        resolved_user_id,
-    ))
-
-    message_id = cursor.lastrowid
-
-    cursor.execute("""
-        UPDATE conversation
-        SET updated_time = ?
-        WHERE id = ? AND user_id = ?
-    """, (
-        now,
-        conversation_id,
-        resolved_user_id,
-    ))
-
-    conn.commit()
-    conn.close()
-
-    return message_id
+        metadata,
+        user_id,
+    )
 
 
 @connection_scope
 def get_conversation_messages(conversation_id, user_id=None):
-    # 读取历史时把持久化的 sources 恢复到顶层字段，保持前端消息结构不变。
-    """负责 get_conversation_messages 的函数职责。"""
-    resolved_user_id = resolve_user_id(user_id)
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT
-            id,
-            role,
-            content,
-            create_time,
-            feedback_score,
-            feedback_reason,
-            metadata
-        FROM message
-        WHERE conversation_id = ? AND user_id = ?
-        ORDER BY id
-    """, (
+    """通过兼容 facade 读取当前用户的会话消息。"""
+    return _get_conversation_messages(
+        get_connection,
+        resolve_user_id,
         conversation_id,
-        resolved_user_id,
-    ))
-
-    rows = cursor.fetchall()
-    conn.close()
-
-    messages = []
-
-    for row in rows:
-        metadata = decode_metadata(row[6])
-        message = {
-            "id": row[0],
-            "role": row[1],
-            "content": row[2],
-            "create_time": row[3],
-            "feedback_score": row[4],
-            "feedback_reason": row[5],
-            "metadata": metadata
-        }
-
-        if isinstance(metadata, dict) and isinstance(metadata.get("sources"), list):
-            message["sources"] = metadata["sources"]
-
-        messages.append(message)
-
-    return messages
+        user_id,
+    )
 
 
 @connection_scope
 def update_message_feedback(message_id, score, reason=None, user_id=None):
-    """负责 update_message_feedback 的函数职责。"""
-    resolved_user_id = resolve_user_id(user_id)
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        UPDATE message
-        SET feedback_score = ?,
-            feedback_reason = ?
-        WHERE id = ? AND user_id = ?
-    """, (
+    """通过兼容 facade 更新当前用户的消息反馈。"""
+    return _update_message_feedback(
+        get_connection,
+        resolve_user_id,
+        message_id,
         score,
         reason,
-        message_id,
-        resolved_user_id,
-    ))
-
-    updated = cursor.rowcount
-
-    conn.commit()
-    conn.close()
-
-    return updated > 0
+        user_id,
+    )
 
 
 @connection_scope

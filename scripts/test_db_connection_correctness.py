@@ -122,6 +122,134 @@ class DatabaseConnectionCorrectnessTest(unittest.TestCase):
         self.assertGreater(failed_connection.rollback_calls, 0)
         self.assertGreater(failed_connection.close_calls, 0)
 
+    def test_init_db_is_repeatable_and_schema_is_ready(self):
+        """拆分后的 schema 初始化应可重复执行，并保留关键表、迁移列和唯一约束。"""
+        db.init_db()
+        db.init_db()
+
+        connection = db.get_connection()
+        try:
+            tables = {
+                row[0]
+                for row in connection.execute(
+                    "SELECT name FROM sqlite_master WHERE type = 'table'"
+                ).fetchall()
+            }
+            self.assertTrue({"users", "knowledge_base", "knowledge_file", "message"} <= tables)
+
+            message_columns = {
+                row[1]
+                for row in connection.execute("PRAGMA table_info(message)").fetchall()
+            }
+            self.assertTrue({"feedback_score", "feedback_reason", "metadata", "user_id"} <= message_columns)
+
+            cursor = connection.cursor()
+            self.assertTrue(
+                db.has_unique_index(cursor, "knowledge_base", ["user_id", "kb_name"])
+            )
+            self.assertTrue(
+                db.has_unique_index(
+                    cursor,
+                    "knowledge_file",
+                    ["user_id", "kb_name", "file_name"],
+                )
+            )
+        finally:
+            connection.close()
+
+    def test_db_facade_keeps_connection_and_schema_exports(self):
+        """原有调用方仍可从 backend.db 导入连接、初始化和迁移 helper。"""
+        from db import (  # noqa: PLC0415
+            connection_scope,
+            ensure_user_scoped_unique_constraints,
+            get_connection,
+            has_unique_index,
+            init_db,
+        )
+
+        for exported in (
+            connection_scope,
+            ensure_user_scoped_unique_constraints,
+            get_connection,
+            has_unique_index,
+            init_db,
+        ):
+            self.assertTrue(callable(exported))
+
+    def test_init_db_migrates_legacy_kb_tables_without_losing_rows(self):
+        """旧版无 user_id 的 KB 表经 facade 初始化后应保留数据并补齐用户隔离约束。"""
+        legacy_path = str(Path(self.temp_dir.name) / "legacy.db")
+        connection = self.original_connect(legacy_path)
+        try:
+            connection.execute(
+                """
+                CREATE TABLE knowledge_base (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    kb_name TEXT UNIQUE NOT NULL,
+                    embed_model TEXT NOT NULL,
+                    create_time TEXT NOT NULL
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE TABLE knowledge_file (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    kb_name TEXT NOT NULL,
+                    file_name TEXT NOT NULL,
+                    file_size INTEGER NOT NULL,
+                    docs_count INTEGER NOT NULL,
+                    update_time TEXT NOT NULL,
+                    UNIQUE(kb_name, file_name)
+                )
+                """
+            )
+            connection.execute(
+                "INSERT INTO knowledge_base (kb_name, embed_model, create_time) "
+                "VALUES ('legacy', 'model', 'now')"
+            )
+            connection.execute(
+                "INSERT INTO knowledge_file "
+                "(kb_name, file_name, file_size, docs_count, update_time) "
+                "VALUES ('legacy', 'old.txt', 3, 1, 'now')"
+            )
+            connection.commit()
+        finally:
+            connection.close()
+
+        current_path = db.DB_PATH
+        try:
+            db.DB_PATH = legacy_path
+            db._DEMO_USER_ID_CACHE = None
+            db.init_db()
+
+            migrated = db.get_connection()
+            try:
+                kb_row = migrated.execute(
+                    "SELECT kb_name, user_id FROM knowledge_base WHERE kb_name = 'legacy'"
+                ).fetchone()
+                file_row = migrated.execute(
+                    "SELECT file_name, user_id FROM knowledge_file "
+                    "WHERE kb_name = 'legacy'"
+                ).fetchone()
+                self.assertEqual(kb_row[0], "legacy")
+                self.assertEqual(file_row[0], "old.txt")
+                self.assertIsInstance(kb_row[1], int)
+                self.assertEqual(file_row[1], kb_row[1])
+                cursor = migrated.cursor()
+                self.assertTrue(
+                    db.has_unique_index(
+                        cursor,
+                        "knowledge_base",
+                        ["user_id", "kb_name"],
+                    )
+                )
+            finally:
+                migrated.close()
+        finally:
+            db.DB_PATH = current_path
+            db._DEMO_USER_ID_CACHE = None
+
 
 if __name__ == "__main__":
     unittest.main()
