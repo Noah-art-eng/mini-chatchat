@@ -20,7 +20,6 @@ backups/
 
 frontend-react/node_modules/
 frontend-react/dist/
-frontend/node_modules/
 
 .playwright-mcp/
 playwright-report/

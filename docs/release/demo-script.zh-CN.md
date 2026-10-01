@@ -425,7 +425,7 @@ docker compose -f docker-compose.prod.yml ps
 
 失败备用方案：
 
-如果 Docker 没运行，展示 `docs/release/v1.0-release-candidate-readiness.md`。
+如果 Docker 没运行，展示 `docs/release/v1.0.0-rc.1.md` 和 README 中的架构说明。
 
 ## 结束总结
 

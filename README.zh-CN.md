@@ -418,12 +418,11 @@ Google 和 GitHub OAuth 主链路已经实现，但仍需要真实生产凭据�
 
 ## Documentation
 
-项目文档按设计、重构记录、部署和发布准备组织。
+项目文档按设计、部署、架构和版本说明组织。
 
 - [UI Design Bible](docs/ui-design/01-design-bible.md)
 - [Design tokens](docs/ui-design/02-design-tokens.md)
 - [Component library](docs/ui-design/05-component-library.md)
-- [Refactor records](docs/refactor/phase-1-foundation.md)
 - [Deployment docs](docs/deployment/production-deployment.md)
 - [Environment variables](docs/deployment/environment-variables.md)
 - [Backup and restore](docs/deployment/backup-restore.md)
@@ -431,8 +430,7 @@ Google 和 GitHub OAuth 主链路已经实现，但仍需要真实生产凭据�
 - [Production checklist](docs/deployment/production-checklist.md)
 - [Architecture notes](docs/release/architecture.md)
 - [Security review](docs/release/dependency-security-review.md)
-- [Release candidate readiness](docs/release/v1.0-release-candidate-readiness.md)
-- [Runtime verification](docs/release/v1.0-runtime-verification.md)
+- [Release notes](docs/release/v1.0.0-rc.1.md)
 - [English demo script](docs/release/demo-script.md)
 - [Chinese demo script](docs/release/demo-script.zh-CN.md)
 

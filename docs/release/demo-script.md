@@ -425,7 +425,7 @@ Mention backup/restore, health checks, nginx proxy, and 30/30 smoke tests.
 
 Fallback:
 
-If Docker is not running, show `docs/release/v1.0-release-candidate-readiness.md`.
+If Docker is not running, show `docs/release/v1.0.0-rc.1.md` and the architecture section in the README.
 
 ## Closing Summary
 
