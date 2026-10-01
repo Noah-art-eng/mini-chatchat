@@ -270,6 +270,14 @@ def import_kb(zip_path, override=False, user_id=None):
 
             _copy_kb_directories(extract_root, target_root)
 
+            # 导入包中的向量和增量 metadata 不属于本机可信快照。只保留 content
+            # 与 uploads，让下面的 service 从解析文本重新生成全部向量。
+            imported_vector_store = os.path.join(target_root, "vector_store")
+            shutil.rmtree(imported_vector_store)
+            os.makedirs(imported_vector_store, exist_ok=True)
+            if os.listdir(imported_vector_store):
+                raise OSError("imported vector store cleanup failed")
+
             try:
                 create_kb(kb_name, user_id=user_id)
             except Exception:

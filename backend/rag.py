@@ -150,6 +150,51 @@ def split_documents(documents, chunk_size=300, overlap=50):
     return chunks
 
 
+def load_and_split_file(
+    file_path,
+    source,
+    chunk_size=300,
+    overlap=50,
+):
+    """按 Phase C 的滑动窗口规则切分一个 content 文本文件。"""
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be greater than 0")
+    if overlap < 0 or overlap >= chunk_size:
+        raise ValueError("overlap must be between 0 and chunk_size - 1")
+
+    chunks = []
+    step = chunk_size - overlap
+
+    with open(file_path, "r", encoding="utf-8") as file:
+        buffer = ""
+        reached_eof = False
+
+        while True:
+            while len(buffer) < chunk_size and not reached_eof:
+                text = file.read(chunk_size - len(buffer))
+                if text:
+                    buffer += text
+                else:
+                    reached_eof = True
+
+            if not buffer:
+                break
+
+            chunks.append({
+                "text": buffer[:chunk_size],
+                "source": source,
+                "chunk_id": len(chunks) + 1,
+            })
+
+            # 即使已经到达 EOF，也继续按旧逻辑移动 start；这会保留旧实现
+            # 在文件末尾可能产生的短 overlap chunk，而不是悄悄改变 chunk_id。
+            if reached_eof and len(buffer) <= step:
+                break
+            buffer = buffer[step:]
+
+    return chunks
+
+
 def load_and_split_documents(folder_path, chunk_size=300, overlap=50):
     """逐个读取 content 文件并直接生成与旧逻辑兼容的 chunk 列表。
 
@@ -163,44 +208,36 @@ def load_and_split_documents(folder_path, chunk_size=300, overlap=50):
         raise ValueError("overlap must be between 0 and chunk_size - 1")
 
     chunks = []
-    step = chunk_size - overlap
-
     for filename in sorted(os.listdir(folder_path)):
         if not filename.endswith(".txt"):
             continue
 
-        with open(
+        file_chunks = load_and_split_file(
             os.path.join(folder_path, filename),
-            "r",
-            encoding="utf-8",
-        ) as file:
-            buffer = ""
-            reached_eof = False
-
-            while True:
-                while len(buffer) < chunk_size and not reached_eof:
-                    text = file.read(chunk_size - len(buffer))
-                    if text:
-                        buffer += text
-                    else:
-                        reached_eof = True
-
-                if not buffer:
-                    break
-
-                chunks.append({
-                    "text": buffer[:chunk_size],
-                    "source": filename,
-                    "chunk_id": len(chunks) + 1,
-                })
-
-                # 即使已经到达 EOF，也继续按旧逻辑移动 start；这会保留旧实现
-                # 在文件末尾可能产生的短 overlap chunk，而不是悄悄改变 chunk_id。
-                if reached_eof and len(buffer) <= step:
-                    break
-                buffer = buffer[step:]
+            filename,
+            chunk_size=chunk_size,
+            overlap=overlap,
+        )
+        for chunk in file_chunks:
+            chunk["chunk_id"] = len(chunks) + 1
+            chunks.append(chunk)
 
     return chunks
+
+
+def iter_embedding_batches(
+    chunks,
+    model,
+    batch_size=DEFAULT_EMBEDDING_BATCH_SIZE,
+):
+    """按固定批次生成 float32 向量，供 full 和 incremental rebuild 共用。"""
+    if batch_size <= 0:
+        raise ValueError("batch_size must be greater than 0")
+
+    for start in range(0, len(chunks), batch_size):
+        batch = chunks[start:start + batch_size]
+        texts = [chunk["text"] for chunk in batch]
+        yield np.asarray(model.encode(texts), dtype="float32")
 
 
 def build_faiss_index(
@@ -214,16 +251,9 @@ def build_faiss_index(
     vectors，而是 ``None``。FAISS 自身已经持有向量，额外保留 NumPy 矩阵只会
     抬高 rebuild 的内存峰值，现有检索代码也没有使用它。
     """
-    if batch_size <= 0:
-        raise ValueError("batch_size must be greater than 0")
-
     index = None
 
-    for start in range(0, len(chunks), batch_size):
-        batch = chunks[start:start + batch_size]
-        texts = [chunk["text"] for chunk in batch]
-        vectors = np.asarray(model.encode(texts), dtype="float32")
-
+    for vectors in iter_embedding_batches(chunks, model, batch_size=batch_size):
         if index is None:
             index = faiss.IndexFlatL2(vectors.shape[1])
 

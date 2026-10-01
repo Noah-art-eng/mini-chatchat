@@ -14,8 +14,11 @@ from sentence_transformers import SentenceTransformer
 
 from model_config import get_embedding_model_name
 from rag import (
+    DEFAULT_EMBEDDING_BATCH_SIZE,
     build_faiss_index,
+    iter_embedding_batches,
     load_and_split_documents,
+    load_and_split_file,
     load_documents,
     split_documents,
 )
@@ -33,6 +36,9 @@ from user_scope import get_user_kb_root, migrate_legacy_demo_files
 from path_security import safe_join
 
 TOKEN_PATTERN = re.compile(r"[a-zA-Z0-9_]+|[\u4e00-\u9fff]")
+VECTOR_METADATA_FORMAT_VERSION = 1
+EMBEDDING_PIPELINE_VERSION = 1
+NORMALIZE_EMBEDDINGS = False
 _KB_MUTATION_LOCKS = {}
 _KB_MUTATION_LOCKS_GUARD = threading.Lock()
 
@@ -116,6 +122,7 @@ class MiniKBService:
         self.chunks: list = []
         self.index = None
         self.vectors = None
+        self.vector_metadata = None
         self._bm25_docs = []
         self._bm25_doc_freqs = Counter()
         self._bm25_idf = {}
@@ -144,6 +151,11 @@ class MiniKBService:
     def chunks_file_path(self) -> str:
         """负责 chunks_file_path 的函数职责。"""
         return os.path.join(self.vector_store_path, "chunks.json")
+
+    @property
+    def metadata_file_path(self) -> str:
+        """返回判断旧向量能否安全复用的 metadata 文件路径。"""
+        return os.path.join(self.vector_store_path, "metadata.json")
 
     def _get_file_chunks(self, filename: str) -> list:
         """负责 _get_file_chunks 的函数职责。"""
@@ -263,6 +275,7 @@ class MiniKBService:
         if self.index is None:
             if os.path.exists(self.index_file_path):
                 os.remove(self.index_file_path)
+            self._save_vector_metadata()
             print("[KBService] No FAISS index to save")
             return
 
@@ -284,6 +297,120 @@ class MiniKBService:
             raise
         print(f"[KBService] FAISS index saved: {self.index_file_path}")
 
+        self._save_vector_metadata()
+
+    def _save_vector_metadata(self) -> None:
+        """原子保存增量复用契约；失败时保留已有 metadata。"""
+        metadata = dict(self.vector_metadata or {})
+        metadata["chunks_sha256"] = self._file_sha256(self.chunks_file_path)
+        metadata["index_sha256"] = (
+            self._file_sha256(self.index_file_path)
+            if os.path.exists(self.index_file_path)
+            else None
+        )
+        metadata_staging = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=self.vector_store_path,
+                prefix="metadata.json.staging-",
+                delete=False,
+            ) as file:
+                metadata_staging = file.name
+                json.dump(metadata, file, ensure_ascii=False, indent=2)
+                file.flush()
+                os.fsync(file.fileno())
+            os.replace(metadata_staging, self.metadata_file_path)
+            metadata_staging = None
+            self.vector_metadata = metadata
+        except Exception:
+            _remove_staging_file(metadata_staging)
+            raise
+
+    def _load_vector_metadata(self):
+        """读取增量复用 metadata；缺失或损坏只会禁用复用，不影响查询。"""
+        try:
+            with open(self.metadata_file_path, "r", encoding="utf-8") as file:
+                metadata = json.load(file)
+        except (OSError, ValueError, TypeError):
+            return None
+        return metadata if isinstance(metadata, dict) else None
+
+    def _file_sha256(self, path: str) -> str:
+        """分块计算持久化文件的 SHA-256，避免校验时整文件进入内存。"""
+        digest = hashlib.sha256()
+        with open(path, "rb") as file:
+            for block in iter(lambda: file.read(1024 * 1024), b""):
+                digest.update(block)
+        return digest.hexdigest()
+
+    def _is_sha256(self, value) -> bool:
+        """只接受标准的 64 位小写十六进制 SHA-256。"""
+        return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) is not None
+
+    def _metadata_schema_is_valid(self, metadata: dict) -> bool:
+        """严格验证 metadata 类型和范围，避免 bool 被当作整数接受。"""
+        if type(metadata.get("format_version")) is not int:
+            return False
+        if metadata.get("format_version") != VECTOR_METADATA_FORMAT_VERSION:
+            return False
+        model_name = metadata.get("embedding_model")
+        if not isinstance(model_name, str) or not model_name.strip():
+            return False
+        dimension = metadata.get("dimension")
+        if type(dimension) is not int or dimension <= 0:
+            return False
+        if type(metadata.get("normalize_embeddings")) is not bool:
+            return False
+        pipeline_version = metadata.get("embedding_pipeline_version")
+        if type(pipeline_version) is not int or pipeline_version <= 0:
+            return False
+        chunk_size = metadata.get("chunk_size")
+        chunk_overlap = metadata.get("chunk_overlap")
+        if type(chunk_size) is not int or chunk_size <= 0:
+            return False
+        if type(chunk_overlap) is not int or not 0 <= chunk_overlap < chunk_size:
+            return False
+        if not self._is_sha256(metadata.get("chunks_sha256")):
+            return False
+        index_sha256 = metadata.get("index_sha256")
+        if index_sha256 is not None and not self._is_sha256(index_sha256):
+            return False
+
+        sources = metadata.get("sources")
+        if not isinstance(sources, dict):
+            return False
+        for source, source_metadata in sources.items():
+            if not isinstance(source, str) or not source:
+                return False
+            if not isinstance(source_metadata, dict):
+                return False
+            chunk_count = source_metadata.get("chunk_count")
+            if type(chunk_count) is not int or chunk_count < 0:
+                return False
+            if not self._is_sha256(source_metadata.get("sha256")):
+                return False
+        return True
+
+    def _snapshot_digests_match(self, metadata: dict, has_index: bool) -> bool:
+        """确认 metadata 描述的正是当前正式 chunks/index 文件。"""
+        try:
+            if self._file_sha256(self.chunks_file_path) != metadata["chunks_sha256"]:
+                return False
+            if has_index:
+                expected = metadata.get("index_sha256")
+                return (
+                    self._is_sha256(expected)
+                    and os.path.exists(self.index_file_path)
+                    and self._file_sha256(self.index_file_path) == expected
+                )
+            return metadata.get("index_sha256") is None and not os.path.exists(
+                self.index_file_path
+            )
+        except OSError:
+            return False
+
     def load_vector_store(self) -> None:
         """Load the FAISS index and chunk metadata from vector_store."""
         with open(self.chunks_file_path, "r", encoding="utf-8") as file:
@@ -297,6 +424,17 @@ class MiniKBService:
             self.index = None
             self.vectors = None
             self.documents = []
+            self.vector_metadata = self._load_vector_metadata()
+            if os.path.exists(self.metadata_file_path):
+                if (
+                    self.vector_metadata is None
+                    or not self._metadata_schema_is_valid(self.vector_metadata)
+                    or not self._snapshot_digests_match(
+                        self.vector_metadata,
+                        has_index=False,
+                    )
+                ):
+                    raise ValueError("vector snapshot metadata is invalid")
             self._build_bm25_index()
             return
 
@@ -309,6 +447,17 @@ class MiniKBService:
             raise ValueError("FAISS index and chunks count mismatch")
 
         self.documents = []
+        self.vector_metadata = self._load_vector_metadata()
+        if os.path.exists(self.metadata_file_path):
+            if (
+                self.vector_metadata is None
+                or not self._metadata_schema_is_valid(self.vector_metadata)
+                or not self._snapshot_digests_match(
+                    self.vector_metadata,
+                    has_index=True,
+                )
+            ):
+                raise ValueError("vector snapshot metadata is invalid")
         self._build_bm25_index()
 
         print(
@@ -354,6 +503,205 @@ class MiniKBService:
                     "but 0 chunks produced — files may be empty."
                 )
             self._build_bm25_index()
+
+        self.vector_metadata = self._build_vector_metadata()
+
+    def _content_sources(self) -> list[str]:
+        """返回参与索引的 content 文本文件，并保持全量 rebuild 的排序。"""
+        return sorted(
+            filename
+            for filename in os.listdir(self.content_path)
+            if filename.endswith(".txt")
+        )
+
+    def _source_sha256(self, source: str) -> str:
+        """对实际进入 Chunk 流程的 content bytes 计算 SHA-256。"""
+        return self._file_sha256(os.path.join(self.content_path, source))
+
+    def _model_dimension(self):
+        """读取当前模型声明的向量维度；无法确认时禁止复用。"""
+        getter = getattr(self.model, "get_sentence_embedding_dimension", None)
+        if not callable(getter):
+            return None
+        dimension = getter()
+        if type(dimension) is not int or dimension <= 0:
+            return None
+        return dimension
+
+    def _build_vector_metadata(self) -> dict:
+        """根据当前索引和 content 构造下一次增量判断所需的最小契约。"""
+        counts = Counter(chunk.get("source") for chunk in self.chunks)
+        dimension = int(self.index.d) if self.index is not None else self._model_dimension()
+        return {
+            "format_version": VECTOR_METADATA_FORMAT_VERSION,
+            "embedding_model": getattr(
+                self,
+                "embedding_model_name",
+                get_embedding_model_name(),
+            ),
+            "dimension": dimension,
+            "normalize_embeddings": NORMALIZE_EMBEDDINGS,
+            "embedding_pipeline_version": EMBEDDING_PIPELINE_VERSION,
+            "chunk_size": self.chunk_size,
+            "chunk_overlap": self.chunk_overlap,
+            "sources": {
+                source: {
+                    "sha256": self._source_sha256(source),
+                    "chunk_count": counts.get(source, 0),
+                }
+                for source in self._content_sources()
+            },
+        }
+
+    def _load_reusable_snapshot(self):
+        """从磁盘读取并严格校验旧 Chunk、向量和 metadata。"""
+        metadata = self._load_vector_metadata()
+        if metadata is None or not self._metadata_schema_is_valid(metadata):
+            return None
+
+        expected = {
+            "format_version": VECTOR_METADATA_FORMAT_VERSION,
+            "embedding_model": self.embedding_model_name,
+            "normalize_embeddings": NORMALIZE_EMBEDDINGS,
+            "embedding_pipeline_version": EMBEDDING_PIPELINE_VERSION,
+            "chunk_size": self.chunk_size,
+            "chunk_overlap": self.chunk_overlap,
+        }
+        if any(metadata.get(key) != value for key, value in expected.items()):
+            return None
+
+        model_dimension = self._model_dimension()
+        if model_dimension is None or metadata.get("dimension") != model_dimension:
+            return None
+
+        try:
+            with open(self.chunks_file_path, "r", encoding="utf-8") as file:
+                old_chunks = json.load(file)
+            old_index = (
+                faiss.read_index(self.index_file_path)
+                if os.path.exists(self.index_file_path)
+                else None
+            )
+        except (OSError, ValueError, TypeError, RuntimeError):
+            return None
+
+        if not isinstance(old_chunks, list):
+            return None
+        if old_chunks:
+            if old_index is None or old_index.ntotal != len(old_chunks):
+                return None
+            if int(old_index.d) != model_dimension:
+                return None
+        elif old_index is not None and old_index.ntotal != 0:
+            return None
+
+        if not self._snapshot_digests_match(
+            metadata,
+            has_index=bool(old_chunks),
+        ):
+            return None
+
+        sources_metadata = metadata.get("sources")
+        if not isinstance(sources_metadata, dict):
+            return None
+
+        groups = {}
+        previous_source = None
+        for position, chunk in enumerate(old_chunks):
+            if not isinstance(chunk, dict):
+                return None
+            source = chunk.get("source")
+            if not isinstance(source, str) or chunk.get("chunk_id") != position + 1:
+                return None
+            if source != previous_source and source in groups:
+                return None
+            group = groups.setdefault(source, {"start": position, "chunks": []})
+            group["chunks"].append(chunk)
+            previous_source = source
+
+        positive_sources = {
+            source
+            for source, source_metadata in sources_metadata.items()
+            if isinstance(source_metadata, dict)
+            and source_metadata.get("chunk_count", 0) > 0
+        }
+        if set(groups) != positive_sources:
+            return None
+        for source, group in groups.items():
+            source_metadata = sources_metadata.get(source)
+            if source_metadata.get("chunk_count") != len(group["chunks"]):
+                return None
+
+        return metadata, old_chunks, old_index, groups
+
+    def _add_vectors(self, index, vectors):
+        """校验向量形状后按原顺序加入新的 IndexFlatL2。"""
+        vectors = np.asarray(vectors, dtype="float32")
+        if vectors.ndim != 2:
+            raise ValueError("embedding vectors must be a 2D array")
+        if index is None:
+            index = faiss.IndexFlatL2(vectors.shape[1])
+        if vectors.shape[1] != index.d:
+            raise ValueError("embedding vector dimension mismatch")
+        index.add(vectors)
+        return index
+
+    def _build_incremental_index(self) -> bool:
+        """复用未变化 source 的旧向量，并只为变化 source 调用模型。"""
+        snapshot = self._load_reusable_snapshot()
+        if snapshot is None:
+            return False
+
+        metadata, _, old_index, groups = snapshot
+        new_chunks = []
+        new_index = None
+
+        for source in self._content_sources():
+            source_hash = self._source_sha256(source)
+            source_metadata = metadata["sources"].get(source)
+            group = groups.get(source)
+
+            if (
+                group is not None
+                and source_metadata is not None
+                and source_metadata.get("sha256") == source_hash
+            ):
+                source_chunks = [dict(chunk) for chunk in group["chunks"]]
+                count = len(source_chunks)
+                if count:
+                    vectors = old_index.reconstruct_n(group["start"], count)
+                    vectors = np.asarray(vectors, dtype="float32")
+                    if vectors.shape != (count, old_index.d):
+                        return False
+                    new_index = self._add_vectors(new_index, vectors)
+            else:
+                source_chunks = load_and_split_file(
+                    os.path.join(self.content_path, source),
+                    source,
+                    chunk_size=self.chunk_size,
+                    overlap=self.chunk_overlap,
+                )
+                for vectors in iter_embedding_batches(
+                    source_chunks,
+                    self.model,
+                    batch_size=DEFAULT_EMBEDDING_BATCH_SIZE,
+                ):
+                    new_index = self._add_vectors(new_index, vectors)
+
+            for chunk in source_chunks:
+                chunk["chunk_id"] = len(new_chunks) + 1
+                new_chunks.append(chunk)
+
+        if new_index is not None and new_index.ntotal != len(new_chunks):
+            return False
+
+        self.documents = []
+        self.chunks = new_chunks
+        self.index = new_index
+        self.vectors = None
+        self._build_bm25_index()
+        self.vector_metadata = self._build_vector_metadata()
+        return True
 
     def _tokenize_for_bm25(self, text: str) -> list[str]:
         """负责 _tokenize_for_bm25 的函数职责。"""
@@ -572,9 +920,10 @@ class MiniKBService:
     # ------------------------------------------------------------------
 
     def rebuild_index(self) -> None:
-        """Full re-index after any document change (upload / delete)."""
+        """优先复用兼容旧向量，无法证明兼容时执行保守的全量 rebuild。"""
         with self.mutation_lock:
-            self.build_index()
+            if not self._build_incremental_index():
+                self.build_index()
             self.save_vector_store()
 
     def _sync_current_mappings(self, file_overrides=None) -> None:
