@@ -154,8 +154,14 @@ export function useChatStream() {
 
         if (event.type === "error") {
           setError(event.message);
-          assistantText = event.message;
-          setStreamingMessage(event.message);
+          const keepPartialAnswer =
+            "partial_response" in event &&
+            event.partial_response === true &&
+            assistantText.length > 0;
+          if (!keepPartialAnswer) {
+            assistantText = event.message;
+            setStreamingMessage(event.message);
+          }
         }
 
         if (event.type === "done") {

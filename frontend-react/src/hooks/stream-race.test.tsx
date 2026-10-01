@@ -131,6 +131,63 @@ describe("stream request isolation", () => {
     expect(pendingChats[1].signal?.aborted).toBe(false);
   });
 
+  it("keeps a partial chat answer when the stream reports a later failure", async () => {
+    const { result } = renderHook(useChatHarness, { wrapper });
+
+    await act(async () => {
+      void result.current.chat.sendMessage("partial request");
+    });
+    await waitFor(() => expect(pendingChats).toHaveLength(1));
+
+    const run = pendingChats[0];
+    act(() => {
+      run.onEvent?.({ type: "token", content: "partial answer" });
+      run.onEvent?.({
+        type: "error",
+        message: "Streaming response failed. Please try again.",
+        partial_response: true
+      } as StreamEvent);
+      run.onEvent?.({ type: "done", assistant_message_id: 8 });
+      run.resolve();
+    });
+
+    await waitFor(() => expect(result.current.chat.isStreaming).toBe(false));
+    expect(result.current.chat.error).toBe(
+      "Streaming response failed. Please try again."
+    );
+    expect(
+      result.current.store.messages[result.current.store.messages.length - 1]?.content
+    ).toBe("partial answer");
+  });
+
+  it("uses the generic error as the assistant message when no token arrived", async () => {
+    const { result } = renderHook(useChatHarness, { wrapper });
+
+    await act(async () => {
+      void result.current.chat.sendMessage("failed request");
+    });
+    await waitFor(() => expect(pendingChats).toHaveLength(1));
+
+    const run = pendingChats[0];
+    act(() => {
+      run.onEvent?.({
+        type: "error",
+        message: "Streaming response failed. Please try again.",
+        partial_response: false
+      } as StreamEvent);
+      run.onEvent?.({ type: "done", assistant_message_id: 9 });
+      run.resolve();
+    });
+
+    await waitFor(() => expect(result.current.chat.isStreaming).toBe(false));
+    expect(result.current.chat.error).toBe(
+      "Streaming response failed. Please try again."
+    );
+    expect(
+      result.current.store.messages[result.current.store.messages.length - 1]?.content
+    ).toBe("Streaming response failed. Please try again.");
+  });
+
   it("keeps normal completion separate from a real network failure", async () => {
     const { result } = renderHook(useChatHarness, { wrapper });
 
