@@ -1,18 +1,15 @@
-from fastapi import Depends, FastAPI, File, UploadFile, Form, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, File, UploadFile, Form, HTTPException, Request
 from starlette.background import BackgroundTask
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, FileResponse, RedirectResponse, JSONResponse
-from pydantic import BaseModel, Field, ValidationError
+from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
+from pydantic import ValidationError
 from dotenv import load_dotenv
 import json
 import os
 import asyncio
-import queue
 import sqlite3
 import shutil
-import threading
 import uuid
-import re
 import time
 from model_config import (
     get_openai_client,
@@ -31,29 +28,12 @@ from services.kb_import_export_service import (
     export_kb,
     import_kb
 )
-from services.mcp_adapter import (
-    list_mcp_servers,
-    list_mcp_tools,
-    run_mcp_tool,
-    shutdown_mcp_server,
-)
-from services.tools import list_all_tools, run_tool
 from chat_service import (
     RAG_STREAM_ERROR_MESSAGE,
     create_temp_kb_from_upload,
     run_local_kb_chat,
     run_temp_kb_chat,
     run_kb_chat
-)
-from agent_service import (
-    decide_tool_call,
-    get_available_tool_specs,
-    run_agent,
-    run_agent_multi_step_persisted,
-    run_agent_planner_persisted,
-    run_agent_planner_stream_persisted,
-    run_agent_once,
-    run_agent_persisted
 )
 from db import (
     connection_scope,
@@ -77,27 +57,16 @@ from db import (
     delete_conversation,
     get_connection,
     user_owns_kb,
-    create_email_user,
-    get_user_auth_by_email,
-    get_user_by_id,
-    public_user_dict,
-    get_user_preferences,
-    upsert_user_preferences,
-    update_user_account
 )
 from user_scope import get_user_kb_root, migrate_legacy_demo_files
-from auth.config import get_access_token_expire_minutes
 from auth.config import get_cors_origins
 from auth.config import is_production_environment
 from auth.dependencies import (
-    get_current_user,
     get_current_user_optional,
     get_request_user_id,
     require_permission,
 )
-from auth.jwt import create_access_token
 from auth.models import CurrentUser
-from auth.password import hash_password, verify_password
 from path_security import (
     PathValidationError,
     is_safe_filename,
@@ -116,30 +85,22 @@ from resource_limits import (
     stage_upload,
 )
 from auth.permissions import Permission, has_permission
-from auth.session import (
-    create_login_session,
-    get_refresh_token_from_request,
-    list_public_user_sessions,
-    logout_all_sessions,
-    logout_other_sessions,
-    logout_refresh_session,
-    refresh_login_session,
-    revoke_user_session,
-)
-from auth.oauth import (
-    complete_oauth_callback,
-    create_oauth_authorization,
-    oauth_error_redirect,
-    oauth_success_redirect,
-    public_provider_status,
-    unlink_oauth_provider,
-)
 from auth.security import (
-    check_auth_rate_limit,
-    clear_auth_failures,
-    record_auth_failure,
     validate_production_auth_config,
-    verify_allowed_origin,
+)
+from api.routes.agent import router as agent_router
+from api.routes.auth import router as auth_router
+from api.schemas import (
+    ChatRequest,
+    CreateKBRequest,
+    ConversationUpdateRequest,
+    FeedbackRequest,
+    FileChatRequest,
+    KBChatRequest,
+    OpenAIChatCompletionRequest,
+    ReindexFileRequest,
+    SearchDocsRequest,
+    SwitchKBRequest,
 )
 from observability import (
     configure_logging,
@@ -154,8 +115,6 @@ configure_logging()
 validate_production_auth_config()
 
 SUPPORTED_EXTS = [".txt", ".pdf", ".docx", ".md", ".csv"]
-MAX_TOP_K = 20
-MAX_RERANK_TOP_N = 20
 SERVICE_NAME = "mini-chatchat"
 SERVICE_VERSION = "1.0.0-rc.1"
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -179,6 +138,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(auth_router)
+app.include_router(agent_router)
 
 
 @app.exception_handler(PathValidationError)
@@ -227,126 +188,6 @@ client = get_openai_client()
 kb_service = MiniKBService()
 current_kb_by_scope = {}
 
-EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-MIN_PASSWORD_LENGTH = 8
-MAX_DISPLAY_NAME_LENGTH = 80
-
-
-class ChatRequest(BaseModel):
-    """负责 ChatRequest 的类职责。"""
-    question: str
-    conversation_id: int | None = None
-    top_k: int = Field(default=3, ge=1, le=MAX_TOP_K)
-    score_threshold: float = Field(default=0.8, ge=0)
-    prompt_name: str = "default"
-    return_direct: bool = False
-    model: str = get_default_chat_model()
-    temperature: float = get_default_temperature()
-    max_tokens: int | None = get_default_max_tokens()
-    stream: bool = False
-
-class CreateKBRequest(BaseModel):
-    """负责 CreateKBRequest 的类职责。"""
-    kb_name: str
-
-class SwitchKBRequest(BaseModel):
-    """负责 SwitchKBRequest 的类职责。"""
-    kb_name: str
-
-class SearchDocsRequest(BaseModel):
-    """负责 SearchDocsRequest 的类职责。"""
-    query: str
-    top_k: int = Field(default=3, ge=1, le=MAX_TOP_K)
-    file_name: str | None = None
-
-class ReindexFileRequest(BaseModel):
-    """负责 ReindexFileRequest 的类职责。"""
-    chunk_size: int = Field(default=300, gt=0)
-    chunk_overlap: int = Field(default=50, ge=0)
-
-class FileChatRequest(BaseModel):
-    """负责 FileChatRequest 的类职责。"""
-    query: str
-    temp_kb_id: str
-    top_k: int = Field(default=3, ge=1, le=MAX_TOP_K)
-    score_threshold: float = Field(default=0.8, ge=0)
-    prompt_name: str = "default"
-    stream: bool = False
-
-class KBChatRequest(BaseModel):
-    """负责 KBChatRequest 的类职责。"""
-    query: str
-    mode: str = "local_kb"
-    kb_name: str = "default"
-    temp_kb_id: str | None = None
-    top_k: int = Field(default=3, ge=1, le=MAX_TOP_K)
-    score_threshold: float = Field(default=0.8, ge=0)
-    prompt_name: str = "default"
-    stream: bool = False
-    model: str = get_default_chat_model()
-    temperature: float = get_default_temperature()
-    max_tokens: int | None = get_default_max_tokens()
-    return_direct: bool = False
-    conversation_id: int | None = None
-    rerank: bool = False
-    rerank_top_n: int = Field(default=3, ge=1, le=MAX_RERANK_TOP_N)
-    file_name: str | None = None
-    source: str | None = None
-    metadata_filter: dict | None = None
-
-class OpenAIChatCompletionRequest(BaseModel):
-    """负责 OpenAIChatCompletionRequest 的类职责。"""
-    model: str = get_default_chat_model()
-    messages: list
-    stream: bool = False
-    temperature: float = get_default_temperature()
-    max_tokens: int | None = get_default_max_tokens()
-    extra_body: dict | None = None
-
-class FeedbackRequest(BaseModel):
-    """负责 FeedbackRequest 的类职责。"""
-    message_id: int
-    score: int
-    reason: str | None = None
-
-class ConversationUpdateRequest(BaseModel):
-    """负责 ConversationUpdateRequest 的类职责。"""
-    title: str
-
-class ToolRunRequest(BaseModel):
-    """负责 ToolRunRequest 的类职责。"""
-    arguments: dict = {}
-
-class AgentToolCallRequest(BaseModel):
-    """负责 AgentToolCallRequest 的类职责。"""
-    query: str
-    kb_name: str | None = "default"
-    tools: list[str] | None = None
-    conversation_id: int | None = None
-    max_steps: int = 3
-
-class AuthEmailPasswordRequest(BaseModel):
-    """负责 AuthEmailPasswordRequest 的类职责。"""
-    email: str
-    password: str
-    display_name: str | None = None
-
-class AuthPreferencesUpdateRequest(BaseModel):
-    """负责 AuthPreferencesUpdateRequest 的类职责。"""
-    language: str | None = None
-    developer_mode: bool | None = None
-    onboarding_completed: bool | None = None
-    theme: str | None = None
-    preferred_model: str | None = None
-
-class AuthAccountUpdateRequest(BaseModel):
-    """负责 AuthAccountUpdateRequest 的类职责。"""
-    display_name: str | None = None
-
-    class Config:
-        """负责 Config 的类职责。"""
-        extra = "forbid"
-
 # ──────────────────────────────────────────
 # Routes
 # ──────────────────────────────────────────
@@ -361,49 +202,6 @@ def get_configured_provider():
         return "openai"
 
     return "none"
-
-
-def normalize_email(email: str):
-    """负责 normalize_email 的函数职责。"""
-    return (email or "").strip().lower()
-
-
-def validate_email_password(email: str, password: str):
-    """负责 validate_email_password 的函数职责。"""
-    normalized_email = normalize_email(email)
-
-    if not EMAIL_PATTERN.match(normalized_email):
-        raise HTTPException(status_code=400, detail="invalid email or password")
-
-    if len(password or "") < MIN_PASSWORD_LENGTH:
-        raise HTTPException(status_code=400, detail="invalid email or password")
-
-    return normalized_email
-
-
-def validate_display_name(display_name: str | None):
-    """负责 validate_display_name 的函数职责。"""
-    value = (display_name or "").strip()
-
-    if not value:
-        raise HTTPException(status_code=400, detail="display name is required")
-
-    if len(value) > MAX_DISPLAY_NAME_LENGTH:
-        raise HTTPException(status_code=400, detail="display name is too long")
-
-    return value
-
-
-def build_token_response(user, request: Request, response: Response):
-    """负责 build_token_response 的函数职责。"""
-    token, expires_in, session_id = create_login_session(user, request, response)
-    return {
-        "access_token": token,
-        "token_type": "bearer",
-        "expires_in": expires_in,
-        "session_id": session_id,
-        "user": public_user_dict(user),
-    }
 
 
 def get_scope_key(current_user: CurrentUser):
@@ -517,27 +315,6 @@ def ensure_kb_owned_or_404(kb_name: str, current_user: CurrentUser):
     """负责 ensure_kb_owned_or_404 的函数职责。"""
     if not user_owns_kb(kb_name, user_id=get_scoped_user_id(current_user)):
         raise HTTPException(status_code=404, detail="knowledge base not found")
-
-
-def public_current_user(current_user: CurrentUser):
-    """负责 public_current_user 的函数职责。"""
-    if current_user.is_guest:
-        return {
-            "id": "guest",
-            "email": None,
-            "display_name": "Guest",
-            "avatar_url": None,
-            "auth_provider": "guest",
-            "is_guest": True,
-            "is_active": True,
-        }
-
-    return public_user_dict(get_user_by_id(int(current_user.id)))
-
-
-def current_session_id(current_user: CurrentUser):
-    """负责 current_session_id 的函数职责。"""
-    return (current_user.metadata or {}).get("session_id")
 
 
 @connection_scope
@@ -661,571 +438,6 @@ def health_deps(
         })
 
     return payload
-
-
-@app.post("/auth/register")
-def auth_register(
-    payload: AuthEmailPasswordRequest,
-    http_request: Request,
-    response: Response,
-):
-    """负责 auth_register 的函数职责。"""
-    verify_allowed_origin(http_request)
-    email = validate_email_password(payload.email, payload.password)
-    check_auth_rate_limit("register", http_request, email)
-
-    if get_user_auth_by_email(email):
-        record_auth_failure("register", http_request, email)
-        raise HTTPException(status_code=400, detail="invalid email or password")
-
-    user = create_email_user(
-        email,
-        hash_password(payload.password),
-        display_name=(payload.display_name or email).strip() or email,
-    )
-    create_default_kb(user_id=user["id"])
-    clear_auth_failures("register", http_request, email)
-
-    return build_token_response(user, http_request, response)
-
-
-@app.post("/auth/login")
-def auth_login(
-    payload: AuthEmailPasswordRequest,
-    http_request: Request,
-    response: Response,
-):
-    """负责 auth_login 的函数职责。"""
-    verify_allowed_origin(http_request)
-    email = normalize_email(payload.email)
-    check_auth_rate_limit("login", http_request, email)
-    user = get_user_auth_by_email(email)
-
-    if (
-        user is None
-        or user.get("auth_provider") != "email"
-        or not user.get("is_active")
-        or not verify_password(payload.password, user.get("password_hash"))
-    ):
-        record_auth_failure("login", http_request, email)
-        raise HTTPException(status_code=401, detail="invalid email or password")
-
-    clear_auth_failures("login", http_request, email)
-    return build_token_response(user, http_request, response)
-
-
-@app.post("/auth/logout")
-def auth_logout(request: Request, response: Response):
-    """负责 auth_logout 的函数职责。"""
-    verify_allowed_origin(request)
-    logout_refresh_session(request, response)
-    return {
-        "message": "logged out"
-    }
-
-
-@app.post("/auth/logout-all")
-def auth_logout_all(
-    request: Request,
-    response: Response,
-    current_user: CurrentUser = Depends(get_current_user),
-):
-    """负责 auth_logout_all 的函数职责。"""
-    verify_allowed_origin(request)
-    revoked = logout_all_sessions(int(current_user.id), response)
-    return {
-        "message": "logged out all sessions",
-        "revoked_sessions": revoked,
-    }
-
-
-@app.post("/auth/refresh")
-def auth_refresh(request: Request, response: Response):
-    """负责 auth_refresh 的函数职责。"""
-    verify_allowed_origin(request)
-    check_auth_rate_limit("refresh", request, None)
-    refresh_token = get_refresh_token_from_request(request)
-    try:
-        result = refresh_login_session(refresh_token, response)
-    except HTTPException:
-        record_auth_failure("refresh", request, None)
-        raise
-
-    clear_auth_failures("refresh", request, None)
-    return {
-        "access_token": result["access_token"],
-        "token_type": "bearer",
-        "expires_in": result["expires_in"],
-        "session_id": result["session_id"],
-        "user": public_user_dict(result["user"]),
-    }
-
-
-@app.get("/auth/me")
-def auth_me(current_user: CurrentUser = Depends(get_current_user_optional)):
-    """负责 auth_me 的函数职责。"""
-    return {
-        "user": public_current_user(current_user),
-        "authenticated": not current_user.is_guest,
-    }
-
-
-@app.get("/auth/preferences")
-def auth_preferences(current_user: CurrentUser = Depends(get_current_user)):
-    """负责 auth_preferences 的函数职责。"""
-    preferences = get_user_preferences(int(current_user.id))
-    return {
-        "preferences": preferences
-    }
-
-
-@app.patch("/auth/preferences")
-def auth_update_preferences(
-    request: AuthPreferencesUpdateRequest,
-    current_user: CurrentUser = Depends(get_current_user),
-):
-    """负责 auth_update_preferences 的函数职责。"""
-    current = get_user_preferences(int(current_user.id)) or {}
-    preferences = upsert_user_preferences(
-        int(current_user.id),
-        language=(
-            request.language
-            if request.language is not None
-            else current.get("language")
-        ),
-        developer_mode=(
-            request.developer_mode
-            if request.developer_mode is not None
-            else bool(current.get("developer_mode", False))
-        ),
-        onboarding_completed=(
-            request.onboarding_completed
-            if request.onboarding_completed is not None
-            else bool(current.get("onboarding_completed", False))
-        ),
-        theme=request.theme if request.theme is not None else current.get("theme", "light"),
-        preferred_model=(
-            request.preferred_model
-            if request.preferred_model is not None
-            else current.get("preferred_model")
-        ),
-    )
-    return {
-        "preferences": preferences
-    }
-
-
-@app.get("/auth/account")
-def auth_account(current_user: CurrentUser = Depends(get_current_user)):
-    """负责 auth_account 的函数职责。"""
-    return {
-        "user": public_current_user(current_user)
-    }
-
-
-@app.patch("/auth/account")
-def auth_update_account(
-    request: AuthAccountUpdateRequest,
-    current_user: CurrentUser = Depends(get_current_user),
-):
-    """负责 auth_update_account 的函数职责。"""
-    display_name = validate_display_name(request.display_name)
-    user = update_user_account(int(current_user.id), display_name)
-
-    if not user:
-        raise HTTPException(status_code=404, detail="account not found")
-
-    return {
-        "user": public_user_dict(user)
-    }
-
-
-@app.get("/auth/sessions")
-def auth_sessions(current_user: CurrentUser = Depends(get_current_user)):
-    """负责 auth_sessions 的函数职责。"""
-    return {
-        "sessions": list_public_user_sessions(
-            int(current_user.id),
-            current_session_id(current_user),
-        )
-    }
-
-
-@app.delete("/auth/sessions/{session_id}")
-def auth_revoke_session(
-    session_id: str,
-    request: Request,
-    response: Response,
-    current_user: CurrentUser = Depends(get_current_user),
-):
-    """负责 auth_revoke_session 的函数职责。"""
-    verify_allowed_origin(request)
-    revoked = revoke_user_session(int(current_user.id), session_id)
-
-    if not revoked:
-        raise HTTPException(status_code=404, detail="session not found")
-
-    if session_id == current_session_id(current_user):
-        logout_refresh_session(request, response)
-
-    return {
-        "message": "session revoked",
-        "revoked": True,
-        "revoked_current": session_id == current_session_id(current_user),
-    }
-
-
-@app.post("/auth/logout-others")
-def auth_logout_others(
-    request: Request,
-    current_user: CurrentUser = Depends(get_current_user),
-):
-    """负责 auth_logout_others 的函数职责。"""
-    verify_allowed_origin(request)
-    session_id = current_session_id(current_user)
-
-    if not session_id:
-        raise HTTPException(status_code=401, detail="missing token session")
-
-    revoked = logout_other_sessions(int(current_user.id), session_id)
-    return {
-        "message": "logged out other sessions",
-        "revoked_sessions": revoked,
-    }
-
-
-@app.get("/auth/oauth/providers")
-def auth_oauth_providers(
-    current_user: CurrentUser = Depends(get_current_user_optional),
-):
-    """负责 auth_oauth_providers 的函数职责。"""
-    user_id = None if current_user.is_guest else int(current_user.id)
-    return {
-        "providers": public_provider_status(user_id)
-    }
-
-
-@app.get("/auth/oauth/{provider}")
-def auth_oauth_start(provider: str):
-    """负责 auth_oauth_start 的函数职责。"""
-    authorization = create_oauth_authorization(provider, mode="login")
-    return RedirectResponse(authorization["authorization_url"], status_code=302)
-
-
-@app.get("/auth/oauth/{provider}/callback")
-def auth_oauth_callback(
-    provider: str,
-    request: Request,
-    response: Response,
-    code: str | None = None,
-    state: str | None = None,
-    error: str | None = None,
-):
-    """负责 auth_oauth_callback 的函数职责。"""
-    if error:
-        return RedirectResponse(
-            oauth_error_redirect("oauth authorization was cancelled"),
-            status_code=302,
-        )
-
-    if not code:
-        return RedirectResponse(
-            oauth_error_redirect("oauth authorization code missing"),
-            status_code=302,
-        )
-
-    try:
-        result = complete_oauth_callback(provider, code, state, request, response)
-    except HTTPException as exc:
-        return RedirectResponse(
-            oauth_error_redirect(str(exc.detail)),
-            status_code=302,
-        )
-
-    redirect = RedirectResponse(
-        oauth_success_redirect(result["mode"]),
-        status_code=302,
-    )
-    for header in response.raw_headers:
-        if header[0].lower() == b"set-cookie":
-            redirect.raw_headers.append(header)
-    return redirect
-
-
-@app.post("/auth/oauth/link/{provider}")
-def auth_oauth_link(
-    provider: str,
-    request: Request,
-    current_user: CurrentUser = Depends(get_current_user),
-):
-    """负责 auth_oauth_link 的函数职责。"""
-    verify_allowed_origin(request)
-    authorization = create_oauth_authorization(
-        provider,
-        mode="link",
-        user_id=int(current_user.id),
-    )
-    return {
-        "authorization_url": authorization["authorization_url"],
-        "provider": provider,
-    }
-
-
-@app.delete("/auth/oauth/link/{provider}")
-def auth_oauth_unlink(
-    provider: str,
-    request: Request,
-    current_user: CurrentUser = Depends(get_current_user),
-):
-    """负责 auth_oauth_unlink 的函数职责。"""
-    verify_allowed_origin(request)
-    unlinked = unlink_oauth_provider(int(current_user.id), provider)
-    return {
-        "message": "oauth account unlinked",
-        "provider": provider,
-        "unlinked": unlinked,
-    }
-
-
-@app.get("/agent/tools")
-def get_agent_tools():
-    """负责 get_agent_tools 的函数职责。"""
-    return {
-        "tools": list_all_tools()
-    }
-
-
-@app.post("/agent/tools/{tool_name}/run")
-def run_agent_tool(
-    tool_name: str,
-    request: ToolRunRequest,
-    current_user: CurrentUser = Depends(get_current_user_optional),
-):
-    """负责 run_agent_tool 的函数职责。"""
-    if tool_name in {"filesystem_readonly_read", "sqlite_readonly_query"}:
-        require_permission(
-            current_user,
-            (
-                Permission.CAN_USE_FILESYSTEM
-                if tool_name == "filesystem_readonly_read"
-                else Permission.CAN_USE_SQLITE
-            ),
-        )
-
-    arguments = dict(request.arguments or {})
-    if tool_name == "kb_search":
-        arguments["_user_id"] = get_scoped_user_id(current_user)
-
-    result = run_tool(tool_name, arguments)
-    return result.to_dict()
-
-
-@app.get("/agent/mcp/tools")
-def get_agent_mcp_tools(current_user: CurrentUser = Depends(get_current_user_optional)):
-    """负责 get_agent_mcp_tools 的函数职责。"""
-    require_permission(current_user, Permission.CAN_USE_MCP)
-    return {
-        "tools": list_mcp_tools(),
-        "enabled": True,
-        "provider": "mcp",
-    }
-
-
-@app.get("/agent/mcp/servers")
-def get_agent_mcp_servers(current_user: CurrentUser = Depends(get_current_user_optional)):
-    """负责 get_agent_mcp_servers 的函数职责。"""
-    require_permission(current_user, Permission.CAN_USE_MCP)
-    return {
-        "servers": list_mcp_servers(),
-    }
-
-
-@app.post("/agent/mcp/servers/{server_name}/shutdown")
-def stop_agent_mcp_server(
-    server_name: str,
-    current_user: CurrentUser = Depends(get_current_user_optional),
-):
-    """负责 stop_agent_mcp_server 的函数职责。"""
-    require_permission(current_user, Permission.CAN_USE_MCP)
-    return {
-        "server": shutdown_mcp_server(server_name),
-    }
-
-
-@app.post("/agent/mcp/tools/{tool_name}/run")
-def run_agent_mcp_tool(
-    tool_name: str,
-    request: ToolRunRequest,
-    current_user: CurrentUser = Depends(get_current_user_optional),
-):
-    """负责 run_agent_mcp_tool 的函数职责。"""
-    require_permission(current_user, Permission.CAN_USE_MCP)
-    result = run_mcp_tool(tool_name, request.arguments)
-    return result.to_dict()
-
-
-@app.post("/agent/decide")
-def agent_decide(
-    request: AgentToolCallRequest,
-    current_user: CurrentUser = Depends(get_current_user_optional),
-):
-    """负责 agent_decide 的函数职责。"""
-    require_permission(current_user, Permission.CAN_USE_AGENT)
-    available_tools, error = get_available_tool_specs(request.tools)
-
-    if error:
-        return {
-            "tool_call": None,
-            "raw_model_output": "",
-            "error": error,
-        }
-
-    return decide_tool_call(
-        request.query,
-        available_tools,
-    )
-
-
-@app.post("/agent/run_once")
-def agent_run_once(
-    request: AgentToolCallRequest,
-    current_user: CurrentUser = Depends(get_current_user_optional),
-):
-    """负责 agent_run_once 的函数职责。"""
-    require_permission(current_user, Permission.CAN_USE_AGENT)
-    return run_agent_once(
-        request.query,
-        kb_name=request.kb_name,
-        tools=request.tools,
-        user_id=get_scoped_user_id(current_user),
-    )
-
-
-@app.post("/agent/run")
-async def agent_run(
-    request: AgentToolCallRequest,
-    current_user: CurrentUser = Depends(get_current_user_optional),
-):
-    """负责 agent_run 的函数职责。"""
-    require_permission(current_user, Permission.CAN_USE_AGENT)
-    # Agent 内含同步 LLM/Tool 调用；单独线程避免占用 ASGI 请求处理路径。
-    return await asyncio.to_thread(
-        run_agent_persisted,
-        request.query,
-        kb_name=request.kb_name,
-        tools=request.tools,
-        conversation_id=request.conversation_id,
-        user_id=get_scoped_user_id(current_user),
-    )
-
-
-@app.post("/agent/run_multi")
-def agent_run_multi(
-    request: AgentToolCallRequest,
-    current_user: CurrentUser = Depends(get_current_user_optional),
-):
-    """负责 agent_run_multi 的函数职责。"""
-    require_permission(current_user, Permission.CAN_USE_AGENT)
-    return run_agent_multi_step_persisted(
-        request.query,
-        kb_name=request.kb_name,
-        tools=request.tools,
-        max_steps=request.max_steps,
-        conversation_id=request.conversation_id,
-        user_id=get_scoped_user_id(current_user),
-    )
-
-
-@app.post("/agent/plan_run")
-def agent_plan_run(
-    request: AgentToolCallRequest,
-    current_user: CurrentUser = Depends(get_current_user_optional),
-):
-    """负责 agent_plan_run 的函数职责。"""
-    require_permission(current_user, Permission.CAN_USE_AGENT)
-    return run_agent_planner_persisted(
-        request.query,
-        kb_name=request.kb_name,
-        tools=request.tools,
-        max_steps=request.max_steps,
-        conversation_id=request.conversation_id,
-        user_id=get_scoped_user_id(current_user),
-    )
-
-
-def encode_sse(event):
-    """负责 encode_sse 的函数职责。"""
-    event_type = event.get("type", "message")
-    payload = json.dumps(event, ensure_ascii=False)
-    return f"event: {event_type}\ndata: {payload}\n\n"
-
-
-@app.post("/agent/plan_run_stream")
-async def agent_plan_run_stream(
-    request: AgentToolCallRequest,
-    http_request: Request,
-    current_user: CurrentUser = Depends(get_current_user_optional),
-):
-    """负责 agent_plan_run_stream 的函数职责。"""
-    require_permission(current_user, Permission.CAN_USE_AGENT)
-    events: queue.Queue = queue.Queue()
-    stop_event = threading.Event()
-    user_id = get_scoped_user_id(current_user)
-
-    def put_event(event):
-        """负责 put_event 的函数职责。"""
-        events.put(event)
-
-    def run_agent_worker():
-        """负责 run_agent_worker 的函数职责。"""
-        try:
-            result = run_agent_planner_stream_persisted(
-                request.query,
-                kb_name=request.kb_name,
-                tools=request.tools,
-                max_steps=request.max_steps,
-                conversation_id=request.conversation_id,
-                event_sink=put_event,
-                should_stop=stop_event.is_set,
-                user_id=user_id,
-            )
-            events.put({
-                "type": "done",
-                "result": result,
-            })
-        except Exception as exc:
-            events.put({
-                "type": "error",
-                "error": str(exc),
-            })
-        finally:
-            events.put(None)
-
-    async def event_stream():
-        """负责 event_stream 的函数职责。"""
-        worker = threading.Thread(target=run_agent_worker, daemon=True)
-        worker.start()
-
-        while True:
-            if await http_request.is_disconnected():
-                stop_event.set()
-                break
-
-            try:
-                event = events.get(timeout=0.1)
-            except queue.Empty:
-                await asyncio.sleep(0.05)
-                continue
-
-            if event is None:
-                break
-
-            yield encode_sse(event)
-
-    return StreamingResponse(
-        event_stream(),
-        media_type="text/event-stream",
-    )
 
 
 @app.post("/kb_chat")

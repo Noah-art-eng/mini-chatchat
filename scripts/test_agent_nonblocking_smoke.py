@@ -3,9 +3,13 @@
 import threading
 import time
 import unittest
+import atexit
+import os
+import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
+import numpy as np
 from fastapi.testclient import TestClient
 
 
@@ -15,7 +19,28 @@ import sys
 
 sys.path.insert(0, str(BACKEND_DIR))
 
+TEST_RUNTIME = tempfile.TemporaryDirectory()
+atexit.register(TEST_RUNTIME.cleanup)
+os.environ["MINI_CHATCHAT_DB_PATH"] = str(Path(TEST_RUNTIME.name) / "mini.db")
+os.environ["MINI_CHATCHAT_DATA_ROOT"] = str(Path(TEST_RUNTIME.name) / "data")
+os.environ["MINI_CHATCHAT_UPLOADS_DIR"] = str(Path(TEST_RUNTIME.name) / "uploads")
+
+
+class FakeEmbeddingModel:
+    """隔离 Agent 路由测试与真实 Embedding 模型。"""
+
+    def encode(self, texts, **_kwargs):
+        """返回足以初始化测试知识库的固定维度向量。"""
+        return np.ones((len(texts), 2), dtype="float32")
+
+
+import services.kb_service as kb_service_module  # noqa: E402
+
+kb_service_module.get_embedding_model = lambda _name: FakeEmbeddingModel()
+
 import app  # noqa: E402
+import agent_service  # noqa: E402
+from api.routes import agent as agent_routes  # noqa: E402
 
 
 class AgentNonblockingSmokeTest(unittest.TestCase):
@@ -34,9 +59,9 @@ class AgentNonblockingSmokeTest(unittest.TestCase):
             return {"answer": "done", "trace": []}
 
         with (
-            patch.object(app, "run_agent_persisted", side_effect=slow_agent),
-            patch.object(app, "list_all_tools", return_value=[]),
-            patch.object(app, "require_permission"),
+            patch.object(agent_routes, "run_agent_persisted", side_effect=slow_agent),
+            patch.object(agent_routes, "list_all_tools", return_value=[]),
+            patch.object(agent_routes, "require_permission"),
         ):
             with TestClient(app.app) as client:
                 worker = threading.Thread(
@@ -61,7 +86,7 @@ class AgentNonblockingSmokeTest(unittest.TestCase):
     def test_explicit_local_tool_skips_mcp_discovery(self):
         """负责 test_explicit_local_tool_skips_mcp_discovery 的函数职责。"""
         with patch("agent_service.list_all_tools") as list_all:
-            tools, error = app.get_available_tool_specs(["kb_search"])
+            tools, error = agent_service.get_available_tool_specs(["kb_search"])
 
         self.assertIsNone(error)
         self.assertEqual([tool["name"] for tool in tools], ["kb_search"])
