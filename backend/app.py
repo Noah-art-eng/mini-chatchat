@@ -449,13 +449,66 @@ def process_uploaded_document(
     txt_path: str,
     chunk_size: int,
     chunk_overlap: int,
+    *,
+    staged_path: str | None = None,
+    override: bool = True,
+    staged_size: int | None = None,
+    user_id=None,
 ) -> None:
-    """同步解析与重建工作；由上传接口放入线程池执行。"""
-    parse_file_to_text_file(upload_path, txt_path)
+    """在线程池内锁住普通上传从正式文件安装到 DB 同步的完整过程。"""
+    with scoped_service.mutation_lock:
+        txt_filename = os.path.basename(txt_path)
+        try:
+            if staged_path is not None:
+                install_staged_file(staged_path, upload_path)
+                if override:
+                    delete_file_record(
+                        scoped_service.kb_name,
+                        txt_filename,
+                        user_id=user_id,
+                    )
+                    delete_file_docs(
+                        scoped_service.kb_name,
+                        txt_filename,
+                        user_id=user_id,
+                    )
+                upsert_file_record(
+                    scoped_service.kb_name,
+                    txt_filename,
+                    staged_size or 0,
+                    0,
+                    status="uploaded",
+                    error=None,
+                    chunk_size=chunk_size,
+                    chunk_overlap=chunk_overlap,
+                    content_path=txt_path,
+                    upload_path=upload_path,
+                    user_id=user_id,
+                )
 
-    scoped_service.chunk_size = chunk_size
-    scoped_service.chunk_overlap = chunk_overlap
-    scoped_service.rebuild_index()
+            parse_file_to_text_file(upload_path, txt_path)
+            scoped_service.chunk_size = chunk_size
+            scoped_service.chunk_overlap = chunk_overlap
+            scoped_service.rebuild_and_sync(file_overrides={
+                txt_filename: {
+                    "status": "indexed",
+                    "error": None,
+                    "chunk_size": chunk_size,
+                    "chunk_overlap": chunk_overlap,
+                    "content_path": txt_path,
+                    "upload_path": upload_path,
+                }
+            })
+        except Exception as exc:
+            if staged_path is not None:
+                update_file_status(
+                    scoped_service.kb_name,
+                    txt_filename,
+                    "failed",
+                    str(exc),
+                    user_id=user_id,
+                )
+            raise
 
 
 def ensure_kb_owned_or_404(kb_name: str, current_user: CurrentUser):
@@ -1618,35 +1671,6 @@ async def upload(
                 "error": f"{filename} already exists"
             }
 
-        # 只有完整上传并通过大小检查后，才替换正式文件和更新旧记录。
-        await asyncio.to_thread(install_staged_file, staged.path, upload_path)
-
-        if override:
-            delete_file_record(
-                scoped_service.kb_name,
-                txt_filename,
-                user_id=user_id,
-            )
-            delete_file_docs(
-                scoped_service.kb_name,
-                txt_filename,
-                user_id=user_id,
-            )
-
-        upsert_file_record(
-            scoped_service.kb_name,
-            txt_filename,
-            staged.size,
-            0,
-            status="uploaded",
-            error=None,
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
-            content_path=txt_path,
-            upload_path=upload_path,
-            user_id=user_id,
-        )
-
         try:
             # 解析、embedding、FAISS/BM25 重建均可能耗时，不占用 async 事件循环。
             await asyncio.to_thread(
@@ -1656,27 +1680,13 @@ async def upload(
                 txt_path,
                 chunk_size,
                 chunk_overlap,
-            )
-
-            txt_size = os.path.getsize(txt_path)
-
-            scoped_service.save_file_record(
-                os.path.basename(txt_path),
-                txt_size,
-                status="indexed",
-                error=None,
-                content_path=txt_path,
-                upload_path=upload_path,
+                staged_path=staged.path,
+                override=override,
+                staged_size=staged.size,
+                user_id=user_id,
             )
         except Exception as exc:
             error_message = str(exc)
-            update_file_status(
-                scoped_service.kb_name,
-                txt_filename,
-                "failed",
-                error_message,
-                user_id=user_id,
-            )
             return {
                 "error": error_message,
                 "message": f"{filename} upload failed"
@@ -1849,35 +1859,39 @@ def reindex_document(
     )
 
     try:
-        update_file_status(
-            scoped_service.kb_name,
-            txt_filename,
-            "uploaded",
-            None,
-            user_id=user_id,
-        )
+        with scoped_service.mutation_lock:
+            try:
+                update_file_status(
+                    scoped_service.kb_name,
+                    txt_filename,
+                    "uploaded",
+                    None,
+                    user_id=user_id,
+                )
 
-        parse_file_to_text_file(source_path, txt_path)
+                parse_file_to_text_file(source_path, txt_path)
 
-        scoped_service.chunk_size = request.chunk_size
-        scoped_service.chunk_overlap = request.chunk_overlap
-
-        delete_file_docs(
-            scoped_service.kb_name,
-            txt_filename,
-            user_id=user_id,
-        )
-
-        scoped_service.rebuild_index()
-
-        scoped_service.save_file_record(
-            txt_filename,
-            os.path.getsize(txt_path),
-            status="indexed",
-            error=None,
-            content_path=txt_path,
-            upload_path=source_path,
-        )
+                scoped_service.chunk_size = request.chunk_size
+                scoped_service.chunk_overlap = request.chunk_overlap
+                scoped_service.rebuild_and_sync(file_overrides={
+                    txt_filename: {
+                        "status": "indexed",
+                        "error": None,
+                        "chunk_size": request.chunk_size,
+                        "chunk_overlap": request.chunk_overlap,
+                        "content_path": txt_path,
+                        "upload_path": source_path,
+                    }
+                })
+            except Exception as exc:
+                update_file_status(
+                    scoped_service.kb_name,
+                    txt_filename,
+                    "failed",
+                    str(exc),
+                    user_id=user_id,
+                )
+                raise
 
         return {
             "message": f"{filename} reindexed successfully",
@@ -1885,13 +1899,6 @@ def reindex_document(
         }
     except Exception as exc:
         error_message = str(exc)
-        update_file_status(
-            scoped_service.kb_name,
-            txt_filename,
-            "failed",
-            error_message,
-            user_id=user_id,
-        )
         return {
             "error": error_message,
             "message": f"{filename} reindex failed"
@@ -1923,7 +1930,7 @@ def reload_index(current_user: CurrentUser = Depends(get_current_user_optional))
     """Manually trigger a full index rebuild without restarting the server."""
     require_permission(current_user, Permission.CAN_MANAGE_KB)
     scoped_service = get_scoped_kb_service(current_user)
-    scoped_service.rebuild_index()
+    scoped_service.rebuild_and_sync()
     return scoped_service.get_stats()
 
 @app.get("/knowledge_bases")

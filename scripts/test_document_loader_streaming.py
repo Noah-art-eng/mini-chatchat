@@ -5,6 +5,7 @@ import inspect
 import os
 import sys
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -510,7 +511,8 @@ class ProductionParserIntegrationTest(unittest.TestCase):
         service = SimpleNamespace(
             chunk_size=None,
             chunk_overlap=None,
-            rebuild_index=unittest.mock.Mock(),
+            mutation_lock=threading.RLock(),
+            rebuild_and_sync=unittest.mock.Mock(),
         )
 
         with patch.object(backend_app, "parse_file_to_text_file") as parser:
@@ -523,7 +525,7 @@ class ProductionParserIntegrationTest(unittest.TestCase):
             )
 
         parser.assert_called_once_with("/tmp/raw.pdf", "/tmp/content.txt")
-        service.rebuild_index.assert_called_once_with()
+        service.rebuild_and_sync.assert_called_once()
 
     def test_reindex_uses_path_to_path_parser(self):
         """文档 reindex 应重新解析 raw upload，而不是先构造完整 Python 字符串。"""
@@ -539,8 +541,8 @@ class ProductionParserIntegrationTest(unittest.TestCase):
                 content_path=str(content_dir),
                 chunk_size=None,
                 chunk_overlap=None,
-                rebuild_index=unittest.mock.Mock(),
-                save_file_record=unittest.mock.Mock(),
+                mutation_lock=threading.RLock(),
+                rebuild_and_sync=unittest.mock.Mock(),
             )
 
             def parse_for_test(source_path, destination_path):
@@ -566,7 +568,7 @@ class ProductionParserIntegrationTest(unittest.TestCase):
 
             self.assertEqual(result["filename"], "report.txt")
             parser.assert_called_once_with(str(source), str(content_dir / "report.txt"))
-            service.rebuild_index.assert_called_once_with()
+            service.rebuild_and_sync.assert_called_once()
 
     def test_temp_kb_uses_path_to_path_parser(self):
         """临时文件问答应从已安装 raw 文件直接生成 content 文本文件。"""

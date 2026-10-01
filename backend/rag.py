@@ -94,7 +94,7 @@ def load_documents(folder_path):
     """负责 load_documents 的函数职责。"""
     documents = []
 
-    for filename in os.listdir(folder_path):
+    for filename in sorted(os.listdir(folder_path)):
         if not filename.endswith(".txt"):
             continue
 
@@ -165,7 +165,7 @@ def load_and_split_documents(folder_path, chunk_size=300, overlap=50):
     chunks = []
     step = chunk_size - overlap
 
-    for filename in os.listdir(folder_path):
+    for filename in sorted(os.listdir(folder_path)):
         if not filename.endswith(".txt"):
             continue
 

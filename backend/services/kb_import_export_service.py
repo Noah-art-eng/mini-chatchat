@@ -6,7 +6,7 @@ import zipfile
 from datetime import datetime
 
 from model_config import get_embedding_model_name
-from services.kb_service import MiniKBService
+from services.kb_service import MiniKBService, get_kb_mutation_lock
 from db import (
     create_kb,
     delete_file_docs_by_kb,
@@ -254,30 +254,30 @@ def import_kb(zip_path, override=False, user_id=None):
                 "error": "invalid knowledge base name in metadata"
             }
 
-        target_root = _kb_path(kb_name, user_id=user_id)
+        with get_kb_mutation_lock(user_id, kb_name):
+            target_root = _kb_path(kb_name, user_id=user_id)
 
-        if os.path.exists(target_root) and not override:
-            return {
-                "error": f"knowledge base {kb_name} already exists"
-            }
+            if os.path.exists(target_root) and not override:
+                return {
+                    "error": f"knowledge base {kb_name} already exists"
+                }
 
-        if override and os.path.exists(target_root):
-            shutil.rmtree(target_root)
+            if override and os.path.exists(target_root):
+                shutil.rmtree(target_root)
 
-        if override:
-            _reset_kb_records(kb_name, user_id=user_id)
+            if override:
+                _reset_kb_records(kb_name, user_id=user_id)
 
-        _copy_kb_directories(extract_root, target_root)
+            _copy_kb_directories(extract_root, target_root)
 
-        try:
-            create_kb(kb_name, user_id=user_id)
-        except Exception:
-            pass
+            try:
+                create_kb(kb_name, user_id=user_id)
+            except Exception:
+                pass
 
-        service = MiniKBService(kb_name, user_id=user_id)
-        service.rebuild_index()
-        service.sync_files_to_db()
-        _restore_file_metadata(kb_name, metadata.get("files", []), user_id=user_id)
+            _restore_file_metadata(kb_name, metadata.get("files", []), user_id=user_id)
+            service = MiniKBService(kb_name, user_id=user_id)
+            service.rebuild_and_sync()
 
         return {
             "kb_name": kb_name,

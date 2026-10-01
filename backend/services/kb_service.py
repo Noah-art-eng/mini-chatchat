@@ -3,6 +3,8 @@ import json
 import hashlib
 import math
 import re
+import tempfile
+import threading
 from collections import Counter
 from functools import lru_cache
 
@@ -23,12 +25,35 @@ from db import (
     delete_file_record,
     list_file_records,
     add_file_doc,
-    delete_file_docs
+    delete_file_docs,
+    sync_kb_file_mappings,
+    resolve_user_id,
 )
 from user_scope import get_user_kb_root, migrate_legacy_demo_files
 from path_security import safe_join
 
 TOKEN_PATTERN = re.compile(r"[a-zA-Z0-9_]+|[\u4e00-\u9fff]")
+_KB_MUTATION_LOCKS = {}
+_KB_MUTATION_LOCKS_GUARD = threading.Lock()
+
+
+def get_kb_mutation_lock(user_id, kb_name):
+    """返回当前进程内专属于 user + KB 的可重入 mutation 锁。"""
+    key = (resolve_user_id(user_id), kb_name)
+    with _KB_MUTATION_LOCKS_GUARD:
+        return _KB_MUTATION_LOCKS.setdefault(key, threading.RLock())
+
+
+def _remove_staging_file(path):
+    """清理本次索引保存产生的 staging，清理失败不覆盖原始异常。"""
+    if not path:
+        return
+    try:
+        os.remove(path)
+    except FileNotFoundError:
+        pass
+    except OSError:
+        pass
 
 
 @lru_cache(maxsize=None)
@@ -66,6 +91,7 @@ class MiniKBService:
         self.embedding_model_name = get_embedding_model_name()
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
+        self.mutation_lock = get_kb_mutation_lock(user_id, kb_name)
 
         # Directory paths
         self.root_path = root_path or get_user_kb_root(user_id)
@@ -95,14 +121,19 @@ class MiniKBService:
         self._bm25_idf = {}
         self._bm25_avgdl = 0.0
 
-        index_exists = os.path.exists(self.index_file_path)
         chunks_exists = os.path.exists(self.chunks_file_path)
 
-        if index_exists and chunks_exists:
-            self.load_vector_store()
-        else:
-            self.build_index()
-            self.save_vector_store()
+        with self.mutation_lock:
+            if chunks_exists:
+                try:
+                    self.load_vector_store()
+                except Exception as exc:
+                    print(f"[KBService] Invalid vector snapshot, rebuilding: {exc}")
+                    self.build_index()
+                    self.save_vector_store()
+            else:
+                self.build_index()
+                self.save_vector_store()
 
     @property
     def index_file_path(self) -> str:
@@ -176,15 +207,7 @@ class MiniKBService:
 
     def sync_files_to_db(self):
         """负责 sync_files_to_db 的函数职责。"""
-        self.rebuild_index()
-
-        for filename in sorted(os.listdir(self.content_path)):
-            if not filename.endswith(".txt"):
-                continue
-
-            path = os.path.join(self.content_path, filename)
-            file_size = os.path.getsize(path)
-            self._persist_file_to_db(filename, file_size)
+        self.rebuild_and_sync()
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -218,8 +241,24 @@ class MiniKBService:
             for chunk in self.chunks
         ]
 
-        with open(self.chunks_file_path, "w", encoding="utf-8") as file:
-            json.dump(chunks_metadata, file, ensure_ascii=False, indent=2)
+        chunks_staging = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=self.vector_store_path,
+                prefix="chunks.json.staging-",
+                delete=False,
+            ) as file:
+                chunks_staging = file.name
+                json.dump(chunks_metadata, file, ensure_ascii=False, indent=2)
+                file.flush()
+                os.fsync(file.fileno())
+            os.replace(chunks_staging, self.chunks_file_path)
+            chunks_staging = None
+        except Exception:
+            _remove_staging_file(chunks_staging)
+            raise
 
         if self.index is None:
             if os.path.exists(self.index_file_path):
@@ -227,16 +266,47 @@ class MiniKBService:
             print("[KBService] No FAISS index to save")
             return
 
-        faiss.write_index(self.index, self.index_file_path)
+        index_staging = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                dir=self.vector_store_path,
+                prefix="index.faiss.staging-",
+                delete=False,
+            ) as file:
+                index_staging = file.name
+            faiss.write_index(self.index, index_staging)
+            with open(index_staging, "rb") as file:
+                os.fsync(file.fileno())
+            os.replace(index_staging, self.index_file_path)
+            index_staging = None
+        except Exception:
+            _remove_staging_file(index_staging)
+            raise
         print(f"[KBService] FAISS index saved: {self.index_file_path}")
 
     def load_vector_store(self) -> None:
         """Load the FAISS index and chunk metadata from vector_store."""
-        self.index = faiss.read_index(self.index_file_path)
-        self.vectors = None
-
         with open(self.chunks_file_path, "r", encoding="utf-8") as file:
             self.chunks = json.load(file)
+
+        if not self.chunks:
+            if os.path.exists(self.index_file_path):
+                loaded_index = faiss.read_index(self.index_file_path)
+                if loaded_index.ntotal != 0:
+                    raise ValueError("FAISS index and chunks count mismatch")
+            self.index = None
+            self.vectors = None
+            self.documents = []
+            self._build_bm25_index()
+            return
+
+        if not os.path.exists(self.index_file_path):
+            raise ValueError("FAISS index is missing for non-empty chunks")
+
+        self.index = faiss.read_index(self.index_file_path)
+        self.vectors = None
+        if self.index.ntotal != len(self.chunks):
+            raise ValueError("FAISS index and chunks count mismatch")
 
         self.documents = []
         self._build_bm25_index()
@@ -503,8 +573,38 @@ class MiniKBService:
 
     def rebuild_index(self) -> None:
         """Full re-index after any document change (upload / delete)."""
-        self.build_index()
-        self.save_vector_store()
+        with self.mutation_lock:
+            self.build_index()
+            self.save_vector_store()
+
+    def _sync_current_mappings(self, file_overrides=None) -> None:
+        """用当前最终 chunks 在一个事务内刷新整个 KB 的文件映射。"""
+        overrides = file_overrides or {}
+        files = []
+        for filename in sorted(os.listdir(self.content_path)):
+            if not filename.endswith(".txt"):
+                continue
+            files.append({
+                "filename": filename,
+                "size": os.path.getsize(os.path.join(self.content_path, filename)),
+                "chunk_ids": [
+                    chunk["chunk_id"]
+                    for chunk in self.chunks
+                    if chunk.get("source") == filename
+                ],
+                "metadata": overrides.get(filename, {}),
+            })
+        sync_kb_file_mappings(
+            self.kb_name,
+            files,
+            user_id=self.user_id,
+        )
+
+    def rebuild_and_sync(self, file_overrides=None) -> None:
+        """在同一 KB 锁内完成全量 rebuild、落盘和数据库映射同步。"""
+        with self.mutation_lock:
+            self.rebuild_index()
+            self._sync_current_mappings(file_overrides=file_overrides)
 
     def search_docs(
         self,
@@ -607,16 +707,17 @@ class MiniKBService:
         Delete a document from the KB and rebuild the index.
         Returns a result dict suitable for passing straight back to the client.
         """
-        path = safe_join(self.content_path, filename, field_name="filename")
+        with self.mutation_lock:
+            path = safe_join(self.content_path, filename, field_name="filename")
 
-        if not os.path.exists(path):
-            return {"error": "file not found"}
+            if not os.path.exists(path):
+                return {"error": "file not found"}
 
-        os.remove(path)
+            os.remove(path)
 
-        delete_file_record(self.kb_name, filename, user_id=self.user_id)
-        delete_file_docs(self.kb_name, filename, user_id=self.user_id)
-        self.rebuild_index()
+            delete_file_record(self.kb_name, filename, user_id=self.user_id)
+            delete_file_docs(self.kb_name, filename, user_id=self.user_id)
+            self.rebuild_and_sync()
 
         return {"message": f"{filename} deleted"}
 

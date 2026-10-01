@@ -2044,6 +2044,120 @@ def list_file_docs(kb_name, file_name, user_id=None):
         for row in rows
     ]
 
+
+def sync_kb_file_mappings(kb_name, files, user_id=None):
+    """在一个事务内重建当前 KB 的 file_doc，并同步每个文件的 chunk 数。"""
+    resolved_user_id = resolve_user_id(user_id)
+    conn = get_connection()
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT
+                file_name,
+                status,
+                error,
+                chunk_size,
+                chunk_overlap,
+                content_path,
+                upload_path
+            FROM knowledge_file
+            WHERE kb_name = ? AND user_id = ?
+            """,
+            (kb_name, resolved_user_id),
+        )
+        existing = {
+            row[0]: {
+                "status": row[1],
+                "error": row[2],
+                "chunk_size": row[3],
+                "chunk_overlap": row[4],
+                "content_path": row[5],
+                "upload_path": row[6],
+            }
+            for row in cursor.fetchall()
+        }
+
+        cursor.execute(
+            "DELETE FROM file_doc WHERE kb_name = ? AND user_id = ?",
+            (kb_name, resolved_user_id),
+        )
+
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        for file in files:
+            filename = file["filename"]
+            previous = existing.get(filename, {})
+            override = file.get("metadata", {})
+            values = {
+                "status": override.get("status", previous.get("status", "indexed")),
+                "error": override.get("error", previous.get("error")),
+                "chunk_size": override.get(
+                    "chunk_size",
+                    previous.get("chunk_size", 300),
+                ),
+                "chunk_overlap": override.get(
+                    "chunk_overlap",
+                    previous.get("chunk_overlap", 50),
+                ),
+                "content_path": override.get(
+                    "content_path",
+                    previous.get("content_path"),
+                ),
+                "upload_path": override.get(
+                    "upload_path",
+                    previous.get("upload_path"),
+                ),
+            }
+            cursor.execute(
+                """
+                INSERT INTO knowledge_file (
+                    kb_name, file_name, file_size, docs_count, update_time,
+                    status, error, chunk_size, chunk_overlap,
+                    content_path, upload_path, user_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(user_id, kb_name, file_name) DO UPDATE SET
+                    file_size = excluded.file_size,
+                    docs_count = excluded.docs_count,
+                    update_time = excluded.update_time,
+                    status = excluded.status,
+                    error = excluded.error,
+                    chunk_size = excluded.chunk_size,
+                    chunk_overlap = excluded.chunk_overlap,
+                    content_path = excluded.content_path,
+                    upload_path = excluded.upload_path
+                """,
+                (
+                    kb_name,
+                    filename,
+                    file["size"],
+                    len(file["chunk_ids"]),
+                    now,
+                    values["status"],
+                    values["error"],
+                    values["chunk_size"],
+                    values["chunk_overlap"],
+                    values["content_path"],
+                    values["upload_path"],
+                    resolved_user_id,
+                ),
+            )
+            for chunk_id in file["chunk_ids"]:
+                cursor.execute(
+                    """
+                    INSERT INTO file_doc (kb_name, file_name, chunk_id, user_id)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    (kb_name, filename, int(chunk_id), resolved_user_id),
+                )
+
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
 def delete_file_docs_by_kb(kb_name, user_id=None):
     """负责 delete_file_docs_by_kb 的函数职责。"""
     resolved_user_id = resolve_user_id(user_id)
