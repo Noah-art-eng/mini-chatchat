@@ -56,6 +56,7 @@ from agent_service import (
     run_agent_persisted
 )
 from db import (
+    connection_scope,
     init_db,
     create_default_kb,
     list_kbs,
@@ -539,6 +540,7 @@ def current_session_id(current_user: CurrentUser):
     return (current_user.metadata or {}).get("session_id")
 
 
+@connection_scope
 def check_database():
     """负责 check_database 的函数职责。"""
     try:
@@ -566,6 +568,7 @@ def build_dependency_checks():
     }
 
 
+@connection_scope
 def get_runtime_stats():
     """负责 get_runtime_stats 的函数职责。"""
     stats = {

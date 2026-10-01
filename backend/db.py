@@ -1,20 +1,59 @@
 import json
 import os
 import sqlite3
+from contextvars import ContextVar
 from datetime import datetime
+from functools import wraps
 from user_scope import DEMO_USER_EMAIL
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.getenv("MINI_CHATCHAT_DB_PATH", os.path.join(BASE_DIR, "mini.db"))
 _DEMO_USER_ID_CACHE = None
+_ACTIVE_CONNECTIONS = ContextVar("active_db_connections", default=None)
+
+
+def connection_scope(func):
+    """确保一个 DB 方法创建的连接在返回或抛异常时都被关闭。"""
+    @wraps(func)
+    def wrapped(*args, **kwargs):
+        connections = []
+        token = _ACTIVE_CONNECTIONS.set(connections)
+        try:
+            return func(*args, **kwargs)
+        except BaseException:
+            for connection in reversed(connections):
+                try:
+                    connection.rollback()
+                except sqlite3.Error:
+                    pass
+            raise
+        finally:
+            for connection in reversed(connections):
+                try:
+                    connection.close()
+                except sqlite3.Error:
+                    pass
+            _ACTIVE_CONNECTIONS.reset(token)
+
+    return wrapped
 
 
 def get_connection():
-    """负责 get_connection 的函数职责。"""
+    """创建启用 FK 的连接，并登记到当前 DB 方法的统一清理范围。"""
     db_dir = os.path.dirname(DB_PATH)
     if db_dir:
         os.makedirs(db_dir, exist_ok=True)
-    return sqlite3.connect(DB_PATH)
+    connection = sqlite3.connect(DB_PATH)
+    try:
+        connection.execute("PRAGMA foreign_keys = ON")
+    except BaseException:
+        connection.close()
+        raise
+
+    active_connections = _ACTIVE_CONNECTIONS.get()
+    if active_connections is not None:
+        active_connections.append(connection)
+    return connection
 
 
 def has_unique_index(cursor, table_name, expected_columns):
@@ -133,6 +172,7 @@ def ensure_user_scoped_unique_constraints(cursor, demo_user_id):
         cursor.execute("ALTER TABLE knowledge_file_new RENAME TO knowledge_file")
 
 
+@connection_scope
 def init_db():
     """负责 init_db 的函数职责。"""
     conn = get_connection()
@@ -495,6 +535,7 @@ CREATE TABLE IF NOT EXISTS oauth_accounts (
     conn.close()
 
 
+@connection_scope
 def get_demo_user_id():
     """负责 get_demo_user_id 的函数职责。"""
     global _DEMO_USER_ID_CACHE
@@ -552,6 +593,7 @@ def resolve_user_id(user_id=None):
     return user_id if user_id is not None else get_demo_user_id()
 
 
+@connection_scope
 def create_default_kb(user_id=None):
     """负责 create_default_kb 的函数职责。"""
     resolved_user_id = resolve_user_id(user_id)
@@ -613,6 +655,7 @@ def public_user_dict(user):
     }
 
 
+@connection_scope
 def get_user_by_id(user_id):
     """负责 get_user_by_id 的函数职责。"""
     conn = get_connection()
@@ -641,6 +684,7 @@ def get_user_by_id(user_id):
     return user
 
 
+@connection_scope
 def get_user_by_email(email):
     """负责 get_user_by_email 的函数职责。"""
     conn = get_connection()
@@ -669,6 +713,7 @@ def get_user_by_email(email):
     return user
 
 
+@connection_scope
 def get_user_auth_by_email(email):
     """负责 get_user_auth_by_email 的函数职责。"""
     conn = get_connection()
@@ -703,6 +748,7 @@ def get_user_auth_by_email(email):
     return user
 
 
+@connection_scope
 def create_user(
     email=None,
     display_name=None,
@@ -773,6 +819,7 @@ def create_user(
     return get_user_by_id(user_id)
 
 
+@connection_scope
 def get_user_password_hash(user_id):
     """负责 get_user_password_hash 的函数职责。"""
     conn = get_connection()
@@ -803,6 +850,7 @@ def create_email_user(email, password_hash, display_name=None):
     )
 
 
+@connection_scope
 def set_user_active(user_id, is_active):
     """负责 set_user_active 的函数职责。"""
     conn = get_connection()
@@ -827,6 +875,7 @@ def set_user_active(user_id, is_active):
     return updated > 0
 
 
+@connection_scope
 def update_user_account(user_id, display_name):
     """负责 update_user_account 的函数职责。"""
     conn = get_connection()
@@ -885,6 +934,7 @@ def public_oauth_account(account):
     }
 
 
+@connection_scope
 def get_oauth_account(provider, provider_user_id):
     """负责 get_oauth_account 的函数职责。"""
     conn = get_connection()
@@ -914,6 +964,7 @@ def get_oauth_account(provider, provider_user_id):
     return account
 
 
+@connection_scope
 def get_oauth_account_for_user(user_id, provider):
     """负责 get_oauth_account_for_user 的函数职责。"""
     conn = get_connection()
@@ -943,6 +994,7 @@ def get_oauth_account_for_user(user_id, provider):
     return account
 
 
+@connection_scope
 def list_oauth_accounts_for_user(user_id):
     """负责 list_oauth_accounts_for_user 的函数职责。"""
     conn = get_connection()
@@ -974,6 +1026,7 @@ def list_oauth_accounts_for_user(user_id):
     return accounts
 
 
+@connection_scope
 def upsert_oauth_account(
     user_id,
     provider,
@@ -1021,6 +1074,7 @@ def upsert_oauth_account(
     return get_oauth_account(provider, provider_user_id)
 
 
+@connection_scope
 def delete_oauth_account_for_user(user_id, provider):
     """负责 delete_oauth_account_for_user 的函数职责。"""
     conn = get_connection()
@@ -1048,6 +1102,7 @@ def user_login_method_count(user_id):
     return (1 if password_hash else 0) + oauth_count
 
 
+@connection_scope
 def create_auth_session(
     session_id,
     user_id,
@@ -1114,6 +1169,7 @@ def row_to_auth_session(row):
     }
 
 
+@connection_scope
 def get_auth_session(session_id):
     """负责 get_auth_session 的函数职责。"""
     conn = get_connection()
@@ -1144,6 +1200,7 @@ def get_auth_session(session_id):
     return session
 
 
+@connection_scope
 def list_auth_sessions_by_user(user_id):
     """负责 list_auth_sessions_by_user 的函数职责。"""
     conn = get_connection()
@@ -1180,6 +1237,7 @@ def list_auth_sessions_by_user(user_id):
     return sessions
 
 
+@connection_scope
 def update_auth_session_refresh(
     session_id,
     refresh_token_hash,
@@ -1214,6 +1272,7 @@ def update_auth_session_refresh(
     return updated > 0
 
 
+@connection_scope
 def revoke_auth_session(session_id):
     """负责 revoke_auth_session 的函数职责。"""
     conn = get_connection()
@@ -1239,6 +1298,7 @@ def revoke_auth_session(session_id):
     return updated > 0
 
 
+@connection_scope
 def revoke_auth_session_for_user(user_id, session_id):
     """负责 revoke_auth_session_for_user 的函数职责。"""
     conn = get_connection()
@@ -1267,6 +1327,7 @@ def revoke_auth_session_for_user(user_id, session_id):
     return updated > 0
 
 
+@connection_scope
 def revoke_other_auth_sessions(user_id, current_session_id):
     """负责 revoke_other_auth_sessions 的函数职责。"""
     conn = get_connection()
@@ -1295,6 +1356,7 @@ def revoke_other_auth_sessions(user_id, current_session_id):
     return updated
 
 
+@connection_scope
 def revoke_user_auth_sessions(user_id):
     """负责 revoke_user_auth_sessions 的函数职责。"""
     conn = get_connection()
@@ -1321,6 +1383,7 @@ def revoke_user_auth_sessions(user_id):
     return updated
 
 
+@connection_scope
 def cleanup_expired_auth_sessions():
     """负责 cleanup_expired_auth_sessions 的函数职责。"""
     conn = get_connection()
@@ -1346,6 +1409,7 @@ def cleanup_expired_auth_sessions():
     return updated
 
 
+@connection_scope
 def get_user_preferences(user_id):
     """负责 get_user_preferences 的函数职责。"""
     conn = get_connection()
@@ -1385,6 +1449,7 @@ def get_user_preferences(user_id):
     }
 
 
+@connection_scope
 def upsert_user_preferences(
     user_id,
     language=None,
@@ -1435,6 +1500,7 @@ def upsert_user_preferences(
     return get_user_preferences(user_id)
 
 
+@connection_scope
 def list_kbs(user_id=None):
     """负责 list_kbs 的函数职责。"""
     resolved_user_id = resolve_user_id(user_id)
@@ -1463,6 +1529,7 @@ def list_kbs(user_id=None):
         for row in rows
     ]
 
+@connection_scope
 def get_kb_record(kb_name, user_id=None):
     """负责 get_kb_record 的函数职责。"""
     resolved_user_id = resolve_user_id(user_id)
@@ -1498,6 +1565,7 @@ def user_owns_kb(kb_name, user_id=None):
     return get_kb_record(kb_name, user_id=user_id) is not None
 
 
+@connection_scope
 def create_kb(kb_name, user_id=None):
     """负责 create_kb 的函数职责。"""
     resolved_user_id = resolve_user_id(user_id)
@@ -1523,6 +1591,7 @@ def create_kb(kb_name, user_id=None):
     conn.close()
 
 
+@connection_scope
 def create_conversation(title=None, user_id=None):
     """负责 create_conversation 的函数职责。"""
     resolved_user_id = resolve_user_id(user_id)
@@ -1555,6 +1624,7 @@ def create_conversation(title=None, user_id=None):
     return conversation_id
 
 
+@connection_scope
 def list_conversations(user_id=None):
     """负责 list_conversations 的函数职责。"""
     resolved_user_id = resolve_user_id(user_id)
@@ -1584,6 +1654,7 @@ def list_conversations(user_id=None):
     ]
 
 
+@connection_scope
 def get_conversation(conversation_id, user_id=None):
     """负责 get_conversation 的函数职责。"""
     resolved_user_id = resolve_user_id(user_id)
@@ -1613,6 +1684,7 @@ def get_conversation(conversation_id, user_id=None):
     }
 
 
+@connection_scope
 def update_conversation_title(conversation_id, title, user_id=None):
     """负责 update_conversation_title 的函数职责。"""
     resolved_user_id = resolve_user_id(user_id)
@@ -1642,6 +1714,7 @@ def update_conversation_title(conversation_id, title, user_id=None):
     return get_conversation(conversation_id, user_id=resolved_user_id)
 
 
+@connection_scope
 def delete_conversation(conversation_id, user_id=None):
     """负责 delete_conversation 的函数职责。"""
     resolved_user_id = resolve_user_id(user_id)
@@ -1702,6 +1775,7 @@ def decode_metadata(metadata_text):
         return None
 
 
+@connection_scope
 def save_message(conversation_id, role, content, metadata=None, user_id=None):
     # 每次写消息同步更新时间；assistant 的 sources/agent trace 统一放 metadata 以便历史回放。
     """负责 save_message 的函数职责。"""
@@ -1761,6 +1835,7 @@ def save_message(conversation_id, role, content, metadata=None, user_id=None):
     return message_id
 
 
+@connection_scope
 def get_conversation_messages(conversation_id, user_id=None):
     # 读取历史时把持久化的 sources 恢复到顶层字段，保持前端消息结构不变。
     """负责 get_conversation_messages 的函数职责。"""
@@ -1810,6 +1885,7 @@ def get_conversation_messages(conversation_id, user_id=None):
     return messages
 
 
+@connection_scope
 def update_message_feedback(message_id, score, reason=None, user_id=None):
     """负责 update_message_feedback 的函数职责。"""
     resolved_user_id = resolve_user_id(user_id)
@@ -1836,6 +1912,7 @@ def update_message_feedback(message_id, score, reason=None, user_id=None):
     return updated > 0
 
 
+@connection_scope
 def upsert_file_record(
     kb_name,
     file_name,
@@ -1889,6 +1966,7 @@ def upsert_file_record(
     conn.close()
 
 
+@connection_scope
 def update_file_status(kb_name, file_name, status, error=None, user_id=None):
     """负责 update_file_status 的函数职责。"""
     resolved_user_id = resolve_user_id(user_id)
@@ -1914,6 +1992,7 @@ def update_file_status(kb_name, file_name, status, error=None, user_id=None):
     conn.close()
 
 
+@connection_scope
 def delete_file_record(kb_name, file_name, user_id=None):
     """负责 delete_file_record 的函数职责。"""
     resolved_user_id = resolve_user_id(user_id)
@@ -1932,6 +2011,7 @@ def delete_file_record(kb_name, file_name, user_id=None):
     conn.commit()
     conn.close()
 
+@connection_scope
 def list_file_records(kb_name, user_id=None):
     """负责 list_file_records 的函数职责。"""
     resolved_user_id = resolve_user_id(user_id)
@@ -1976,6 +2056,7 @@ def list_file_records(kb_name, user_id=None):
         for row in rows
     ]
 
+@connection_scope
 def add_file_doc(kb_name, file_name, chunk_id, user_id=None):
     """负责 add_file_doc 的函数职责。"""
     resolved_user_id = resolve_user_id(user_id)
@@ -2001,6 +2082,7 @@ def add_file_doc(kb_name, file_name, chunk_id, user_id=None):
     conn.close()
     print(f"INSERT FILE_DOC -> {file_name} : {chunk_id}")
 
+@connection_scope
 def delete_file_docs(kb_name, file_name, user_id=None):
     """负责 delete_file_docs 的函数职责。"""
     resolved_user_id = resolve_user_id(user_id)
@@ -2019,6 +2101,7 @@ def delete_file_docs(kb_name, file_name, user_id=None):
     conn.commit()
     conn.close()
 
+@connection_scope
 def list_file_docs(kb_name, file_name, user_id=None):
     """负责 list_file_docs 的函数职责。"""
     resolved_user_id = resolve_user_id(user_id)
@@ -2045,6 +2128,7 @@ def list_file_docs(kb_name, file_name, user_id=None):
     ]
 
 
+@connection_scope
 def sync_kb_file_mappings(kb_name, files, user_id=None):
     """在一个事务内重建当前 KB 的 file_doc，并同步每个文件的 chunk 数。"""
     resolved_user_id = resolve_user_id(user_id)
@@ -2158,6 +2242,7 @@ def sync_kb_file_mappings(kb_name, files, user_id=None):
     finally:
         conn.close()
 
+@connection_scope
 def delete_file_docs_by_kb(kb_name, user_id=None):
     """负责 delete_file_docs_by_kb 的函数职责。"""
     resolved_user_id = resolve_user_id(user_id)
@@ -2176,6 +2261,7 @@ def delete_file_docs_by_kb(kb_name, user_id=None):
     conn.close()
 
 
+@connection_scope
 def delete_files_by_kb(kb_name, user_id=None):
     """负责 delete_files_by_kb 的函数职责。"""
     resolved_user_id = resolve_user_id(user_id)
@@ -2194,6 +2280,7 @@ def delete_files_by_kb(kb_name, user_id=None):
     conn.close()
 
 
+@connection_scope
 def delete_kb_record(kb_name, user_id=None):
     """负责 delete_kb_record 的函数职责。"""
     resolved_user_id = resolve_user_id(user_id)
