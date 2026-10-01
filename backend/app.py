@@ -39,6 +39,7 @@ from services.mcp_adapter import (
 )
 from services.tools import list_all_tools, run_tool
 from chat_service import (
+    RAG_STREAM_ERROR_MESSAGE,
     create_temp_kb_from_upload,
     run_local_kb_chat,
     run_temp_kb_chat,
@@ -1328,6 +1329,7 @@ def build_openai_streaming_response(completion_id, model, internal_response):
     async def event_stream():
         """负责 event_stream 的函数职责。"""
         buffer = ""
+        stream_failed = False
 
         async for chunk in internal_response.body_iterator:
             if isinstance(chunk, bytes):
@@ -1370,8 +1372,20 @@ def build_openai_streaming_response(completion_id, model, internal_response):
                         }
                         yield f"data: {json.dumps(chunk_data)}\n\n"
 
+                    if event.get("type") == "error":
+                        stream_failed = True
+                        error_data = {
+                            "error": {
+                                "message": RAG_STREAM_ERROR_MESSAGE,
+                                "type": "server_error",
+                                "code": "rag_stream_error",
+                            }
+                        }
+                        yield f"data: {json.dumps(error_data)}\n\n"
+
                     if event.get("type") == "done":
-                        yield "data: [DONE]\n\n"
+                        if not stream_failed:
+                            yield "data: [DONE]\n\n"
 
     return StreamingResponse(
         event_stream(),

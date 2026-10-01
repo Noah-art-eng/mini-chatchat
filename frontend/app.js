@@ -682,7 +682,9 @@ async function readChatStream(
 
         if (event.type === "error") {
             const errorMessage = event.message || "Streaming failed.";
-            answerEl.textContent = errorMessage;
+            // 已展示的 token 会作为 partial response 保存；只有首 token 前失败时
+            // 才用通用错误占位，保证当前 UI 与刷新后的历史消息一致。
+            if (!answerEl.textContent) answerEl.textContent = errorMessage;
             /** 用途：负责 showToast 的界面或数据处理职责。 */
             showToast(errorMessage, "error");
 
@@ -862,6 +864,15 @@ async function readTempFileStream(response) {
             tempSources.innerHTML =
                 /** 用途：负责 renderSources 的界面或数据处理职责。 */
                 renderSources(event.sources || event.docs || []);
+            return;
+        }
+
+        if (event.type === "error") {
+            const errorMessage = event.message || "Streaming failed.";
+            if (!tempAnswerText.textContent) {
+                tempAnswerText.textContent = errorMessage;
+            }
+            showToast(errorMessage, "error");
             return;
         }
 

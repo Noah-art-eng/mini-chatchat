@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import shutil
 import uuid
@@ -28,6 +29,8 @@ from user_scope import get_user_temp_root, migrate_legacy_demo_files
 
 
 temp_kb_services = {}
+logger = logging.getLogger(__name__)
+RAG_STREAM_ERROR_MESSAGE = "Streaming response failed. Please try again."
 
 
 def get_metadata_filter(request):
@@ -102,6 +105,7 @@ def build_streaming_response(
         # SSE Sources 与真正进入 Prompt 的 Context chunk 保持一致。
         """负责 event_stream 的函数职责。"""
         answer_parts = []
+        stream_failed = False
         context, context_results = build_context(results, return_results=True)
         sources_event = {
             "type": "sources",
@@ -141,19 +145,29 @@ def build_streaming_response(
                 }
                 yield f"data: {json.dumps(token_event)}\n\n"
         except Exception as exc:
-            error_event = {
-                "type": "error",
-                "message": str(exc)
-            }
-            yield f"data: {json.dumps(error_event)}\n\n"
+            # 客户端只需要稳定错误语义；具体 SDK/网络异常保留在服务端日志中。
+            logger.exception("RAG LLM streaming failed", exc_info=exc)
+            stream_failed = True
 
         assistant_message_id = None
+        answer = "".join(answer_parts)
+        if stream_failed and not answer:
+            # 首个 token 前失败时，UI 会展示这条通用提示，历史记录保存同一内容。
+            answer = RAG_STREAM_ERROR_MESSAGE
 
         if save_assistant:
             assistant_message_id = save_assistant(
-                "".join(answer_parts),
+                answer,
                 context_results,
             )
+
+        if stream_failed:
+            error_event = {
+                "type": "error",
+                "message": RAG_STREAM_ERROR_MESSAGE,
+                "partial_response": bool(answer_parts),
+            }
+            yield f"data: {json.dumps(error_event)}\n\n"
 
         done_event = {
             "type": "done"
