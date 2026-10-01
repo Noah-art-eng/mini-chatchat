@@ -1,7 +1,10 @@
+import logging
+
 from ddgs import DDGS
 
 
 SEARCH_TIMEOUT_SECONDS = 10
+logger = logging.getLogger("mini-chatchat")
 
 
 def search_web(query, top_k=3):
@@ -15,8 +18,8 @@ def search_web(query, top_k=3):
                 query,
                 max_results=top_k
             )
-    except Exception as e:
-        print(f"[SearchService] web search failed: {e}")
+    except Exception as exc:
+        logger.warning("Web search failed: %s", exc)
         return []
 
     for index, item in enumerate(search_results[:top_k], start=1):

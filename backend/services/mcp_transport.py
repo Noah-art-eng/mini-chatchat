@@ -6,9 +6,7 @@ import queue
 import re
 import subprocess
 import threading
-import time
 from dataclasses import dataclass, field
-from typing import Any
 
 from .mcp_types import MCPToolResult, MCPToolSpec
 

@@ -18,7 +18,6 @@ from db import (
     get_oauth_account_for_user,
     get_user_by_email,
     get_user_by_id,
-    list_oauth_accounts_for_user,
     public_oauth_account,
     upsert_oauth_account,
     user_login_method_count,

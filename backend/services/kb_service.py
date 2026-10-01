@@ -1,6 +1,7 @@
 import os
 import json
 import hashlib
+import logging
 import math
 import re
 import tempfile
@@ -41,6 +42,7 @@ EMBEDDING_PIPELINE_VERSION = 1
 NORMALIZE_EMBEDDINGS = False
 _KB_MUTATION_LOCKS = {}
 _KB_MUTATION_LOCKS_GUARD = threading.Lock()
+logger = logging.getLogger("mini-chatchat")
 
 
 def get_kb_mutation_lock(user_id, kb_name):
@@ -70,16 +72,15 @@ def get_embedding_model(model_name: str) -> SentenceTransformer:
 
 class MiniKBService:
     """
-    Service layer that owns all knowledge-base state:
-    raw documents, chunk list, FAISS index, and the embedding model.
+    Service layer that owns knowledge-base files, chunks, indexes, and search state.
 
     Directory layout (ChatChat-style):
         data/users/{user}/knowledge_bases/{kb_name}/content/
         data/users/{user}/knowledge_bases/{kb_name}/uploads/
         data/users/{user}/knowledge_bases/{kb_name}/vector_store/
 
-    app.py should only call public methods on this class and never
-    touch the directory paths or in-memory state directly.
+    Route and import/export workflows also use the service's resolved directory
+    paths when moving uploaded files into the knowledge-base layout.
     """
 
     def __init__(
@@ -135,7 +136,11 @@ class MiniKBService:
                 try:
                     self.load_vector_store()
                 except Exception as exc:
-                    print(f"[KBService] Invalid vector snapshot, rebuilding: {exc}")
+                    logger.warning(
+                        "Invalid vector snapshot for kb=%s; rebuilding (%s)",
+                        self.kb_name,
+                        type(exc).__name__,
+                    )
                     self.build_index()
                     self.save_vector_store()
             else:
@@ -190,8 +195,6 @@ class MiniKBService:
     ) -> None:
         """Write knowledge_file + file_doc records for one content file."""
         file_chunks = self._get_file_chunks(filename)
-
-        print(f"[SYNC] {filename} -> {len(file_chunks)} chunks")
 
         upsert_file_record(
             self.kb_name,
@@ -276,7 +279,6 @@ class MiniKBService:
             if os.path.exists(self.index_file_path):
                 os.remove(self.index_file_path)
             self._save_vector_metadata()
-            print("[KBService] No FAISS index to save")
             return
 
         index_staging = None
@@ -295,8 +297,6 @@ class MiniKBService:
         except Exception:
             _remove_staging_file(index_staging)
             raise
-        print(f"[KBService] FAISS index saved: {self.index_file_path}")
-
         self._save_vector_metadata()
 
     def _save_vector_metadata(self) -> None:
@@ -460,23 +460,14 @@ class MiniKBService:
                 raise ValueError("vector snapshot metadata is invalid")
         self._build_bm25_index()
 
-        print(
-            f"[KBService] FAISS index loaded "
-            f"({self.index.ntotal} vectors) | chunks={len(self.chunks)}"
-        )
-
     def build_index(self) -> None:
         """Load documents → split → build FAISS index from scratch."""
-        print(f"[KBService] build_index called | kb={self.kb_name}")
-        print(f"[KBService] content_path = {os.path.abspath(self.content_path)}")
-
         try:
             all_files = os.listdir(self.content_path)
         except FileNotFoundError:
             all_files = []
 
         txt_files = [f for f in all_files if f.endswith(".txt")]
-        print(f"[KBService] files in content_path: {txt_files}")
 
         # rebuild 直接从 content 文件生成最终 chunks，避免同时保留完整
         # documents 正文集合和 chunks 两份大文本。
@@ -487,20 +478,19 @@ class MiniKBService:
             overlap=self.chunk_overlap,
         )
         self._build_bm25_index()
-        print(f"[KBService] chunks produced: {len(self.chunks)}")
 
         if self.chunks:
             self.index, self.vectors = build_faiss_index(
                 self.chunks, self.model
             )
-            print(f"[KBService] FAISS index built ({self.index.ntotal} vectors)")
         else:
             self.index = None
             self.vectors = None
             if txt_files:
-                print(
-                    f"[KBService] WARNING: {len(txt_files)} .txt file(s) found "
-                    "but 0 chunks produced — files may be empty."
+                logger.warning(
+                    "Knowledge base %s has %d text file(s) but produced no chunks",
+                    self.kb_name,
+                    len(txt_files),
                 )
             self._build_bm25_index()
 

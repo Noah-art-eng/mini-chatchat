@@ -310,7 +310,6 @@ def add_file_doc(
 
     conn.commit()
     conn.close()
-    print(f"INSERT FILE_DOC -> {file_name} : {chunk_id}")
 
 
 def delete_file_docs(

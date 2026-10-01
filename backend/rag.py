@@ -436,7 +436,7 @@ def generate_answer(
     prompt_name="default",
     source_type="local_kb",
     context=None,
-): # 使用GPT-4.1-mini模型生成答案, 只使用搜索到的文本块作为上下文
+):  # 使用当前 provider/model 配置生成答案，并将检索结果作为上下文。
     """负责 generate_answer 的函数职责。"""
     prompt = build_prompt(
         query,
