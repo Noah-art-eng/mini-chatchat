@@ -11,7 +11,12 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 
 from model_config import get_embedding_model_name
-from rag import load_documents, split_documents, build_faiss_index
+from rag import (
+    build_faiss_index,
+    load_and_split_documents,
+    load_documents,
+    split_documents,
+)
 
 from db import (
     upsert_file_record,
@@ -254,10 +259,15 @@ class MiniKBService:
         txt_files = [f for f in all_files if f.endswith(".txt")]
         print(f"[KBService] files in content_path: {txt_files}")
 
-        self.load_documents()
-        print(f"[KBService] documents loaded: {len(self.documents)}")
-
-        self.split_documents()
+        # rebuild 直接从 content 文件生成最终 chunks，避免同时保留完整
+        # documents 正文集合和 chunks 两份大文本。
+        self.documents = []
+        self.chunks = load_and_split_documents(
+            self.content_path,
+            chunk_size=self.chunk_size,
+            overlap=self.chunk_overlap,
+        )
+        self._build_bm25_index()
         print(f"[KBService] chunks produced: {len(self.chunks)}")
 
         if self.chunks:

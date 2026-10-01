@@ -14,6 +14,7 @@ from model_config import (
 from prompts import get_prompt_template
 
 DEFAULT_CONTEXT_TOKEN_BUDGET = 3000
+DEFAULT_EMBEDDING_BATCH_SIZE = 64
 
 SOURCE_SEMANTICS = {
     "local_kb": {
@@ -149,20 +150,88 @@ def split_documents(documents, chunk_size=300, overlap=50):
     return chunks
 
 
-def build_faiss_index(chunks, model): # 把文本块转成向量, 然后建立faiss索引
-    """负责 build_faiss_index 的函数职责。"""
-    texts = [chunk["text"] for chunk in chunks]
-    vectors = model.encode(texts)
+def load_and_split_documents(folder_path, chunk_size=300, overlap=50):
+    """逐个读取 content 文件并直接生成与旧逻辑兼容的 chunk 列表。
 
-    vectors = np.array(vectors).astype("float32")
+    最终 chunks 仍需供 BM25、FAISS 位置映射和持久化使用；这里消除的是
+    rebuild 期间额外保留的完整 documents 正文集合。每个文件只维护一个最多
+    ``chunk_size`` 字符的滑动窗口，同时保持旧 split_documents() 的切分边界。
+    """
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be greater than 0")
+    if overlap < 0 or overlap >= chunk_size:
+        raise ValueError("overlap must be between 0 and chunk_size - 1")
 
-    dimension = vectors.shape[1]
+    chunks = []
+    step = chunk_size - overlap
 
-    index = faiss.IndexFlatL2(dimension)
+    for filename in os.listdir(folder_path):
+        if not filename.endswith(".txt"):
+            continue
 
-    index.add(vectors)
+        with open(
+            os.path.join(folder_path, filename),
+            "r",
+            encoding="utf-8",
+        ) as file:
+            buffer = ""
+            reached_eof = False
 
-    return index, vectors
+            while True:
+                while len(buffer) < chunk_size and not reached_eof:
+                    text = file.read(chunk_size - len(buffer))
+                    if text:
+                        buffer += text
+                    else:
+                        reached_eof = True
+
+                if not buffer:
+                    break
+
+                chunks.append({
+                    "text": buffer[:chunk_size],
+                    "source": filename,
+                    "chunk_id": len(chunks) + 1,
+                })
+
+                # 即使已经到达 EOF，也继续按旧逻辑移动 start；这会保留旧实现
+                # 在文件末尾可能产生的短 overlap chunk，而不是悄悄改变 chunk_id。
+                if reached_eof and len(buffer) <= step:
+                    break
+                buffer = buffer[step:]
+
+    return chunks
+
+
+def build_faiss_index(
+    chunks,
+    model,
+    batch_size=DEFAULT_EMBEDDING_BATCH_SIZE,
+):
+    """分批生成向量并按 chunk 顺序加入 IndexFlatL2。
+
+    返回值继续保持 ``(index, vectors)`` 两项兼容形状，但第二项不再保留全量
+    vectors，而是 ``None``。FAISS 自身已经持有向量，额外保留 NumPy 矩阵只会
+    抬高 rebuild 的内存峰值，现有检索代码也没有使用它。
+    """
+    if batch_size <= 0:
+        raise ValueError("batch_size must be greater than 0")
+
+    index = None
+
+    for start in range(0, len(chunks), batch_size):
+        batch = chunks[start:start + batch_size]
+        texts = [chunk["text"] for chunk in batch]
+        vectors = np.asarray(model.encode(texts), dtype="float32")
+
+        if index is None:
+            index = faiss.IndexFlatL2(vectors.shape[1])
+
+        # IndexFlatL2 支持重复 add；逐批加入仍保持 FAISS position 与 chunks
+        # 的顺序一一对应，同时不需要完整 texts/vectors 临时副本。
+        index.add(vectors)
+
+    return index, None
 
 
 def search(
