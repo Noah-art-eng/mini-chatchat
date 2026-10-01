@@ -1,8 +1,19 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { readSSE, startKbChat } from "../api/chat";
 import { useConversationStore } from "../stores/conversationStore";
 import type { KBChatRequest } from "../types/chat";
 import type { ChatMessage, Source } from "../types/conversation";
+
+type ChatRun = {
+  controller: AbortController;
+  id: number;
+  initialConversationId: number | null;
+  serverConversationId?: number;
+};
+
+function isAbortError(error: unknown) {
+  return error instanceof Error && error.name === "AbortError";
+}
 
 /** 用途：负责 useChatStream 的界面或数据处理职责。 */
 export function useChatStream() {
@@ -22,17 +33,65 @@ export function useChatStream() {
   } = useConversationStore();
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const activeRunRef = useRef<ChatRun | null>(null);
+  const conversationIdRef = useRef(conversationId);
+  const nextRunIdRef = useRef(0);
+
+  function isCurrentRun(run: ChatRun) {
+    const currentConversationId = conversationIdRef.current;
+    return (
+      activeRunRef.current?.id === run.id &&
+      !run.controller.signal.aborted &&
+      (currentConversationId === run.initialConversationId ||
+        (run.serverConversationId !== undefined &&
+          currentConversationId === run.serverConversationId))
+    );
+  }
+
+  function abortRun(run: ChatRun) {
+    if (activeRunRef.current?.id === run.id) {
+      activeRunRef.current = null;
+    }
+    run.controller.abort();
+  }
+
+  useEffect(() => {
+    conversationIdRef.current = conversationId;
+    const run = activeRunRef.current;
+    if (run && !isCurrentRun(run)) {
+      abortRun(run);
+      setError(null);
+      setIsStreaming(false);
+    }
+  }, [conversationId]);
+
+  useEffect(() => {
+    return () => {
+      const run = activeRunRef.current;
+      if (run) abortRun(run);
+    };
+  }, []);
 
   /** 用途：负责 sendMessage 的界面或数据处理职责。 */
   async function sendMessage(query: string) {
     const trimmedQuery = query.trim();
-    if (!trimmedQuery || isStreaming) return;
+    if (!trimmedQuery) return;
 
     if (chatMode === "temp_kb" && !tempKbId) {
       /** 用途：负责 setError 的界面或数据处理职责。 */
       setError("Please upload a temp file first.");
       return;
     }
+
+    const previousRun = activeRunRef.current;
+    if (previousRun) abortRun(previousRun);
+
+    const run: ChatRun = {
+      controller: new AbortController(),
+      id: ++nextRunIdRef.current,
+      initialConversationId: conversationId
+    };
+    activeRunRef.current = run;
 
     /** 用途：负责 setError 的界面或数据处理职责。 */
     setError(null);
@@ -78,10 +137,13 @@ export function useChatStream() {
         payload.temp_kb_id = tempKbId;
       }
 
-      const response = await startKbChat(payload);
+      const response = await startKbChat(payload, run.controller.signal);
 
       await readSSE(response, event => {
+        if (!isCurrentRun(run)) return;
+
         if ("conversation_id" in event && event.conversation_id) {
+          run.serverConversationId = event.conversation_id;
           /** 用途：负责 setConversationId 的界面或数据处理职责。 */
           setConversationId(event.conversation_id);
           localStorage.setItem(
@@ -123,7 +185,9 @@ export function useChatStream() {
             );
           }
         }
-      });
+      }, run.controller.signal);
+
+      if (!isCurrentRun(run)) return;
 
       const assistantMessage: ChatMessage = {
         id: assistantMessageId,
@@ -150,6 +214,8 @@ export function useChatStream() {
       setStreamingMessage("");
       await refreshConversations();
     } catch (chatError) {
+      if (isAbortError(chatError) || !isCurrentRun(run)) return;
+
       const message =
         chatError instanceof Error ? chatError.message : "Chat failed.";
       /** 用途：负责 setError 的界面或数据处理职责。 */
@@ -171,10 +237,13 @@ export function useChatStream() {
       ]);
       await refreshConversations();
     } finally {
-      /** 用途：负责 setStreamingMessage 的界面或数据处理职责。 */
-      setStreamingMessage("");
-      /** 用途：负责 setIsStreaming 的界面或数据处理职责。 */
-      setIsStreaming(false);
+      if (isCurrentRun(run)) {
+        activeRunRef.current = null;
+        /** 用途：负责 setStreamingMessage 的界面或数据处理职责。 */
+        setStreamingMessage("");
+        /** 用途：负责 setIsStreaming 的界面或数据处理职责。 */
+        setIsStreaming(false);
+      }
     }
   }
 

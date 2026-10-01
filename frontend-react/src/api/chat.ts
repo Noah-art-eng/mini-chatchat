@@ -3,13 +3,14 @@ import type { KBChatRequest, StreamEvent } from "../types/chat";
 import type { Source } from "../types/conversation";
 
 /** 用途：负责 startKbChat 的界面或数据处理职责。 */
-export async function startKbChat(request: KBChatRequest) {
+export async function startKbChat(request: KBChatRequest, signal?: AbortSignal) {
   const response = await authFetch("/kb_chat", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
-    body: JSON.stringify(request)
+    body: JSON.stringify(request),
+    signal
   });
 
   if (!response.ok) {
@@ -71,7 +72,8 @@ export async function uploadTempFile(file: File) {
 /** 用途：负责 readSSE 的界面或数据处理职责。 */
 export async function readSSE(
   response: Response,
-  onEvent: (event: StreamEvent) => void
+  onEvent: (event: StreamEvent) => void,
+  signal?: AbortSignal
 ) {
   if (!response.body) {
     throw new Error("Streaming response body is not available.");
@@ -80,6 +82,12 @@ export async function readSSE(
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  const cancelReader = () => {
+    void reader.cancel().catch(() => undefined);
+  };
+
+  signal?.throwIfAborted();
+  signal?.addEventListener("abort", cancelReader, { once: true });
 
   /** 用途：负责 parseEvent 的界面或数据处理职责。 */
   function parseEvent(rawEvent: string) {
@@ -97,7 +105,9 @@ export async function readSSE(
 
   try {
     while (true) {
+      signal?.throwIfAborted();
       const { value, done } = await reader.read();
+      signal?.throwIfAborted();
 
       if (done) {
         buffer += decoder.decode();
@@ -115,6 +125,7 @@ export async function readSSE(
       parts.filter(Boolean).forEach(parseEvent);
     }
   } finally {
+    signal?.removeEventListener("abort", cancelReader);
     reader.releaseLock();
   }
 }

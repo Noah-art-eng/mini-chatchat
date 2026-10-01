@@ -32,14 +32,16 @@ export function runAgentPlan(request: AgentRunRequest) {
 /** 用途：负责 runAgentPlanStream 的界面或数据处理职责。 */
 export async function runAgentPlanStream(
   request: AgentRunRequest,
-  onEvent: (event: AgentStreamEvent) => void
+  onEvent: (event: AgentStreamEvent) => void,
+  signal?: AbortSignal
 ) {
   const response = await authFetch("/agent/plan_run_stream", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
-    body: JSON.stringify(request)
+    body: JSON.stringify(request),
+    signal
   });
 
   if (!response.ok || !response.body) {
@@ -49,10 +51,18 @@ export async function runAgentPlanStream(
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  const cancelReader = () => {
+    void reader.cancel().catch(() => undefined);
+  };
+
+  signal?.throwIfAborted();
+  signal?.addEventListener("abort", cancelReader, { once: true });
 
   try {
     while (true) {
+      signal?.throwIfAborted();
       const { done, value } = await reader.read();
+      signal?.throwIfAborted();
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
@@ -72,6 +82,7 @@ export async function runAgentPlanStream(
       }
     }
   } finally {
+    signal?.removeEventListener("abort", cancelReader);
     reader.releaseLock();
   }
 }

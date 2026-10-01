@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { runAgentPlanStream } from "../api/agent";
 import { useConversationStore } from "../stores/conversationStore";
 import type {
@@ -17,6 +17,17 @@ const AGENT_TOOLS = [
   "browser_search"
 ];
 
+type AgentRun = {
+  controller: AbortController;
+  id: number;
+  initialConversationId: number | null;
+  serverConversationId?: number;
+};
+
+function isAbortError(error: unknown) {
+  return error instanceof Error && error.name === "AbortError";
+}
+
 /** 用途：负责 useAgentRun 的界面或数据处理职责。 */
 export function useAgentRun() {
   const {
@@ -33,6 +44,47 @@ export function useAgentRun() {
   const [isRunning, setIsRunning] = useState(false);
   const [streamStatus, setStreamStatus] = useState<string | null>(null);
   const [streamTokenText, setStreamTokenText] = useState("");
+  const activeRunRef = useRef<AgentRun | null>(null);
+  const conversationIdRef = useRef(conversationId);
+  const nextRunIdRef = useRef(0);
+
+  function isCurrentRun(run: AgentRun) {
+    const currentConversationId = conversationIdRef.current;
+    return (
+      activeRunRef.current?.id === run.id &&
+      !run.controller.signal.aborted &&
+      (currentConversationId === run.initialConversationId ||
+        (run.serverConversationId !== undefined &&
+          currentConversationId === run.serverConversationId))
+    );
+  }
+
+  function abortRun(run: AgentRun) {
+    if (activeRunRef.current?.id === run.id) {
+      activeRunRef.current = null;
+    }
+    run.controller.abort();
+  }
+
+  useEffect(() => {
+    conversationIdRef.current = conversationId;
+    const run = activeRunRef.current;
+    if (run && !isCurrentRun(run)) {
+      abortRun(run);
+      setAgentResult(null);
+      setError(null);
+      setIsRunning(false);
+      setStreamStatus(null);
+      setStreamTokenText("");
+    }
+  }, [conversationId]);
+
+  useEffect(() => {
+    return () => {
+      const run = activeRunRef.current;
+      if (run) abortRun(run);
+    };
+  }, []);
 
   /** 用途：负责 upsertStep 的界面或数据处理职责。 */
   function upsertStep(steps: AgentStep[] | undefined, nextStep: AgentStep) {
@@ -195,7 +247,17 @@ export function useAgentRun() {
   /** 用途：负责 sendAgentMessage 的界面或数据处理职责。 */
   async function sendAgentMessage(query: string) {
     const trimmedQuery = query.trim();
-    if (!trimmedQuery || isRunning) return;
+    if (!trimmedQuery) return;
+
+    const previousRun = activeRunRef.current;
+    if (previousRun) abortRun(previousRun);
+
+    const run: AgentRun = {
+      controller: new AbortController(),
+      id: ++nextRunIdRef.current,
+      initialConversationId: conversationId
+    };
+    activeRunRef.current = run;
 
     /** 用途：负责 setError 的界面或数据处理职责。 */
     setError(null);
@@ -231,15 +293,21 @@ export function useAgentRun() {
           max_steps: 3
         },
         event => {
+          if (!isCurrentRun(run)) return;
+
           /** 用途：负责 applyStreamEvent 的界面或数据处理职责。 */
           applyStreamEvent(event);
           if (event.type === "done") {
             finalResultRef.current = event.result;
+            run.serverConversationId = event.result.conversation_id || undefined;
             /** 用途：负责 setStreamStatus 的界面或数据处理职责。 */
             setStreamStatus("Done");
           }
-        }
+        },
+        run.controller.signal
       );
+
+      if (!isCurrentRun(run)) return;
 
       const result = finalResultRef.current;
       if (!result) {
@@ -283,6 +351,8 @@ export function useAgentRun() {
       ]);
       await refreshConversations();
     } catch (agentError) {
+      if (isAbortError(agentError) || !isCurrentRun(run)) return;
+
       const message =
         agentError instanceof Error ? agentError.message : "Agent request failed.";
       /** 用途：负责 setError 的界面或数据处理职责。 */
@@ -300,12 +370,15 @@ export function useAgentRun() {
         }
       ]);
     } finally {
-      /** 用途：负责 setStreamingMessage 的界面或数据处理职责。 */
-      setStreamingMessage("");
-      /** 用途：负责 setIsRunning 的界面或数据处理职责。 */
-      setIsRunning(false);
-      /** 用途：负责 setStreamStatus 的界面或数据处理职责。 */
-      setStreamStatus(null);
+      if (isCurrentRun(run)) {
+        activeRunRef.current = null;
+        /** 用途：负责 setStreamingMessage 的界面或数据处理职责。 */
+        setStreamingMessage("");
+        /** 用途：负责 setIsRunning 的界面或数据处理职责。 */
+        setIsRunning(false);
+        /** 用途：负责 setStreamStatus 的界面或数据处理职责。 */
+        setStreamStatus(null);
+      }
     }
   }
 
