@@ -4,6 +4,7 @@ import { ChatArea } from "./ChatArea";
 import { ToastProvider } from "../../components/ui";
 import { ConversationProvider } from "../../stores/conversationStore";
 import { renderWithI18n } from "../../test/render";
+import { AppRouter } from "../../router";
 
 /** 用途：负责 makeSseResponse 的界面或数据处理职责。 */
 function makeSseResponse() {
@@ -30,9 +31,11 @@ function makeSseResponse() {
 function renderChatArea() {
   return renderWithI18n(
     <ToastProvider>
-      <ConversationProvider>
-        <ChatArea preferredMode="chat" />
-      </ConversationProvider>
+      <AppRouter initialPath="/chat">
+        <ConversationProvider>
+          <ChatArea preferredMode="chat" />
+        </ConversationProvider>
+      </AppRouter>
     </ToastProvider>
   );
 }
@@ -102,5 +105,19 @@ describe("chat mode payloads", () => {
       /** 用途：负责 expect 的界面或数据处理职责。 */
       expect(payload).not.toHaveProperty("kb_name");
     });
+  });
+
+  it("keeps the Agent mode and route in sync", async () => {
+    renderChatArea();
+
+    fireEvent.click(await screen.findByTestId("chat-mode-agent"));
+
+    expect(window.location.pathname).toBe("/agent");
+    expect(screen.getByTestId("agent-mode-status")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("chat-mode-local-kb"));
+
+    expect(window.location.pathname).toBe("/chat");
+    expect(screen.queryByTestId("agent-mode-status")).not.toBeInTheDocument();
   });
 });

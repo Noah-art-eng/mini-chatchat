@@ -44,22 +44,27 @@ export function TopBar({ activePage }: TopBarProps) {
   return (
     <header className="top-bar">
       <div className="top-bar-status">
-        <span className="top-bar-page">
-          <strong>{t(`nav.${activePage === "kb" ? "knowledgeBase" : activePage}`)}</strong>
-        </span>
+        <strong className="top-bar-page">
+          {t(`nav.${activePage === "kb" ? "knowledgeBase" : activePage}`)}
+        </strong>
         {(activePage === "chat" || activePage === "agent") && (
-          <span>{t(`modes.${chatMode}`)}</span>
+          <span className="top-bar-context">{t(`modes.${chatMode}`)}</span>
         )}
         {(activePage === "chat" || activePage === "agent" || activePage === "kb") && (
-          <span>{t("app.currentKb")}: <strong>{kbName}</strong></span>
+          <span className="top-bar-context">
+            {t("app.currentKb")} <strong>{kbName}</strong>
+          </span>
         )}
-        <span className={`top-bar-health status-${health?.status || "loading"}`}>
+        <span
+          className={`top-bar-health status-${health?.status || "loading"}`}
+          title={`${health?.status || t("common.loading")} · ${health?.version ? `v${health.version}` : "v1.0"}`}
+        >
           <Icon
             icon={Activity}
             size="sm"
             tone={health?.status === "ok" ? "success" : "warning"}
           />
-          <strong>{health?.status || t("common.loading")}</strong>
+          <span>{health?.status || t("common.loading")}</span>
         </span>
         <span className="top-bar-version">
           {health?.version ? `v${health.version}` : "v1.0"}
@@ -69,10 +74,10 @@ export function TopBar({ activePage }: TopBarProps) {
         {session.isGuest ? (
           <div className="top-bar-auth-actions" aria-label={t("auth.session")}>
             <button onClick={() => navigate("/login")} type="button">
-              Sign in
+              {t("auth.signIn")}
             </button>
             <button onClick={() => navigate("/register")} type="button">
-              Register
+              {t("auth.register")}
             </button>
           </div>
         ) : (

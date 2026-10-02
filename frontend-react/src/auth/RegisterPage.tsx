@@ -4,10 +4,12 @@ import { EmailPasswordForm } from "./EmailPasswordForm";
 import { OAuthButtons } from "./OAuthButtons";
 import { useAuth } from "./AuthContext";
 import { Link, useNavigate } from "../router";
+import { useI18n } from "../i18n";
 
 /** 用途：负责 RegisterPage 的界面或数据处理职责。 */
 export function RegisterPage() {
   const auth = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,7 +31,7 @@ export function RegisterPage() {
       navigate("/chat", { replace: true });
     } catch {
       /** 用途：负责 setError 的界面或数据处理职责。 */
-      setError("Unable to create the account. Check the email and password.");
+      setError(t("auth.registerFailed"));
     } finally {
       /** 用途：负责 setIsSubmitting 的界面或数据处理职责。 */
       setIsSubmitting(false);
@@ -42,9 +44,9 @@ export function RegisterPage() {
       <section className="auth-card">
         <BrandLogo size={48} title="Mini ChatChat" />
         <div>
-          <p className="auth-eyebrow">User isolation</p>
-          <h1>Create your workspace</h1>
-          <p>Your private conversations and knowledge bases stay separate from the demo workspace.</p>
+          <p className="auth-eyebrow">{t("auth.userIsolation")}</p>
+          <h1>{t("auth.registerTitle")}</h1>
+          <p>{t("auth.registerDescription")}</p>
         </div>
         <EmailPasswordForm
           error={error}
@@ -54,10 +56,10 @@ export function RegisterPage() {
         />
         <OAuthButtons mode="register" />
         <p className="auth-switch">
-          Already have an account? <Link to="/login">Sign in</Link>
+          {t("auth.alreadyRegistered")} <Link to="/login">{t("auth.signIn")}</Link>
         </p>
         <Link className="auth-back-link" to="/chat">
-          Continue as guest
+          {t("auth.continueAsGuest")}
         </Link>
       </section>
     </main>

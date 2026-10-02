@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState
 } from "react";
 import {
@@ -73,6 +74,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
   const [tempKbId, setTempKbId] = useState<string | null>(null);
   const [isLoadingConversations, setIsLoadingConversations] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const messageRequestIdRef = useRef(0);
 
   const setActiveConversationId = useCallback((nextConversationId: number | null) => {
     /** 用途：负责 setConversationId 的界面或数据处理职责。 */
@@ -100,6 +102,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loadConversation = useCallback(async (conversation: Conversation) => {
+    const requestId = ++messageRequestIdRef.current;
     /** 用途：负责 setConversationId 的界面或数据处理职责。 */
     setConversationId(conversation.id);
     localStorage.setItem(LAST_CONVERSATION_KEY, String(conversation.id));
@@ -113,15 +116,19 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
     setIsLoadingMessages(true);
     try {
       const data = await getConversationMessages(conversation.id);
+      if (messageRequestIdRef.current !== requestId) return;
       /** 用途：负责 setMessages 的界面或数据处理职责。 */
       setMessages(data.messages);
     } finally {
       /** 用途：负责 setIsLoadingMessages 的界面或数据处理职责。 */
-      setIsLoadingMessages(false);
+      if (messageRequestIdRef.current === requestId) {
+        setIsLoadingMessages(false);
+      }
     }
   }, []);
 
   const startNewConversation = useCallback(() => {
+    messageRequestIdRef.current += 1;
     /** 用途：负责 setConversationId 的界面或数据处理职责。 */
     setConversationId(null);
     localStorage.removeItem(LAST_CONVERSATION_KEY);

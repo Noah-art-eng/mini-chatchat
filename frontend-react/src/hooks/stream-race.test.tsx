@@ -6,6 +6,8 @@ import type { AgentRunResponse, AgentStreamEvent } from "../types/agent";
 import type { StreamEvent } from "../types/chat";
 import { useAgentRun } from "./useAgentRun";
 import { useChatStream } from "./useChatStream";
+import { getConversationMessages } from "../api/conversations";
+import { I18nProvider } from "../i18n";
 
 type PendingChat = {
   onEvent?: (event: StreamEvent) => void;
@@ -66,7 +68,11 @@ vi.mock("../api/agent", () => ({
 }));
 
 function wrapper({ children }: { children: ReactNode }) {
-  return <ConversationProvider>{children}</ConversationProvider>;
+  return (
+    <I18nProvider>
+      <ConversationProvider>{children}</ConversationProvider>
+    </I18nProvider>
+  );
 }
 
 function useChatHarness() {
@@ -129,6 +135,25 @@ describe("stream request isolation", () => {
 
     expect(pendingChats[0].signal?.aborted).toBe(true);
     expect(pendingChats[1].signal?.aborted).toBe(false);
+  });
+
+  it("stops chat generation and ignores later stream events", async () => {
+    const { result } = renderHook(useChatHarness, { wrapper });
+    await act(async () => {
+      void result.current.chat.sendMessage("stop this");
+    });
+    await waitFor(() => expect(pendingChats).toHaveLength(1));
+
+    const run = pendingChats[0];
+    act(() => result.current.chat.stopGeneration());
+    expect(run.signal?.aborted).toBe(true);
+    expect(result.current.chat.isStreaming).toBe(false);
+
+    act(() => {
+      run.onEvent?.({ type: "token", content: "stale" });
+      run.reject(abortError());
+    });
+    expect(result.current.store.streamingMessage).toBe("");
   });
 
   it("keeps a partial chat answer when the stream reports a later failure", async () => {
@@ -282,5 +307,42 @@ describe("stream request isolation", () => {
 
     unmount();
     expect(pendingAgents[0].signal?.aborted).toBe(true);
+  });
+
+  it("stops Agent execution and ignores later progress", async () => {
+    const { result } = renderHook(useAgentHarness, { wrapper });
+    await act(async () => {
+      void result.current.agent.sendAgentMessage("stop agent");
+    });
+    await waitFor(() => expect(pendingAgents).toHaveLength(1));
+
+    const run = pendingAgents[0];
+    act(() => result.current.agent.stopAgentRun());
+    expect(run.signal?.aborted).toBe(true);
+    expect(result.current.agent.isRunning).toBe(false);
+    expect(result.current.store.streamingMessage).toBe("");
+
+    act(() => {
+      run.onEvent({ type: "token", content: "stale" });
+      run.reject(abortError());
+    });
+    expect(result.current.agent.streamTokenText).toBe("");
+  });
+
+  it("keeps messages from the latest conversation load", async () => {
+    const requests = new Map<number, (value: { conversation_id: number; messages: Array<{ role: "assistant"; content: string }> }) => void>();
+    vi.mocked(getConversationMessages).mockImplementation(
+      id => new Promise(resolve => requests.set(id, resolve))
+    );
+    const { result } = renderHook(useConversationStore, { wrapper });
+
+    act(() => {
+      void result.current.loadConversation({ id: 1, title: "First", create_time: "2026-01-01" });
+      void result.current.loadConversation({ id: 2, title: "Second", create_time: "2026-01-02" });
+    });
+    act(() => requests.get(2)?.({ conversation_id: 2, messages: [{ role: "assistant", content: "second" }] }));
+    await waitFor(() => expect(result.current.messages[0]?.content).toBe("second"));
+    act(() => requests.get(1)?.({ conversation_id: 1, messages: [{ role: "assistant", content: "stale first" }] }));
+    expect(result.current.messages[0]?.content).toBe("second");
   });
 });

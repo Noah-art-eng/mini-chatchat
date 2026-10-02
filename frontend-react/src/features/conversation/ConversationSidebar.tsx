@@ -49,7 +49,11 @@ function getConversationGroupLabelKey(key: string) {
 }
 
 /** 用途：负责 ConversationSidebar 的界面或数据处理职责。 */
-export function ConversationSidebar() {
+export function ConversationSidebar({
+  onStartNewConversation
+}: {
+  onStartNewConversation: () => void;
+}) {
   const { t } = useI18n();
   const { showToast } = useToast();
   const {
@@ -60,8 +64,7 @@ export function ConversationSidebar() {
     deleteConversationsByIds,
     loadConversation,
     renameConversationById,
-    refreshConversations,
-    startNewConversation
+    refreshConversations
   } = useConversationStore();
   const [query, setQuery] = useState("");
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
@@ -87,7 +90,7 @@ export function ConversationSidebar() {
 
       event.preventDefault();
       /** 用途：负责 startNewConversation 的界面或数据处理职责。 */
-      startNewConversation();
+      onStartNewConversation();
     }
 
     window.addEventListener("keydown", handleNewConversationShortcut);
@@ -95,7 +98,7 @@ export function ConversationSidebar() {
     return () => {
       window.removeEventListener("keydown", handleNewConversationShortcut);
     };
-  }, [startNewConversation]);
+  }, [onStartNewConversation]);
 
   const filteredConversations = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -228,7 +231,7 @@ export function ConversationSidebar() {
         </div>
         <button
           className="button-primary"
-          onClick={startNewConversation}
+          onClick={onStartNewConversation}
           type="button"
         >
           {t("conversations.new")}

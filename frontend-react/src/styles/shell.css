@@ -225,7 +225,7 @@ button.brand-identity:focus-visible {
   overflow: hidden;
 }
 
-.top-bar-status span,
+.top-bar-status > span,
 .user-chip {
   background: var(--color-bg-subtle);
   border: var(--border-width-default) var(--border-style-default)
@@ -1487,6 +1487,8 @@ button.brand-identity:focus-visible {
 }
 
 .chat-primary-panel {
+  display: flex;
+  flex-direction: column;
   box-shadow: var(--shadow-none);
 }
 
@@ -1495,6 +1497,8 @@ button.brand-identity:focus-visible {
   border: 0;
   box-shadow: var(--shadow-none);
   padding: var(--space-4) clamp(var(--space-2), 3vw, var(--space-8));
+  flex: 1;
+  overflow-y: auto;
 }
 
 .product-chat .message-list {
@@ -1956,6 +1960,47 @@ button.brand-identity:focus-visible {
   max-width: 720px;
   padding-block: clamp(var(--space-8), 8vh, var(--space-16));
   text-align: center;
+}
+
+.agent-progress-summary {
+  align-items: center;
+  background: var(--color-brand-soft);
+  border: var(--border-width-default) solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  display: flex;
+  font-size: var(--font-size-body-small);
+  gap: var(--space-3);
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+}
+
+.agent-progress-summary strong {
+  color: var(--color-text-primary);
+}
+
+.kb-lifecycle-actions {
+  align-items: end;
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: minmax(180px, 1fr) auto auto;
+}
+
+.kb-lifecycle-actions label {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.kb-lifecycle-actions label span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-medium);
+}
+
+@media (max-width: 720px) {
+  .kb-lifecycle-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .product-chat .chat-empty-state .empty-brand-mark {
@@ -3103,5 +3148,322 @@ button.brand-identity:focus-visible {
   .mode-intro-grid,
   .empty-action-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* P0/P1 layout guardrails: preserve a usable conversation column at medium
+   desktop widths and let low-height empty states scroll above the composer. */
+@media (max-width: 1450px) and (min-width: 721px) {
+  .app-shell {
+    grid-template-columns: var(--sidebar-collapsed-width) minmax(0, 1fr);
+  }
+
+  .app-rail {
+    align-items: stretch;
+    padding: var(--space-3);
+  }
+
+  .brand-block {
+    justify-content: center;
+  }
+
+  .brand-copy,
+  .primary-navigation button span:last-child,
+  .rail-footnote {
+    display: none;
+  }
+
+  .primary-navigation button {
+    justify-content: center;
+    padding: 0;
+  }
+
+  .chat-area > .chat-header,
+  .chat-area > .chat-control-bar,
+  .chat-area > .chat-workbench {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .top-bar-version,
+  .top-bar-status span:nth-child(3) {
+    display: none;
+  }
+}
+
+@media (max-width: 1600px) and (min-width: 721px) {
+  .chat-workbench.context-open {
+    grid-template-columns: minmax(0, 1fr);
+    position: relative;
+  }
+
+  .chat-workbench.context-open .shell-context-panel {
+    bottom: 0;
+    box-shadow: var(--shadow-md);
+    max-width: min(420px, 48%);
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: var(--context-panel-width);
+    z-index: var(--z-sticky);
+  }
+
+  .chat-workbench.context-open .shell-context-panel__close {
+    display: inline-flex;
+  }
+}
+
+@media (max-height: 820px) and (min-width: 721px) {
+  .chat-area {
+    gap: var(--space-2);
+    padding-block: var(--space-3);
+  }
+
+  .product-chat .product-hero {
+    padding-block: var(--space-3);
+  }
+
+  .product-chat .product-hero h1 {
+    font-size: var(--font-size-heading);
+  }
+
+  .product-chat .product-hero .page-intro,
+  .product-chat .hero-status-card,
+  .mode-cards button small,
+  .product-chat .chat-empty-state .empty-brand-mark {
+    display: none;
+  }
+
+  .mode-cards button {
+    min-height: var(--control-height-md);
+  }
+
+  .product-chat .chat-thread {
+    overflow-y: auto;
+  }
+
+  .product-chat .chat-empty-state {
+    align-self: start;
+    padding-block: var(--space-4);
+  }
+
+  .product-chat .chat-empty-state h1 {
+    font-size: var(--font-size-heading);
+  }
+
+  .empty-action-grid button {
+    min-height: 92px;
+    padding: var(--space-3);
+  }
+
+  .suggestion-grid {
+    margin-top: var(--space-3);
+  }
+
+  .suggestion-grid button {
+    min-height: 60px;
+  }
+}
+
+/* Commercial workspace refinement: keep hierarchy and interaction feedback
+   consistent without changing the established warm-white and green identity. */
+.top-bar-status {
+  gap: var(--space-3);
+}
+
+.top-bar-status .top-bar-page {
+  color: var(--color-text-primary);
+  flex: 0 0 auto;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-compact);
+  padding-right: var(--space-1);
+}
+
+.top-bar-status .top-bar-context {
+  background: transparent;
+  border: 0;
+  border-left: var(--border-width-default) solid var(--color-border-default);
+  border-radius: 0;
+  min-height: auto;
+  padding: 0 0 0 var(--space-3);
+}
+
+.top-bar-status .top-bar-context strong {
+  margin-left: var(--space-1);
+}
+
+.top-bar-status .top-bar-health {
+  background: transparent;
+  border: 0;
+  gap: var(--space-1);
+  min-height: auto;
+  padding: 0;
+}
+
+.top-bar-health > span:last-child,
+.top-bar-version {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-badge);
+  font-weight: var(--font-weight-medium);
+}
+
+.top-bar-health .ui-icon,
+.top-bar-health > span:last-child {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  min-height: auto;
+  padding: 0;
+}
+
+.top-bar-version {
+  background: transparent;
+  border: 0;
+  min-height: auto;
+  padding: 0;
+}
+
+.top-bar-auth-actions button,
+.language-switcher button,
+.mode-guide-button,
+.details-launchers button,
+.knowledge-toolbar button,
+.kb-lifecycle-actions button,
+.document-actions button,
+.file-picker-button,
+.conversation-row,
+.conversation-menu button,
+.context-tabs button,
+.source-reference-list button,
+.suggestion-grid button,
+.empty-action-grid button,
+.tool-filter-list button,
+.auth-password-control button {
+  transition:
+    background-color var(--motion-duration-fast) var(--motion-ease-standard),
+    border-color var(--motion-duration-fast) var(--motion-ease-standard),
+    color var(--motion-duration-fast) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-fast) var(--motion-ease-standard);
+}
+
+.top-bar-auth-actions button:active:not(:disabled),
+.mode-guide-button:active:not(:disabled),
+.details-launchers button:active:not(:disabled),
+.knowledge-toolbar button:active:not(:disabled),
+.kb-lifecycle-actions button:active:not(:disabled),
+.document-actions button:active:not(:disabled),
+.file-picker-button:active,
+.suggestion-grid button:active:not(:disabled),
+.empty-action-grid button:active:not(:disabled) {
+  background: var(--color-bg-selected);
+  border-color: var(--color-border-strong);
+}
+
+.top-bar-auth-actions button:focus-visible,
+.language-switcher button:focus-visible,
+.mode-guide-button:focus-visible,
+.details-launchers button:focus-visible,
+.knowledge-toolbar button:focus-visible,
+.kb-lifecycle-actions button:focus-visible,
+.document-actions button:focus-visible,
+.file-picker-button:focus-visible,
+.conversation-row:focus-visible,
+.conversation-menu button:focus-visible,
+.context-tabs button:focus-visible,
+.source-reference-list button:focus-visible,
+.suggestion-grid button:focus-visible,
+.empty-action-grid button:focus-visible,
+.tool-filter-list button:focus-visible {
+  box-shadow: var(--shadow-focus);
+  outline: var(--focus-ring-width) solid var(--color-border-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.top-bar-auth-actions button:disabled,
+.knowledge-toolbar button:disabled,
+.kb-lifecycle-actions button:disabled,
+.document-actions button:disabled,
+.suggestion-grid button:disabled,
+.empty-action-grid button:disabled {
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.56;
+}
+
+.product-chat .chat-empty-state {
+  padding-block: clamp(var(--space-5), 5vh, var(--space-10));
+}
+
+.product-chat .chat-empty-state > p:not(.eyebrow) {
+  margin-inline: auto;
+  max-width: 58ch;
+}
+
+.empty-action-grid button {
+  min-height: 112px;
+}
+
+.empty-action-grid button:hover {
+  box-shadow: var(--shadow-xs);
+  transform: none;
+}
+
+.empty-action-grid button.active {
+  box-shadow: inset 3px 0 0 var(--color-brand-primary);
+  transform: none;
+}
+
+.suggestion-grid button {
+  min-height: 56px;
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+}
+
+.suggestion-grid button:hover {
+  box-shadow: var(--shadow-xs);
+}
+
+.settings-card,
+.account-card,
+.kb-panel,
+.system-tool-card {
+  border-radius: var(--radius-lg);
+}
+
+.settings-card:hover,
+.account-card:hover {
+  box-shadow: var(--shadow-xs);
+}
+
+.kb-lifecycle-actions button,
+.knowledge-toolbar button,
+.document-actions button {
+  min-height: var(--control-height-md);
+}
+
+.document-row:hover {
+  box-shadow: var(--shadow-xs);
+  transform: none;
+}
+
+.conversation-row:hover {
+  background: color-mix(in srgb, var(--color-bg-hover) 72%, transparent);
+}
+
+.conversation-item.active .conversation-row {
+  color: var(--color-text-primary);
+}
+
+.chat-composer .send-button:active:not(:disabled) {
+  box-shadow: none;
+  transform: translateY(1px);
+}
+
+@media (max-width: 1450px) and (min-width: 721px) {
+  .top-bar-health > span:last-child,
+  .top-bar-version {
+    display: none;
   }
 }

@@ -131,7 +131,8 @@ function renderChatWorkspace(overrides = {}) {
           isSending={false}
           isStreaming={false}
           isUploadingTempFile={false}
-          kbName="default"
+        kbName="default"
+        knowledgeBaseNames={["default"]}
           messages={[]}
           onChangeDetailsTab={vi.fn()}
           onChangeInput={vi.fn()}
@@ -142,7 +143,8 @@ function renderChatWorkspace(overrides = {}) {
           onOpenModeGuide={vi.fn()}
           onSelectAssistantMessage={vi.fn()}
           onStartEmptyMode={vi.fn()}
-          onSubmit={vi.fn()}
+        onSubmit={vi.fn()}
+        onStop={vi.fn()}
           onTempFileUpload={vi.fn()}
           preferredMode="chat"
           selectedAssistantMessageId={null}
@@ -200,6 +202,21 @@ describe("onboarding and first-run guidance", () => {
 
     /** 用途：负责 expect 的界面或数据处理职责。 */
     expect(screen.queryByText("Welcome to Mini ChatChat")).not.toBeInTheDocument();
+  });
+
+  it("starts a visibly fresh chat from the Conversation Sidebar", async () => {
+    localStorage.setItem(ONBOARDING_COMPLETED_KEY, "true");
+    window.history.replaceState({}, "", "/agent");
+    renderApp("/agent");
+
+    fireEvent.click(await screen.findByRole("button", { name: /^New/ }));
+
+    await waitFor(() => expect(window.location.pathname).toBe("/chat"));
+    const composer = await screen.findByRole("textbox", {
+      name: "Ask Mini ChatChat..."
+    });
+    await waitFor(() => expect(composer).toHaveFocus());
+    expect(screen.getByText("New conversation")).toBeInTheDocument();
   });
 
   /** 用途：负责 it 的界面或数据处理职责。 */

@@ -14,6 +14,7 @@ import { LoginPage, RegisterPage, useAuth } from "../auth";
 import { Button } from "../components/ui";
 import { useConversationStore } from "../stores/conversationStore";
 import { Link, useLocation, useNavigate } from "../router";
+import { useI18n } from "../i18n";
 
 export type AppPage = "chat" | "kb" | "agent" | "settings" | "account";
 
@@ -44,6 +45,7 @@ function getPageFromPath(pathname: string): AppPage {
 
 /** 用途：负责 App 的界面或数据处理职责。 */
 export function App() {
+  const { t } = useI18n();
   const location = useLocation();
   const navigate = useNavigate();
   const auth = useAuth();
@@ -115,6 +117,17 @@ export function App() {
     setIsWelcomeOpen(false);
   }
 
+  function startFreshConversation() {
+    startNewConversation();
+    navigate(pagePaths.chat);
+    setIsConversationSidebarOpen(false);
+    window.setTimeout(() => {
+      document
+        .querySelector<HTMLTextAreaElement>(".chat-composer textarea")
+        ?.focus();
+    }, 0);
+  }
+
   if (isAuthPage) {
     return location.pathname.startsWith("/register") ? (
       <RegisterPage />
@@ -129,7 +142,9 @@ export function App() {
       <AppShell
       activePage={activePage}
       conversationSidebar={
-        showConversationSidebar ? <ConversationSidebar /> : undefined
+        showConversationSidebar ? (
+          <ConversationSidebar onStartNewConversation={startFreshConversation} />
+        ) : undefined
       }
       isConversationSidebarOpen={isConversationSidebarOpen}
       onSelectPage={page => {
@@ -151,17 +166,14 @@ export function App() {
     >
       {!canUseCurrentPage && (
         <section className="restricted-workspace">
-          <p className="auth-eyebrow">Private workspace</p>
-          <h1>Sign in to use this workspace</h1>
-          <p>
-            Knowledge management, Agent tools, MCP, filesystem, SQLite, and Developer Mode
-            are available after signing in.
-          </p>
+          <p className="auth-eyebrow">{t("auth.privateWorkspace")}</p>
+          <h1>{t("auth.restrictedTitle")}</h1>
+          <p>{t("auth.restrictedDescription")}</p>
           <div className="restricted-actions">
             <Button onClick={() => navigate("/login")} variant="primary">
-              Sign in
+              {t("auth.signIn")}
             </Button>
-            <Link to="/register">Create account</Link>
+            <Link to="/register">{t("auth.createAccount")}</Link>
           </div>
         </section>
       )}

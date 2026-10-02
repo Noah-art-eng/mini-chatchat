@@ -1,5 +1,5 @@
 import type { FormEvent, KeyboardEvent } from "react";
-import { ArrowUp, LoaderCircle } from "lucide-react";
+import { ArrowUp, Square } from "lucide-react";
 import { Icon } from "./ui";
 import { useI18n } from "../i18n";
 
@@ -8,6 +8,7 @@ type ChatComposerProps = {
   input: string;
   isSending: boolean;
   onChangeInput: (value: string) => void;
+  onStop: () => void;
   onSubmit: () => void;
 };
 
@@ -17,6 +18,7 @@ export function ChatComposer({
   input,
   isSending,
   onChangeInput,
+  onStop,
   onSubmit
 }: ChatComposerProps) {
   const { t } = useI18n();
@@ -56,15 +58,16 @@ export function ChatComposer({
           value={input}
         />
         <button
-          aria-label={isSending ? t("chat.sending") : t("chat.send")}
+          aria-label={isSending ? t("chat.stop") : t("chat.send")}
           className="send-button"
-          disabled={disabled}
-          type="submit"
+          disabled={!isSending && disabled}
+          onClick={isSending ? onStop : undefined}
+          type={isSending ? "button" : "submit"}
         >
           <Icon
-            icon={isSending ? LoaderCircle : ArrowUp}
+            icon={isSending ? Square : ArrowUp}
             size="sm"
-            tone={isSending ? "muted" : "default"}
+            tone="default"
           />
         </button>
       </div>

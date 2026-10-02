@@ -17,6 +17,7 @@ import { KnowledgeHeader } from "./KnowledgeHeader";
 import { KnowledgeStats } from "./KnowledgeStats";
 import { KnowledgeToolbar } from "./KnowledgeToolbar";
 import { UploadPanel } from "./UploadPanel";
+import { ConfirmDialog } from "../ConfirmDialog";
 
 type KnowledgeWorkspaceProps = {
   activeDocumentAction: string | null;
@@ -33,6 +34,8 @@ type KnowledgeWorkspaceProps = {
   knowledgeBases: KnowledgeBase[];
   onChangeImportFile: (file: File | null) => void;
   onChangeUploadFile: (file: File | null) => void;
+  onCreateKnowledgeBase: (name: string) => Promise<boolean>;
+  onDeleteKnowledgeBase: (name: string) => Promise<boolean>;
   onDeleteDocument: (filename: string) => void;
   onDownloadDocument: (filename: string) => void;
   onExportKb: () => void;
@@ -62,6 +65,8 @@ export function KnowledgeWorkspace({
   knowledgeBases,
   onChangeImportFile,
   onChangeUploadFile,
+  onCreateKnowledgeBase,
+  onDeleteKnowledgeBase,
   onDeleteDocument,
   onDownloadDocument,
   onExportKb,
@@ -79,6 +84,8 @@ export function KnowledgeWorkspace({
   const [isContextOpen, setIsContextOpen] = useState(false);
   const [isDeveloperMode, setIsDeveloperMode] = useState(false);
   const [isDeveloperIntroOpen, setIsDeveloperIntroOpen] = useState(false);
+  const [newKbName, setNewKbName] = useState("");
+  const [isDeleteKbOpen, setIsDeleteKbOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<KnowledgeFile | null>(
     documents[0] || null
   );
@@ -172,6 +179,37 @@ export function KnowledgeWorkspace({
               knowledgeBases={knowledgeBases}
               onSelectKnowledgeBase={onSelectKnowledgeBase}
             />
+
+            <div className="kb-lifecycle-actions">
+              <label>
+                <span>{t("kb.newKbName")}</span>
+                <input
+                  disabled={isKbActionLoading}
+                  onChange={event => setNewKbName(event.target.value)}
+                  placeholder={t("kb.newKbPlaceholder")}
+                  value={newKbName}
+                />
+              </label>
+              <button
+                disabled={isKbActionLoading || !newKbName.trim()}
+                onClick={() => {
+                  void onCreateKnowledgeBase(newKbName).then(created => {
+                    if (created) setNewKbName("");
+                  });
+                }}
+                type="button"
+              >
+                {t("kb.createKb")}
+              </button>
+              <button
+                className="danger"
+                disabled={isKbActionLoading || kbName === "default"}
+                onClick={() => setIsDeleteKbOpen(true)}
+                type="button"
+              >
+                {t("kb.deleteKb")}
+              </button>
+            </div>
 
             {isLoading && <p className="muted">{t("kb.loading")}</p>}
             {isLoading && (
@@ -283,6 +321,19 @@ export function KnowledgeWorkspace({
         isOpen={isDeveloperIntroOpen}
         onCancel={() => setIsDeveloperIntroOpen(false)}
         onConfirm={confirmDeveloperMode}
+      />
+      <ConfirmDialog
+        confirmLabel={t("kb.deleteKb")}
+        description={t("kb.confirmDeleteKbDescription", { name: kbName })}
+        isLoading={isKbActionLoading}
+        isOpen={isDeleteKbOpen}
+        onCancel={() => setIsDeleteKbOpen(false)}
+        onConfirm={() => {
+          void onDeleteKnowledgeBase(kbName).then(deleted => {
+            if (deleted) setIsDeleteKbOpen(false);
+          });
+        }}
+        title={t("kb.confirmDeleteKbTitle")}
       />
     </section>
   );

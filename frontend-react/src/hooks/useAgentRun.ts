@@ -6,6 +6,7 @@ import type {
   AgentStep,
   AgentStreamEvent
 } from "../types/agent";
+import { useI18n } from "../i18n";
 
 const AGENT_TOOLS = [
   "calculator",
@@ -29,6 +30,7 @@ function isAbortError(error: unknown) {
 }
 
 export function useAgentRun() {
+  const { t } = useI18n();
   const {
     conversationId,
     kbName,
@@ -65,6 +67,15 @@ export function useAgentRun() {
     run.controller.abort();
   }
 
+  function stopAgentRun() {
+    const run = activeRunRef.current;
+    if (!run) return;
+    abortRun(run);
+    setIsRunning(false);
+    setStreamStatus(null);
+    setStreamingMessage("");
+  }
+
   useEffect(() => {
     conversationIdRef.current = conversationId;
     const run = activeRunRef.current;
@@ -98,7 +109,7 @@ export function useAgentRun() {
 
   function applyStreamEvent(event: AgentStreamEvent) {
     if (event.type === "planning") {
-      setStreamStatus("Planning");
+      setStreamStatus(t("agent.planning"));
       setAgentResult({
         answer: "",
         planner: event.planner,
@@ -111,7 +122,7 @@ export function useAgentRun() {
     }
 
     if (event.type === "step_start") {
-      setStreamStatus(`Step ${event.step}`);
+      setStreamStatus(t("agent.stepNumber", { step: event.step }));
       setAgentResult(current => ({
         answer: current?.answer || "",
         planner: current?.planner || null,
@@ -127,7 +138,7 @@ export function useAgentRun() {
     }
 
     if (event.type === "tool_call") {
-      setStreamStatus("Tool Call");
+      setStreamStatus(t("agent.toolCall"));
       setAgentResult(current => ({
         answer: current?.answer || "",
         planner: current?.planner || null,
@@ -149,7 +160,7 @@ export function useAgentRun() {
     }
 
     if (event.type === "tool_result") {
-      setStreamStatus("Tool Result");
+      setStreamStatus(t("agent.toolResult"));
       setAgentResult(current => {
         const toolCall =
           current?.tool_call || {
@@ -187,7 +198,7 @@ export function useAgentRun() {
     }
 
     if (event.type === "planner_update") {
-      setStreamStatus("Planner Update");
+      setStreamStatus(t("agent.plannerUpdate"));
       setAgentResult(current => ({
         answer: current?.answer || "",
         planner: event.planner,
@@ -205,7 +216,7 @@ export function useAgentRun() {
     }
 
     if (event.type === "token") {
-      setStreamStatus("Final Answer Token Streaming");
+      setStreamStatus(t("agent.tokenStreaming"));
       setStreamTokenText(current => current + event.content);
       setAgentResult(current => ({
         answer: `${current?.answer || ""}${event.content}`,
@@ -221,7 +232,7 @@ export function useAgentRun() {
     }
 
     if (event.type === "error") {
-      setStreamStatus("Error");
+      setStreamStatus(t("common.error"));
       setError(event.error);
     }
   }
@@ -242,9 +253,9 @@ export function useAgentRun() {
 
     setError(null);
     setAgentResult(null);
-    setStreamStatus("Planning");
+    setStreamStatus(t("agent.planning"));
     setStreamTokenText("");
-    setStreamingMessage("Thinking...");
+    setStreamingMessage(t("agent.thinking"));
     setMessages([
       ...messages,
       {
@@ -273,7 +284,7 @@ export function useAgentRun() {
           if (event.type === "done") {
             finalResultRef.current = event.result;
             run.serverConversationId = event.result.conversation_id || undefined;
-            setStreamStatus("Done");
+            setStreamStatus(t("common.done"));
           }
         },
         run.controller.signal
@@ -303,7 +314,7 @@ export function useAgentRun() {
         {
           id: result.assistant_message_id || undefined,
           role: "assistant",
-          content: result.answer || result.error || "No agent answer returned.",
+          content: result.answer || result.error || t("chat.agentNoAnswer"),
           metadata: {
             agent: true,
             mode: "planner",
@@ -322,7 +333,7 @@ export function useAgentRun() {
       if (isAbortError(agentError) || !isCurrentRun(run)) return;
 
       const message =
-        agentError instanceof Error ? agentError.message : "Agent request failed.";
+        agentError instanceof Error ? agentError.message : t("agent.requestFailed");
       setError(message);
       setMessages([
         ...messages,
@@ -350,6 +361,7 @@ export function useAgentRun() {
     error,
     isRunning,
     sendAgentMessage,
+    stopAgentRun,
     streamStatus,
     streamTokenText
   };

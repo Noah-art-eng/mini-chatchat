@@ -42,6 +42,7 @@ type ChatWorkspaceProps = {
   isStreaming: boolean;
   isUploadingTempFile: boolean;
   kbName: string;
+  knowledgeBaseNames: string[];
   messages: ChatMessage[];
   onChangeDetailsTab: (tab: DetailsTab) => void;
   onChangeInput: (value: string) => void;
@@ -53,6 +54,7 @@ type ChatWorkspaceProps = {
   onSelectAssistantMessage: (messageId: number) => void;
   onStartEmptyMode: (mode: ChatMode) => void;
   onSubmit: () => void;
+  onStop: () => void;
   onTempFileUpload: () => void;
   preferredMode: "chat" | "agent";
   selectedAssistantMessageId: number | null;
@@ -86,6 +88,7 @@ export function ChatWorkspace({
   isStreaming,
   isUploadingTempFile,
   kbName,
+  knowledgeBaseNames,
   messages,
   onChangeDetailsTab,
   onChangeInput,
@@ -97,6 +100,7 @@ export function ChatWorkspace({
   onSelectAssistantMessage,
   onStartEmptyMode,
   onSubmit,
+  onStop,
   onTempFileUpload,
   preferredMode,
   selectedAssistantMessageId,
@@ -223,6 +227,7 @@ export function ChatWorkspace({
       <ChatModeControls
         chatMode={chatMode}
         kbName={kbName}
+        knowledgeBaseNames={knowledgeBaseNames}
         modes={chatModes}
         onChangeKbName={onChangeKbName}
         onChangeMode={onChangeMode}
@@ -343,6 +348,16 @@ export function ChatWorkspace({
               {streamStatus || t("chat.streamingNow")}
             </div>
           )}
+          {chatMode === "agent" && isAgentRunning && (
+            <div className="agent-progress-summary" aria-live="polite">
+              <strong>{streamStatus || t("agent.thinking")}</strong>
+              <span>
+                {t("agent.steps")}: {visibleAgentResult?.steps?.length || 0}
+                {" · "}
+                {t("agent.toolCall")}: {visibleAgentResult?.tool_count || 0}
+              </span>
+            </div>
+          )}
           {error && chatMode !== "agent" && <p className="inline-error">{error}</p>}
 
           <ChatComposer
@@ -350,6 +365,7 @@ export function ChatWorkspace({
             input={input}
             isSending={isSending}
             onChangeInput={onChangeInput}
+            onStop={onStop}
             onSubmit={onSubmit}
           />
         </div>

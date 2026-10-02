@@ -6,6 +6,7 @@ import type { ChatMode } from "../../types/chat";
 type ChatModeControlsProps = {
   chatMode: ChatMode;
   kbName: string;
+  knowledgeBaseNames: string[];
   modes: ChatMode[];
   onChangeKbName: (kbName: string) => void;
   onChangeMode: (mode: ChatMode) => void;
@@ -30,6 +31,7 @@ const modeTones = {
 export function ChatModeControls({
   chatMode,
   kbName,
+  knowledgeBaseNames,
   modes,
   onChangeKbName,
   onChangeMode,
@@ -60,13 +62,18 @@ export function ChatModeControls({
         </div>
         <label className="compact-field">
           <span>{t("app.currentKb")}</span>
-          <input
+          <select
             aria-label={t("app.currentKb")}
             disabled={chatMode !== "local_kb" && chatMode !== "agent"}
             name="current-kb"
-            onChange={event => onChangeKbName(event.target.value || "default")}
+            onChange={event => onChangeKbName(event.target.value)}
             value={kbName}
-          />
+          >
+            {knowledgeBaseNames.length === 0 && <option value={kbName}>{kbName}</option>}
+            {knowledgeBaseNames.map(name => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
         </label>
         <button
           className="mode-guide-button"

@@ -25,6 +25,7 @@ export function KnowledgeBaseList({
           <button
             className={kb.kb_name === currentKb ? "kb-option active" : "kb-option"}
             data-testid={`kb-option-${kb.kb_name}`}
+            disabled={isLoading}
             key={kb.kb_name}
             onClick={() => onSelectKnowledgeBase(kb.kb_name)}
             type="button"
@@ -42,6 +43,7 @@ export function KnowledgeBaseList({
       <label className="kb-selector">
         {t("kb.quickSelect")}
         <select
+          disabled={isLoading}
           onChange={event => onSelectKnowledgeBase(event.target.value)}
           value={currentKb}
         >

@@ -1,6 +1,7 @@
 import { Eye, EyeOff } from "lucide-react";
 import { FormEvent, useState } from "react";
 import { Button, Icon } from "../components/ui";
+import { useI18n } from "../i18n";
 
 type EmailPasswordFormProps = {
   error?: string | null;
@@ -20,6 +21,7 @@ export function EmailPasswordForm({
   mode,
   onSubmit
 }: EmailPasswordFormProps) {
+  const { t } = useI18n();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -40,7 +42,7 @@ export function EmailPasswordForm({
     <form className="auth-form" onSubmit={handleSubmit}>
       {mode === "register" && (
         <label className="auth-field">
-          <span>Display name</span>
+          <span>{t("auth.displayName")}</span>
           <input
             autoComplete="name"
             onChange={event => setDisplayName(event.target.value)}
@@ -51,7 +53,7 @@ export function EmailPasswordForm({
       )}
 
       <label className="auth-field">
-        <span>Email</span>
+        <span>{t("auth.email")}</span>
         <input
           autoComplete="email"
           onChange={event => setEmail(event.target.value)}
@@ -63,19 +65,19 @@ export function EmailPasswordForm({
       </label>
 
       <label className="auth-field">
-        <span>Password</span>
+        <span>{t("auth.password")}</span>
         <div className="auth-password-control">
           <input
             autoComplete={mode === "login" ? "current-password" : "new-password"}
             minLength={8}
             onChange={event => setPassword(event.target.value)}
-            placeholder="At least 8 characters"
+            placeholder={t("auth.passwordHint")}
             required
             type={showPassword ? "text" : "password"}
             value={password}
           />
           <button
-            aria-label={showPassword ? "Hide password" : "Show password"}
+            aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
             onClick={() => setShowPassword(value => !value)}
             type="button"
           >
@@ -87,7 +89,7 @@ export function EmailPasswordForm({
       {error && <p className="auth-error">{error}</p>}
 
       <Button loading={isLoading} type="submit" variant="primary">
-        {mode === "login" ? "Sign in" : "Create account"}
+        {mode === "login" ? t("auth.signIn") : t("auth.createAccount")}
       </Button>
     </form>
   );

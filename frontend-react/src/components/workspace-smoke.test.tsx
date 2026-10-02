@@ -1,5 +1,5 @@
 import { createRef } from "react";
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AgentWorkspace } from "./agent";
 import { KnowledgeWorkspace } from "./kb";
@@ -10,6 +10,7 @@ import { renderWithI18n } from "../test/render";
 describe("workspace smoke tests", () => {
   /** 用途：负责 it 的界面或数据处理职责。 */
   it("renders ChatWorkspace in agent mode", () => {
+    const onStop = vi.fn();
     /** 用途：负责 renderWithI18n 的界面或数据处理职责。 */
     renderWithI18n(
       <ChatWorkspace
@@ -24,12 +25,13 @@ describe("workspace smoke tests", () => {
         error={null}
         hasMessages={false}
         input=""
-        isAgentRunning={false}
+        isAgentRunning={true}
         isLoadingMessages={false}
-        isSending={false}
+        isSending={true}
         isStreaming={false}
         isUploadingTempFile={false}
         kbName="default"
+        knowledgeBaseNames={["default"]}
         messages={[]}
         onChangeDetailsTab={vi.fn()}
         onChangeInput={vi.fn()}
@@ -41,11 +43,12 @@ describe("workspace smoke tests", () => {
         onSelectAssistantMessage={vi.fn()}
         onStartEmptyMode={vi.fn()}
         onSubmit={vi.fn()}
+        onStop={onStop}
         onTempFileUpload={vi.fn()}
         preferredMode="agent"
         selectedAssistantMessageId={null}
         selectedTempFile={null}
-        streamStatus={null}
+        streamStatus="Planning"
         streamTokenText=""
         streamingMessage=""
         tempFileInputRef={createRef<HTMLInputElement>()}
@@ -58,9 +61,19 @@ describe("workspace smoke tests", () => {
 
     /** 用途：负责 expect 的界面或数据处理职责。 */
     expect(screen.getByTestId("agent-mode-status")).toBeInTheDocument();
+    expect(
+      within(document.querySelector(".agent-progress-summary") as HTMLElement)
+        .getByText("Planning")
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Stop generating" }));
+    expect(onStop).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole("button", { name: "Agent Steps" }));
     /** 用途：负责 expect 的界面或数据处理职责。 */
     expect(screen.getByText("Agent Trace")).toBeInTheDocument();
+    const contextPanel = screen.getByLabelText("Details");
+    expect(contextPanel).toHaveClass("mobile-open");
+    fireEvent.click(within(contextPanel).getByRole("button", { name: "Close" }));
+    expect(contextPanel).not.toHaveClass("mobile-open");
   });
 
   /** 用途：负责 it 的界面或数据处理职责。 */
@@ -82,6 +95,8 @@ describe("workspace smoke tests", () => {
         knowledgeBases={[{ id: 1, kb_name: "default" }]}
         onChangeImportFile={vi.fn()}
         onChangeUploadFile={vi.fn()}
+        onCreateKnowledgeBase={vi.fn(async () => true)}
+        onDeleteKnowledgeBase={vi.fn(async () => true)}
         onDeleteDocument={vi.fn()}
         onDownloadDocument={vi.fn()}
         onExportKb={vi.fn()}

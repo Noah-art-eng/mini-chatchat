@@ -54,6 +54,13 @@ export function useChatStream() {
     run.controller.abort();
   }
 
+  function stopGeneration() {
+    const run = activeRunRef.current;
+    if (!run) return;
+    abortRun(run);
+    setIsStreaming(false);
+  }
+
   useEffect(() => {
     conversationIdRef.current = conversationId;
     const run = activeRunRef.current;
@@ -231,6 +238,7 @@ export function useChatStream() {
   return {
     error,
     isStreaming,
-    sendMessage
+    sendMessage,
+    stopGeneration
   };
 }

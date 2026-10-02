@@ -3,6 +3,7 @@ import { useKbPanel } from "../hooks/useKbPanel";
 import { useI18n } from "../i18n";
 import { KnowledgeWorkspace } from "./kb";
 import { useToast } from "./ui";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 /** 用途：负责 KnowledgeBasePanel 的界面或数据处理职责。 */
 export function KnowledgeBasePanel() {
@@ -14,9 +15,12 @@ export function KnowledgeBasePanel() {
   const [selectedImportFile, setSelectedImportFile] = useState<File | null>(
     null
   );
+  const [documentToDelete, setDocumentToDelete] = useState<string | null>(null);
   const {
     activeDocumentAction,
+    createKnowledgeBaseByName,
     deleteKnowledgeFile,
+    deleteKnowledgeBaseByName,
     documentActionStatus,
     documents,
     downloadKnowledgeFile,
@@ -38,6 +42,7 @@ export function KnowledgeBasePanel() {
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
+    <>
     <KnowledgeWorkspace
       activeDocumentAction={activeDocumentAction}
       documentActionStatus={documentActionStatus}
@@ -53,25 +58,30 @@ export function KnowledgeBasePanel() {
       knowledgeBases={knowledgeBases}
       onChangeImportFile={setSelectedImportFile}
       onChangeUploadFile={setSelectedFile}
+      onCreateKnowledgeBase={createKnowledgeBaseByName}
+      onDeleteKnowledgeBase={deleteKnowledgeBaseByName}
       onDeleteDocument={filename => {
-        if (window.confirm(t("kb.confirmDeleteDocument", { name: filename }))) {
-          void deleteKnowledgeFile(filename);
-          /** 用途：负责 showToast 的界面或数据处理职责。 */
-          showToast({ message: t("kb.deleteStarted", { name: filename }), variant: "info" });
-        }
+        setDocumentToDelete(filename);
       }}
       onDownloadDocument={filename => {
-        void downloadKnowledgeFile(filename);
-        /** 用途：负责 showToast 的界面或数据处理职责。 */
-        showToast({
-          message: t("kb.downloadStarted", { name: filename }),
-          variant: "info"
+        void downloadKnowledgeFile(filename).then(downloaded => {
+          showToast({
+            message: downloaded
+              ? t("kb.downloadSuccess", { name: filename })
+              : t("kb.downloadFailed"),
+            variant: downloaded ? "success" : "error"
+          });
         });
       }}
       onExportKb={() => {
-        void exportCurrentKnowledgeBase();
-        /** 用途：负责 showToast 的界面或数据处理职责。 */
-        showToast({ message: t("kb.exportStarted", { name: kbName }), variant: "info" });
+        void exportCurrentKnowledgeBase().then(exported => {
+          showToast({
+            message: exported
+              ? t("kb.exportSuccess", { name: kbName })
+              : t("kb.exportFailed"),
+            variant: exported ? "success" : "error"
+          });
+        });
       }}
       onImportKb={() => {
         /** 用途：负责 void 的界面或数据处理职责。 */
@@ -102,9 +112,14 @@ export function KnowledgeBasePanel() {
           });
       }}
       onReindexDocument={file => {
-        void reindexKnowledgeFile(file);
-        /** 用途：负责 showToast 的界面或数据处理职责。 */
-        showToast({ message: t("kb.reindexStarted", { name: file.filename }), variant: "info" });
+        void reindexKnowledgeFile(file).then(reindexed => {
+          showToast({
+            message: reindexed
+              ? t("kb.reindexSuccess", { name: file.filename })
+              : t("kb.reindexFailed"),
+            variant: reindexed ? "success" : "error"
+          });
+        });
       }}
       onSelectKnowledgeBase={nextKbName => {
         void selectKnowledgeBase(nextKbName);
@@ -132,5 +147,24 @@ export function KnowledgeBasePanel() {
       selectedImportFile={selectedImportFile}
       uploadStatus={uploadStatus}
     />
+    <ConfirmDialog
+      confirmLabel={t("kb.delete")}
+      description={t("kb.confirmDeleteDocument", { name: documentToDelete || "" })}
+      isOpen={documentToDelete !== null}
+      onCancel={() => setDocumentToDelete(null)}
+      onConfirm={() => {
+        const filename = documentToDelete;
+        if (!filename) return;
+        setDocumentToDelete(null);
+        void deleteKnowledgeFile(filename).then(deleted => {
+          showToast({
+            message: deleted ? t("kb.deleteSuccess", { name: filename }) : t("kb.deleteFailed"),
+            variant: deleted ? "success" : "error"
+          });
+        });
+      }}
+      title={t("kb.confirmDeleteDocumentTitle")}
+    />
+    </>
   );
 }

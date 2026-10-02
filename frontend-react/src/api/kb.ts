@@ -6,6 +6,20 @@ export async function listKnowledgeBases() {
   return requestJson<{ knowledge_bases: KnowledgeBase[] }>("/knowledge_bases");
 }
 
+export async function createKnowledgeBase(kbName: string) {
+  return requestJson<{ message?: string; error?: string }>("/knowledge_bases", {
+    method: "POST",
+    body: JSON.stringify({ kb_name: kbName })
+  });
+}
+
+export async function deleteKnowledgeBase(kbName: string) {
+  return requestJson<{ message?: string; error?: string }>(
+    `/knowledge_bases/${encodeURIComponent(kbName)}`,
+    { method: "DELETE" }
+  );
+}
+
 /** 用途：负责 switchKnowledgeBase 的界面或数据处理职责。 */
 export async function switchKnowledgeBase(kbName: string) {
   return requestJson<{ current_kb: string }>("/switch_kb", {

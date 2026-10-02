@@ -8,6 +8,8 @@ import type { AgentRunResponse } from "../../types/agent";
 import type { ChatMode } from "../../types/chat";
 import type { ChatMessage } from "../../types/conversation";
 import { ChatWorkspace, type DetailsTab } from "./ChatWorkspace";
+import { useNavigate } from "../../router";
+import { listKnowledgeBases } from "../../api/kb";
 
 type ChatAreaProps = {
   onOpenModeGuide?: () => void;
@@ -44,6 +46,7 @@ export function ChatArea({
   preferredMode = "chat"
 }: ChatAreaProps) {
   const { t } = useI18n();
+  const navigate = useNavigate();
   const {
     chatMode,
     conversationId,
@@ -60,29 +63,48 @@ export function ChatArea({
     tempFileName,
     tempKbId
   } = useConversationStore();
-  const { error, isStreaming, sendMessage } = useChatStream();
+  const { error, isStreaming, sendMessage, stopGeneration } = useChatStream();
   const {
     agentResult,
     error: agentError,
     isRunning: isAgentRunning,
     sendAgentMessage,
+    stopAgentRun,
     streamStatus,
     streamTokenText
   } = useAgentRun();
+  const [knowledgeBaseNames, setKnowledgeBaseNames] = useState<string[]>([]);
   const [input, setInput] = useState("");
   const [detailsTab, setDetailsTab] = useState<DetailsTab>("sources");
   const [selectedTempFile, setSelectedTempFile] = useState<File | null>(null);
   const [isUploadingTempFile, setIsUploadingTempFile] = useState(false);
   const [tempFileStatus, setTempFileStatus] = useState<string | null>(null);
   const tempFileInputRef = useRef<HTMLInputElement | null>(null);
+  const appliedPreferredModeRef = useRef<"chat" | "agent" | null>(null);
 
   /** 用途：负责 useEffect 的界面或数据处理职责。 */
   useEffect(() => {
+    if (appliedPreferredModeRef.current === preferredMode) return;
+    appliedPreferredModeRef.current = preferredMode;
+
     if (preferredMode === "agent" && chatMode !== "agent") {
       /** 用途：负责 setChatMode 的界面或数据处理职责。 */
       setChatMode("agent");
+    } else if (preferredMode === "chat" && chatMode === "agent") {
+      setChatMode("local_kb");
     }
   }, [chatMode, preferredMode, setChatMode]);
+
+  useEffect(() => {
+    listKnowledgeBases()
+      .then(result => setKnowledgeBaseNames(result.knowledge_bases.map(kb => kb.kb_name)))
+      .catch(() => setKnowledgeBaseNames([]));
+  }, []);
+
+  function changeMode(nextMode: ChatMode) {
+    setChatMode(nextMode);
+    navigate(nextMode === "agent" ? "/agent" : "/chat");
+  }
 
   /** 用途：负责 useEffect 的界面或数据处理职责。 */
   useEffect(() => {
@@ -236,11 +258,12 @@ export function ChatArea({
       isStreaming={isStreaming}
       isUploadingTempFile={isUploadingTempFile}
       kbName={kbName}
+      knowledgeBaseNames={knowledgeBaseNames}
       messages={messages}
       onChangeDetailsTab={setDetailsTab}
       onChangeInput={setInput}
       onChangeKbName={setKbName}
-      onChangeMode={setChatMode}
+      onChangeMode={changeMode}
       onChangeSelectedTempFile={setSelectedTempFile}
       onOpenAssistantSources={messageId => {
         /** 用途：负责 setSelectedAssistantMessageId 的界面或数据处理职责。 */
@@ -254,6 +277,7 @@ export function ChatArea({
       onSubmit={() => {
         void submitInput();
       }}
+      onStop={chatMode === "agent" ? stopAgentRun : stopGeneration}
       onTempFileUpload={() => {
         void handleTempFileUpload();
       }}

@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { useState } from "react";
 import { Button } from "./ui";
 import { useI18n } from "../i18n";
 
@@ -37,31 +36,21 @@ export function ContextPanel({
   workspace
 }: ContextPanelProps) {
   const { t } = useI18n();
-  const [isLocalOpen, setIsLocalOpen] = useState(false);
-
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <>
       <button
         className="context-panel-mobile-trigger"
-        onClick={() => {
-          /** 用途：负责 setIsLocalOpen 的界面或数据处理职责。 */
-          setIsLocalOpen(true);
-          onOpen?.();
-        }}
+        onClick={() => onOpen?.()}
         type="button"
       >
         {title}
       </button>
-      {isOpen && isLocalOpen && (
+      {isOpen && (
         <button
           aria-label={t("common.close")}
           className="context-panel-mobile-backdrop"
-          onClick={() => {
-            /** 用途：负责 setIsLocalOpen 的界面或数据处理职责。 */
-            setIsLocalOpen(false);
-            onClose?.();
-          }}
+          onClick={() => onClose?.()}
           type="button"
         />
       )}
@@ -72,7 +61,7 @@ export function ContextPanel({
           "shell-context-panel",
           `shell-context-panel--${workspace}`,
           isOpen ? "open" : "collapsed",
-          isLocalOpen && "mobile-open",
+          isOpen && "mobile-open",
           className || ""
         ]
           .filter(Boolean)
@@ -86,12 +75,7 @@ export function ContextPanel({
           {onClose && (
             <Button
               className="shell-context-panel__close"
-              onClick={() => {
-                /** 用途：负责 setIsLocalOpen 的界面或数据处理职责。 */
-                setIsLocalOpen(false);
-                /** 用途：负责 onClose 的界面或数据处理职责。 */
-                onClose();
-              }}
+              onClick={onClose}
               size="sm"
               variant="ghost"
             >

@@ -4,10 +4,12 @@ import { EmailPasswordForm } from "./EmailPasswordForm";
 import { OAuthButtons } from "./OAuthButtons";
 import { useAuth } from "./AuthContext";
 import { Link, useNavigate } from "../router";
+import { useI18n } from "../i18n";
 
 /** 用途：负责 LoginPage 的界面或数据处理职责。 */
 export function LoginPage() {
   const auth = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -25,7 +27,7 @@ export function LoginPage() {
       navigate("/chat", { replace: true });
     } catch {
       /** 用途：负责 setError 的界面或数据处理职责。 */
-      setError("Email or password is incorrect.");
+      setError(t("auth.loginFailed"));
     } finally {
       /** 用途：负责 setIsSubmitting 的界面或数据处理职责。 */
       setIsSubmitting(false);
@@ -38,9 +40,9 @@ export function LoginPage() {
       <section className="auth-card">
         <BrandLogo size={48} title="Mini ChatChat" />
         <div>
-          <p className="auth-eyebrow">Private workspace</p>
-          <h1>Sign in to Mini ChatChat</h1>
-          <p>Use your own conversations, knowledge bases, Agent tools, and preferences.</p>
+          <p className="auth-eyebrow">{t("auth.privateWorkspace")}</p>
+          <h1>{t("auth.signInTitle")}</h1>
+          <p>{t("auth.signInDescription")}</p>
         </div>
         <EmailPasswordForm
           error={error}
@@ -50,10 +52,10 @@ export function LoginPage() {
         />
         <OAuthButtons mode="login" />
         <p className="auth-switch">
-          New here? <Link to="/register">Create an account</Link>
+          {t("auth.newHere")} <Link to="/register">{t("auth.createAccount")}</Link>
         </p>
         <Link className="auth-back-link" to="/chat">
-          Continue as guest
+          {t("auth.continueAsGuest")}
         </Link>
       </section>
     </main>
