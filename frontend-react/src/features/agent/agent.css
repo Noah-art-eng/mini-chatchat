@@ -1,0 +1,219 @@
+/* Agent progress, tool observations, trace, and final-answer presentation. */
+.agent-tool-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.agent-tool-fields span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.agent-tool-fields strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.planner-step-list,
+.agent-trace-list {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.planner-step.completed {
+  border-color: var(--success-soft);
+  background: var(--success-soft);
+}
+
+@media (max-width: 720px) {
+
+  .agent-tool-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+.agent-running-card {
+  display: flex;
+  align-items: center;
+}
+
+.agent-timeline {
+  position: relative;
+  display: grid;
+  gap: 14px;
+}
+
+.agent-timeline::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 10px;
+  width: 1px;
+  background: rgba(23, 23, 23, 0.12);
+}
+
+.agent-timeline-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.timeline-marker {
+  position: relative;
+  z-index: 1;
+  width: 21px;
+  height: 21px;
+  border: 4px solid rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  background: #171717;
+  box-shadow: 0 0 0 1px rgba(23, 23, 23, 0.12);
+}
+
+.timeline-content {
+  display: grid;
+  gap: 10px;
+}
+
+.agent-step-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.agent-timeline::before {
+  background: linear-gradient(180deg, var(--color-primary-200), var(--color-secondary-100));
+}
+
+.timeline-marker {
+  background: linear-gradient(135deg, var(--color-primary-600), var(--color-secondary-600));
+}
+
+.agent-running-card {
+  border-color: rgba(15, 159, 143, 0.22);
+  background: var(--secondary-soft);
+}
+
+.agent-timeline::before {
+  background: var(--border);
+}
+
+.timeline-marker {
+  background: #8f9bad;
+}
+
+.agent-running-card {
+  background: #f4f7f6;
+}
+
+.timeline-marker {
+  background: var(--color-brand-primary);
+}
+
+.agent-running-card {
+  background: var(--color-info-soft);
+  border-color: var(--color-border-subtle);
+}
+
+.agent-run-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.agent-run-toolbar span {
+  border: var(--border-width-default) var(--border-style-default) var(--color-border-subtle);
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  padding: 4px var(--space-2);
+}
+
+.empty-agent-state h2,
+.empty-agent-state p {
+  margin: 0;
+}
+
+.agent-progress-summary {
+  align-items: center;
+  background: var(--color-brand-soft);
+  border: var(--border-width-default) solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  display: flex;
+  font-size: var(--font-size-body-small);
+  gap: var(--space-3);
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+}
+
+.agent-progress-summary strong {
+  color: var(--color-text-primary);
+}
+
+.timeline-marker {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+}
+
+.agent-timeline {
+  position: relative;
+}
+
+.agent-timeline-step {
+  border-left: var(--border-width-strong) var(--border-style-default)
+    var(--color-brand-soft);
+  box-shadow: var(--shadow-none);
+}
+
+.agent-timeline-step details,
+.agent-trace-card details {
+  border: var(--border-width-default) var(--border-style-default)
+    var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+}
+
+.agent-timeline-step summary,
+.agent-trace-card summary {
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: var(--font-size-body-small);
+  font-weight: var(--font-weight-semibold);
+}
+
+.agent-timeline::before {
+  background: var(--color-border-default);
+}
+
+.timeline-marker {
+  background: var(--color-brand-primary);
+  border-color: var(--color-bg-surface);
+}
+
+.agent-running-card {
+  background: var(--color-info-soft);
+}
+
+.agent-example-grid {
+  margin-top: var(--space-4);
+}
+
+.agent-empty-examples li {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-subtle);
+}

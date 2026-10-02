@@ -1,0 +1,322 @@
+/* Knowledge-base lifecycle, uploads, documents, and backup controls. */
+.kb-page-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  min-width: 0;
+}
+
+.kb-panel-page {
+  min-width: 0;
+}
+
+.kb-list {
+  grid-area: list;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.kb-option:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+.kb-option span,
+.kb-option small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kb-option small {
+  color: var(--text-muted);
+}
+
+.kb-action-panel > button:disabled,
+.upload-panel > button:disabled {
+  border-color: var(--border);
+  background: var(--surface-strong);
+  color: var(--text-muted);
+}
+
+.upload-label {
+  color: var(--text);
+  font-weight: 800;
+  margin: 0;
+}
+
+.document-row strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.document-row dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0 0;
+}
+
+.document-row dt {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.document-row dd {
+  margin: 2px 0 0;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.document-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+@media (max-width: 1100px) {
+
+  .kb-page-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+
+  .kb-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+
+  .document-row dl {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+
+  .document-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+
+.current-kb span {
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.current-kb strong {
+  font-size: 20px;
+}
+
+.kb-stats span {
+  display: block;
+  color: var(--text-soft);
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.kb-stats strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 26px;
+}
+
+.document-row-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.document-row-header small {
+  display: block;
+  max-width: 100%;
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.document-actions button[data-testid^="delete-document"] {
+  border-color: rgba(214, 69, 61, 0.22);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.document-actions button[data-testid^="delete-document"]:hover {
+  background: var(--danger);
+  color: #fff;
+}
+
+.kb-stats strong {
+  color: var(--primary-strong);
+}
+
+.native-file-input:hover {
+  border-color: rgba(66, 99, 235, 0.34);
+  box-shadow: var(--shadow-focus);
+}
+
+.current-kb span {
+  color: var(--text-soft);
+}
+
+.kb-stats strong {
+  color: var(--text);
+  font-weight: 740;
+}
+
+.native-file-input:hover {
+  box-shadow: var(--shadow-focus);
+}
+
+.document-actions button[data-testid^="delete-document"] {
+  background: var(--color-danger-soft);
+  border-color: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.document-actions button[data-testid^="delete-document"]:hover {
+  background: var(--color-danger);
+  color: var(--color-text-inverse);
+}
+
+.knowledge-workspace > .kb-page-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, var(--context-panel-width));
+  gap: var(--panel-gap);
+  min-height: 0;
+}
+
+.knowledge-toolbar {
+  grid-area: toolbar;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.empty-knowledge-state h2,
+.empty-knowledge-state p {
+  margin: 0;
+}
+
+.document-row.selected {
+  border-color: var(--color-border-strong);
+  background: var(--color-bg-selected);
+}
+
+.document-detail-panel {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.document-detail-panel h2 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--font-size-title);
+  line-height: var(--line-height-heading);
+}
+
+.document-detail-panel dl {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.document-detail-panel dt {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+}
+
+.document-detail-panel dd {
+  margin: var(--space-1) 0 0;
+  overflow-wrap: anywhere;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-body-small);
+}
+
+.upload-panel.uploading {
+  border-style: solid;
+  border-color: color-mix(
+    in srgb,
+    var(--color-brand-primary) 22%,
+    var(--color-border-default)
+  );
+}
+
+.upload-drop-hint {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+  margin: 0;
+}
+
+.upload-progress {
+  background: var(--color-bg-surface);
+  border-radius: var(--radius-pill);
+  height: 6px;
+  overflow: hidden;
+}
+
+.kb-lifecycle-actions {
+  align-items: end;
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: minmax(180px, 1fr) auto auto;
+}
+
+.kb-lifecycle-actions label {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.kb-lifecycle-actions label span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-medium);
+}
+
+@media (max-width: 720px) {
+  .kb-lifecycle-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.knowledge-toolbar {
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.document-title-cell > div {
+  display: grid;
+  min-width: 0;
+}
+
+.document-title-cell strong,
+.document-title-cell small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.current-kb span {
+  color: color-mix(in srgb, var(--color-text-inverse) 72%, transparent);
+}

@@ -6,10 +6,7 @@ import { ToastProvider } from "./components/ui";
 import { ConversationProvider } from "./stores/conversationStore";
 import { AuthProvider } from "./auth";
 import { AppRouter } from "./router";
-import "./styles/tokens.css";
-import "./styles.css";
-import "./design-system.css";
-import "./styles/shell.css";
+import "./styles/index.css";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
