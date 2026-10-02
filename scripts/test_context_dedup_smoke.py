@@ -131,6 +131,7 @@ def upload_sample_to_current_kb():
         response = request(
             "POST",
             "/upload",
+            data={"kb_name": LOCAL_TEST_KB},
             files={"file": (SAMPLE_FILE.name, file, "text/plain")},
         )
 

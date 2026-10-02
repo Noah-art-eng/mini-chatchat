@@ -9,7 +9,7 @@ import type { ChatMode } from "../../types/chat";
 import type { ChatMessage } from "../../types/conversation";
 import { ChatWorkspace, type DetailsTab } from "./ChatWorkspace";
 import { useNavigate } from "../../router";
-import { listKnowledgeBases } from "../../api/kb";
+import { listKnowledgeBases, switchKnowledgeBase } from "../../api/kb";
 
 type ChatAreaProps = {
   onOpenModeGuide?: () => void;
@@ -104,6 +104,11 @@ export function ChatArea({
   function changeMode(nextMode: ChatMode) {
     setChatMode(nextMode);
     navigate(nextMode === "agent" ? "/agent" : "/chat");
+  }
+
+  async function changeKnowledgeBase(nextKbName: string) {
+    const result = await switchKnowledgeBase(nextKbName);
+    setKbName(result.current_kb);
   }
 
   /** 用途：负责 useEffect 的界面或数据处理职责。 */
@@ -262,7 +267,9 @@ export function ChatArea({
       messages={messages}
       onChangeDetailsTab={setDetailsTab}
       onChangeInput={setInput}
-      onChangeKbName={setKbName}
+      onChangeKbName={nextKbName => {
+        void changeKnowledgeBase(nextKbName).catch(() => undefined);
+      }}
       onChangeMode={changeMode}
       onChangeSelectedTempFile={setSelectedTempFile}
       onOpenAssistantSources={messageId => {

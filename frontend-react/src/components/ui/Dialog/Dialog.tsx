@@ -131,7 +131,7 @@ export function Dialog({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[var(--z-dialog)] flex items-center justify-center bg-[color-mix(in_srgb,var(--color-text-primary)_18%,transparent)] p-mc-6 max-[480px]:items-end max-[480px]:p-mc-3 max-[480px]:pb-[calc(var(--space-3)+var(--safe-area-bottom))]"
+      className="fixed top-[0px] right-[0px] bottom-[0px] left-[0px] z-[var(--z-dialog)] flex items-center justify-center bg-[color-mix(in_srgb,var(--color-text-primary)_18%,transparent)] p-mc-6 max-[480px]:items-end max-[480px]:p-mc-3 max-[480px]:pb-[calc(var(--space-3)+var(--safe-area-bottom))]"
       onMouseDown={handleBackdropClick}
     >
       <section

@@ -123,6 +123,7 @@ def ensure_default_kb_document(token):
                 "POST",
                 "/upload",
                 token=token,
+                data={"kb_name": "default"},
                 files={
                     "file": (
                         "smoke_default_kb.txt",

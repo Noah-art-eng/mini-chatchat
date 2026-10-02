@@ -118,6 +118,7 @@ def upload_sample():
         response = request(
             "POST",
             "/upload",
+            data={"kb_name": EXPORT_KB},
             files={"file": (SAMPLE_FILE.name, file, "text/plain")},
         )
 

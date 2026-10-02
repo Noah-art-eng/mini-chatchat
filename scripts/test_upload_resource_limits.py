@@ -81,6 +81,7 @@ class UploadResourceLimitTest(unittest.TestCase):
         ):
             return client.post(
                 "/upload",
+                data={"kb_name": "default"},
                 files={"file": (filename, content, "text/plain")},
             )
 
@@ -113,6 +114,7 @@ class UploadResourceLimitTest(unittest.TestCase):
         ):
             response = client.post(
                 "/upload",
+                data={"kb_name": "default"},
                 files={"file": ("too-large.txt", b"123456789", "text/plain")},
             )
 

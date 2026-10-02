@@ -46,5 +46,17 @@ describe("UI foundation", () => {
     expect(onCancel).toHaveBeenCalledTimes(1);
     /** 用途：负责 expect 的界面或数据处理职责。 */
     expect(onConfirm).toHaveBeenCalledTimes(1);
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.parentElement).toHaveClass(
+      "top-[0px]",
+      "right-[0px]",
+      "bottom-[0px]",
+      "left-[0px]"
+    );
+
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    fireEvent.mouseDown(dialog.parentElement as HTMLElement);
+    expect(onCancel).toHaveBeenCalledTimes(3);
   });
 });

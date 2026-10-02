@@ -6,6 +6,7 @@ import { kbActionButtonClassName, kbFileInputClassName } from "./kbStyles";
 type UploadPanelProps = {
   fileInputRef: RefObject<HTMLInputElement | null>;
   isUploading: boolean;
+  isSwitchingKnowledgeBase: boolean;
   onChangeFile: (file: File | null) => void;
   onUpload: () => void;
   selectedFile: File | null;
@@ -16,6 +17,7 @@ type UploadPanelProps = {
 export function UploadPanel({
   fileInputRef,
   isUploading,
+  isSwitchingKnowledgeBase,
   onChangeFile,
   onUpload,
   selectedFile,
@@ -66,7 +68,7 @@ export function UploadPanel({
       <button
         className={kbActionButtonClassName}
         data-testid="upload-file-button"
-        disabled={isUploading || !selectedFile}
+        disabled={isUploading || isSwitchingKnowledgeBase || !selectedFile}
         onClick={onUpload}
         type="button"
       >

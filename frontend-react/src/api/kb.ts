@@ -36,9 +36,10 @@ export async function listDocuments() {
 }
 
 /** 用途：负责 uploadDocument 的界面或数据处理职责。 */
-export async function uploadDocument(file: File) {
+export async function uploadDocument(file: File, kbName: string) {
   const formData = new FormData();
   formData.append("file", file);
+  formData.append("kb_name", kbName);
   formData.append("override", "true");
   formData.append("chunk_size", "300");
   formData.append("chunk_overlap", "50");

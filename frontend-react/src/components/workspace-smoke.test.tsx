@@ -1,5 +1,5 @@
 import { createRef } from "react";
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AgentWorkspace } from "./agent";
 import { KnowledgeWorkspace } from "./kb";
@@ -76,6 +76,63 @@ describe("workspace smoke tests", () => {
     expect(contextPanel).not.toHaveClass("mobile-open");
   });
 
+  it("keeps the chat thread flexible and the composer constrained", () => {
+    renderWithI18n(
+      <ChatWorkspace
+        activeModeDescription="Agent mode"
+        activeModeLabel="Agent"
+        agentError={null}
+        chatMode="agent"
+        chatModes={["local_kb", "search_engine", "temp_kb", "agent"]}
+        conversationId={null}
+        detailsTab="trace"
+        disabledReason={null}
+        error={null}
+        hasMessages={false}
+        input=""
+        isAgentRunning={false}
+        isLoadingMessages={false}
+        isSending={false}
+        isStreaming={false}
+        isUploadingTempFile={false}
+        kbName="default"
+        knowledgeBaseNames={["default"]}
+        messages={[]}
+        onChangeDetailsTab={vi.fn()}
+        onChangeInput={vi.fn()}
+        onChangeKbName={vi.fn()}
+        onChangeMode={vi.fn()}
+        onChangeSelectedTempFile={vi.fn()}
+        onOpenAssistantSources={vi.fn()}
+        onOpenModeGuide={vi.fn()}
+        onSelectAssistantMessage={vi.fn()}
+        onStartEmptyMode={vi.fn()}
+        onSubmit={vi.fn()}
+        onStop={vi.fn()}
+        onTempFileUpload={vi.fn()}
+        preferredMode="agent"
+        selectedAssistantMessageId={null}
+        selectedTempFile={null}
+        streamStatus={null}
+        streamTokenText=""
+        streamingMessage=""
+        tempFileInputRef={createRef<HTMLInputElement>()}
+        tempFileName={null}
+        tempFileStatus={null}
+        tempKbId={null}
+        visibleAgentResult={null}
+      />
+    );
+
+    expect(document.querySelector(".chat-thread")).toHaveClass("flex-1");
+    expect(document.querySelector(".chat-composer")).toHaveClass(
+      "w-full",
+      "max-w-[var(--composer-max-width)]",
+      "mx-auto",
+      "self-center"
+    );
+  });
+
   /** 用途：负责 it 的界面或数据处理职责。 */
   it("renders KnowledgeWorkspace with empty documents", () => {
     /** 用途：负责 renderWithI18n 的界面或数据处理职责。 */
@@ -117,6 +174,89 @@ describe("workspace smoke tests", () => {
     expect(
       screen.getAllByText("No documents in this knowledge base yet.")[0]
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Delete KB" })).toBeDisabled();
+  });
+
+  it("confirms deletion for a non-default knowledge base", async () => {
+    const onDeleteKnowledgeBase = vi.fn(async () => true);
+    renderWithI18n(
+      <KnowledgeWorkspace
+        activeDocumentAction={null}
+        documentActionStatus={null}
+        documents={[]}
+        error={null}
+        fileInputRef={createRef<HTMLInputElement>()}
+        importInputRef={createRef<HTMLInputElement>()}
+        isKbActionLoading={false}
+        isLoading={false}
+        isUploading={false}
+        kbActionStatus={null}
+        kbName="project-docs"
+        knowledgeBases={[
+          { id: 1, kb_name: "default" },
+          { id: 2, kb_name: "project-docs" }
+        ]}
+        onChangeImportFile={vi.fn()}
+        onChangeUploadFile={vi.fn()}
+        onCreateKnowledgeBase={vi.fn(async () => true)}
+        onDeleteKnowledgeBase={onDeleteKnowledgeBase}
+        onDeleteDocument={vi.fn()}
+        onDownloadDocument={vi.fn()}
+        onExportKb={vi.fn()}
+        onImportKb={vi.fn()}
+        onRefreshDocuments={vi.fn()}
+        onReindexDocument={vi.fn()}
+        onSelectKnowledgeBase={vi.fn()}
+        onUploadDocument={vi.fn()}
+        selectedFile={null}
+        selectedImportFile={null}
+        uploadStatus={null}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete KB" }));
+    const dialog = screen.getByRole("dialog", { name: "Delete knowledge base" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete KB" }));
+
+    await waitFor(() => {
+      expect(onDeleteKnowledgeBase).toHaveBeenCalledWith("project-docs");
+    });
+  });
+
+  it("disables upload while the knowledge base selection is switching", () => {
+    renderWithI18n(
+      <KnowledgeWorkspace
+        activeDocumentAction={null}
+        documentActionStatus={null}
+        documents={[]}
+        error={null}
+        fileInputRef={createRef<HTMLInputElement>()}
+        importInputRef={createRef<HTMLInputElement>()}
+        isKbActionLoading={false}
+        isLoading={true}
+        isUploading={false}
+        kbActionStatus={null}
+        kbName="default"
+        knowledgeBases={[{ id: 1, kb_name: "default" }]}
+        onChangeImportFile={vi.fn()}
+        onChangeUploadFile={vi.fn()}
+        onCreateKnowledgeBase={vi.fn(async () => true)}
+        onDeleteKnowledgeBase={vi.fn(async () => true)}
+        onDeleteDocument={vi.fn()}
+        onDownloadDocument={vi.fn()}
+        onExportKb={vi.fn()}
+        onImportKb={vi.fn()}
+        onRefreshDocuments={vi.fn()}
+        onReindexDocument={vi.fn()}
+        onSelectKnowledgeBase={vi.fn()}
+        onUploadDocument={vi.fn()}
+        selectedFile={new File(["resume"], "resume.txt", { type: "text/plain" })}
+        selectedImportFile={null}
+        uploadStatus={null}
+      />
+    );
+
+    expect(screen.getByTestId("upload-file-button")).toBeDisabled();
   });
 
   /** 用途：负责 it 的界面或数据处理职责。 */

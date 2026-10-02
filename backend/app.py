@@ -530,6 +530,7 @@ def switch_kb(
 @app.post("/upload")
 async def upload(
     file: UploadFile = File(...),
+    kb_name: str = Form(...),
     override: bool = Form(True),
     chunk_size: int = Form(300, gt=0),
     chunk_overlap: int = Form(50, ge=0),
@@ -538,6 +539,8 @@ async def upload(
     """负责 upload 的函数职责。"""
     require_permission(current_user, Permission.CAN_MANAGE_KB)
     validate_chunk_settings(chunk_size, chunk_overlap)
+    kb_name = validate_kb_name(kb_name)
+    ensure_kb_owned_or_404(kb_name, current_user)
     filename = validate_filename(file.filename or "uploaded.txt")
     ext = os.path.splitext(filename)[1].lower()
 
@@ -552,7 +555,8 @@ async def upload(
     )
 
     try:
-        scoped_service = get_scoped_kb_service(current_user)
+        # 上传目标来自本次请求，不能依赖可能被并发 /switch_kb 改写的进程内状态。
+        scoped_service = get_scoped_kb_service(current_user, kb_name)
         user_id = get_scoped_user_id(current_user)
         upload_path = safe_join(
             scoped_service.upload_path,

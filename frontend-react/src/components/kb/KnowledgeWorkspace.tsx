@@ -263,6 +263,7 @@ export function KnowledgeWorkspace({
             <UploadPanel
               fileInputRef={fileInputRef}
               isUploading={isUploading}
+              isSwitchingKnowledgeBase={isLoading}
               onChangeFile={onChangeUploadFile}
               onUpload={onUploadDocument}
               selectedFile={selectedFile}

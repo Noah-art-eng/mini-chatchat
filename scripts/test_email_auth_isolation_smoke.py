@@ -169,7 +169,7 @@ def switch_kb(token, kb_name):
     pass_step(f"switched KB {kb_name}")
 
 
-def upload_document(token, filename, content):
+def upload_document(token, kb_name, filename, content):
     """负责 upload_document 的函数职责。"""
     with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as temp_file:
         temp_file.write(content)
@@ -181,6 +181,7 @@ def upload_document(token, filename, content):
                 "POST",
                 "/upload",
                 token=token,
+                data={"kb_name": kb_name},
                 files={
                     "file": (filename, file, "text/plain"),
                 },
@@ -634,6 +635,7 @@ def main():
     switch_kb(token_a, kb_name)
     upload_document(
         token_a,
+        kb_name,
         filename,
         "This private auth isolation document belongs only to User A.",
     )

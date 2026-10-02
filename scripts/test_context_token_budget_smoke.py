@@ -195,6 +195,7 @@ def upload_file_to_current_kb(path):
         response = request(
             "POST",
             "/upload",
+            data={"kb_name": LOCAL_TEST_KB},
             files={"file": (path.name, file, "text/plain")},
         )
 

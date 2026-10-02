@@ -9,7 +9,8 @@ import {
   deleteKnowledgeBase,
   listDocuments,
   listKnowledgeBases,
-  switchKnowledgeBase
+  switchKnowledgeBase,
+  uploadDocument
 } from "../api/kb";
 
 vi.mock("../api/kb", () => ({
@@ -44,6 +45,7 @@ describe("knowledge base lifecycle feedback", () => {
     vi.mocked(switchKnowledgeBase).mockResolvedValue({ current_kb: "default" });
     vi.mocked(createKnowledgeBase).mockReset();
     vi.mocked(deleteKnowledgeBase).mockReset();
+    vi.mocked(uploadDocument).mockReset();
   });
 
   it("moves create feedback from processing to success only after the API completes", async () => {
@@ -96,5 +98,29 @@ describe("knowledge base lifecycle feedback", () => {
     expect(deleted).toBe(false);
     expect(result.current.kbActionStatus).toBe("Knowledge base deletion failed.");
     expect(result.current.error).toBe("delete unavailable");
+  });
+
+  it("uploads with the knowledge base selected by the shared store", async () => {
+    vi.mocked(listKnowledgeBases).mockResolvedValue({
+      knowledge_bases: [
+        { id: 1, kb_name: "default" },
+        { id: 2, kb_name: "个人简历" }
+      ]
+    });
+    vi.mocked(switchKnowledgeBase).mockResolvedValue({ current_kb: "个人简历" });
+    vi.mocked(uploadDocument).mockResolvedValue({ message: "uploaded" });
+    const file = new File(["resume"], "resume.txt", { type: "text/plain" });
+    const { result } = renderHook(useKbPanel, { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.selectKnowledgeBase("个人简历");
+    });
+    await waitFor(() => expect(result.current.kbName).toBe("个人简历"));
+    await act(async () => {
+      await result.current.uploadKnowledgeFile(file);
+    });
+
+    expect(uploadDocument).toHaveBeenCalledWith(file, "个人简历");
   });
 });

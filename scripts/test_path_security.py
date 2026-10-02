@@ -153,6 +153,7 @@ class PathSecurityTest(unittest.TestCase):
                 with self.subTest(route="upload", filename=filename):
                     response = client.post(
                         "/upload",
+                        data={"kb_name": "default"},
                         files={"file": (filename, b"test", "text/plain")},
                     )
                     self.assertEqual(response.status_code, 400)
@@ -193,6 +194,7 @@ class PathSecurityTest(unittest.TestCase):
                         "current_user": guest_user(),
                     }
                     if route is backend_app.upload:
+                        route_kwargs["kb_name"] = "default"
                         route_kwargs["override"] = True
                     asyncio.run(route(**route_kwargs))
 

@@ -143,7 +143,7 @@ export function useKbPanel() {
       setUploadStatus(t("kb.uploadingFile", { name: file.name }));
 
       try {
-        const result = await uploadDocument(file);
+        const result = await uploadDocument(file, kbName);
 
         if (result.error) {
           /** 用途：负责 setUploadStatus 的界面或数据处理职责。 */
@@ -169,7 +169,7 @@ export function useKbPanel() {
         setIsUploading(false);
       }
     },
-    [refreshDocuments, t]
+    [kbName, refreshDocuments, t]
   );
 
   const downloadKnowledgeFile = useCallback(async (filename: string) => {
