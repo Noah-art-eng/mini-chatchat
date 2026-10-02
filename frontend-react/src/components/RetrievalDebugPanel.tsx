@@ -4,6 +4,7 @@ import { useI18n } from "../i18n";
 import { useConversationStore } from "../stores/conversationStore";
 import type { KBChatRequest } from "../types/chat";
 import type { Source } from "../types/conversation";
+import { contextStyles } from "./ContextPanel/contextStyles";
 
 /** 用途：负责 getSourceLabel 的界面或数据处理职责。 */
 function getSourceLabel(source: Source, index: number) {
@@ -154,16 +155,16 @@ export function RetrievalDebugPanel() {
   return (
     <section
       aria-label={t("debug.title")}
-      className="retrieval-debug-panel"
+      className={contextStyles.debugPanel}
       data-testid="retrieval-debug-panel"
     >
-      <div className="panel-heading">
+      <div className="grid gap-mc-1 [&_h2]:m-0 [&_h2]:text-mc-title [&_p:not(.eyebrow)]:m-[var(--space-1)_0_0] [&_p:not(.eyebrow)]:text-mc-body-small [&_p:not(.eyebrow)]:text-mc-secondary">
         <p className="eyebrow">{t("chat.developerTools")}</p>
         <h2>{t("debug.subtitle")}</h2>
         <p>{t("debug.description")}</p>
       </div>
 
-      <label className="debug-field">
+      <label className={contextStyles.debugField}>
         {t("debug.query")}
         <input
           data-testid="debug-query-input"
@@ -173,8 +174,8 @@ export function RetrievalDebugPanel() {
         />
       </label>
 
-      <div className="debug-grid">
-        <label className="debug-field">
+      <div className={contextStyles.debugGrid}>
+        <label className={contextStyles.debugField}>
           {t("debug.topK")}
           <input
             data-testid="debug-top-k-input"
@@ -185,7 +186,7 @@ export function RetrievalDebugPanel() {
           />
         </label>
 
-        <label className="debug-field">
+        <label className={contextStyles.debugField}>
           {t("debug.threshold")}
           <input
             data-testid="debug-score-threshold-input"
@@ -200,7 +201,7 @@ export function RetrievalDebugPanel() {
         </label>
       </div>
 
-      <label className="debug-field">
+      <label className={contextStyles.debugField}>
         {t("debug.promptName")}
         <input
           data-testid="debug-prompt-name-input"
@@ -209,7 +210,7 @@ export function RetrievalDebugPanel() {
         />
       </label>
 
-      <div className="debug-checks">
+      <div className={contextStyles.debugChecks}>
         <label>
           <input
             checked={returnDirect}
@@ -230,7 +231,7 @@ export function RetrievalDebugPanel() {
         </label>
       </div>
 
-      <label className="debug-field">
+      <label className={contextStyles.debugField}>
         {t("debug.rerankTopN")}
         <input
           data-testid="debug-rerank-top-n-input"
@@ -242,7 +243,7 @@ export function RetrievalDebugPanel() {
       </label>
 
       <button
-        className="debug-search-button"
+        className={contextStyles.debugButton}
         data-testid="debug-search-button"
         disabled={status === "loading"}
         onClick={() => {
@@ -253,7 +254,7 @@ export function RetrievalDebugPanel() {
         {status === "loading" ? t("debug.searching") : t("debug.run")}
       </button>
 
-      <div className="debug-results" data-testid="debug-results">
+      <div className={contextStyles.debugResults} data-testid="debug-results">
         {status === "idle" && (
           <p className="muted">{t("debug.idle")}</p>
         )}
@@ -270,8 +271,8 @@ export function RetrievalDebugPanel() {
 
           /** 用途：负责 return 的界面或数据处理职责。 */
           return (
-            <article className="debug-result-card" key={`${label}-${index}`}>
-              <div className="source-meta">
+            <article className={contextStyles.debugCard} key={`${label}-${index}`}>
+              <div className={contextStyles.sourceMeta}>
                 {href ? (
                   <a
                     data-testid="source-url"
@@ -290,7 +291,7 @@ export function RetrievalDebugPanel() {
                 </small>
               </div>
               {href && (
-                <strong className="source-title" data-testid="source-title">
+                <strong className={contextStyles.sourceTitle} data-testid="source-title">
                   {source.title || label}
                 </strong>
               )}

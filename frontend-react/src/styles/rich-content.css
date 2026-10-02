@@ -1,0 +1,140 @@
+/* Complex generated/tool content remains CSS so nested output stays readable. */
+.agent-timeline::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 10px;
+  width: 1px;
+  background: var(--color-border-default);
+}
+
+.agent-trace-card details,
+.agent-timeline-step details {
+  margin-top: var(--space-3);
+  border: var(--border-width-default) var(--border-style-default)
+    var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-bg-subtle);
+}
+
+.agent-trace-card summary,
+.agent-timeline-step summary {
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-body-small);
+  font-weight: var(--font-weight-semibold);
+}
+
+.agent-trace-card pre,
+.agent-timeline-step pre,
+.tool-detail-drawer pre {
+  overflow: auto;
+  border: var(--border-width-default) solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-caption);
+  line-height: 1.55;
+  padding: 10px;
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.source-reference-preview button span {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.message-markdown {
+  display: grid;
+  gap: var(--space-3);
+  color: inherit;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+.message-markdown :is(p, ul, ol, blockquote, pre, table, h3) {
+  margin: 0;
+}
+
+.message-markdown :is(ul, ol) {
+  padding-left: var(--space-5);
+}
+
+.message-markdown li + li {
+  margin-top: var(--space-1);
+}
+
+.message-markdown code {
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-mono);
+  font-size: 0.92em;
+  padding: 1px 5px;
+}
+
+.message-markdown .message-code-block {
+  display: grid;
+  gap: var(--space-2);
+  overflow-x: auto;
+  border: var(--border-width-default) solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-subtle);
+  padding: var(--space-3);
+}
+
+.message-markdown .message-code-block > span {
+  color: var(--color-text-muted);
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+}
+
+.message-markdown .message-code-block code {
+  background: transparent;
+  padding: 0;
+  white-space: pre;
+}
+
+.message-markdown .message-subheading {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-compact);
+}
+
+.message-markdown blockquote {
+  border-left: var(--border-width-strong) solid var(--color-border-strong);
+  color: var(--color-text-secondary);
+  padding-left: var(--space-3);
+  white-space: pre-wrap;
+}
+
+.message-markdown .message-table-wrap {
+  overflow-x: auto;
+}
+
+.message-markdown .message-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-body-small);
+}
+
+.message-markdown .message-table :is(th, td) {
+  border-bottom: var(--border-width-default) solid var(--color-border-subtle);
+  padding: var(--space-2);
+  text-align: left;
+  vertical-align: top;
+}
+
+.message-markdown .message-table th {
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-semibold);
+}

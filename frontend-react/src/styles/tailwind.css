@@ -1,0 +1,107 @@
+/* Tailwind v4 foundation. Import theme and utilities only so the existing reset
+   in base.css remains the single source of global element defaults. */
+@import "tailwindcss/utilities.css";
+
+@theme inline {
+  --color-mc-app: var(--color-bg-app);
+  --color-mc-sidebar: var(--color-bg-sidebar);
+  --color-mc-surface: var(--color-bg-surface);
+  --color-mc-subtle: var(--color-bg-subtle);
+  --color-mc-elevated: var(--color-bg-elevated);
+  --color-mc-hover: var(--color-bg-hover);
+  --color-mc-selected: var(--color-bg-selected);
+
+  --color-mc-text: var(--color-text-primary);
+  --color-mc-secondary: var(--color-text-secondary);
+  --color-mc-muted: var(--color-text-muted);
+  --color-mc-disabled: var(--color-text-disabled);
+  --color-mc-inverse: var(--color-text-inverse);
+
+  --color-mc-border: var(--color-border-default);
+  --color-mc-border-subtle: var(--color-border-subtle);
+  --color-mc-border-strong: var(--color-border-strong);
+  --color-mc-border-focus: var(--color-border-focus);
+
+  --color-mc-brand: var(--color-brand-primary);
+  --color-mc-brand-hover: var(--color-brand-hover);
+  --color-mc-brand-active: var(--color-brand-active);
+  --color-mc-brand-soft: var(--color-brand-soft);
+
+  --color-mc-danger: var(--color-danger);
+  --color-mc-danger-soft: var(--color-danger-soft);
+  --color-mc-warning: var(--color-warning);
+  --color-mc-warning-soft: var(--color-warning-soft);
+  --color-mc-success: var(--color-success);
+  --color-mc-success-soft: var(--color-success-soft);
+  --color-mc-info: var(--color-info);
+  --color-mc-info-soft: var(--color-info-soft);
+
+  --font-mc-sans: var(--font-family-sans);
+  --font-mc-mono: var(--font-family-mono);
+
+  --text-mc-display: var(--font-size-display);
+  --text-mc-display--line-height: var(--line-height-display);
+  --text-mc-heading: var(--font-size-heading);
+  --text-mc-heading--line-height: var(--line-height-heading);
+  --text-mc-title: var(--font-size-title);
+  --text-mc-title--line-height: var(--line-height-heading);
+  --text-mc-body: var(--font-size-body);
+  --text-mc-body--line-height: var(--line-height-body);
+  --text-mc-body-small: var(--font-size-body-small);
+  --text-mc-body-small--line-height: var(--line-height-body);
+  --text-mc-label: var(--font-size-label);
+  --text-mc-label--line-height: var(--line-height-compact);
+  --text-mc-caption: var(--font-size-caption);
+  --text-mc-caption--line-height: var(--line-height-compact);
+  --text-mc-badge: var(--font-size-badge);
+  --text-mc-badge--line-height: var(--line-height-compact);
+
+  --font-weight-mc-regular: var(--font-weight-regular);
+  --font-weight-mc-medium: var(--font-weight-medium);
+  --font-weight-mc-semibold: var(--font-weight-semibold);
+  --font-weight-mc-bold: var(--font-weight-bold);
+
+  --spacing-mc-1: var(--space-1);
+  --spacing-mc-2: var(--space-2);
+  --spacing-mc-3: var(--space-3);
+  --spacing-mc-4: var(--space-4);
+  --spacing-mc-5: var(--space-5);
+  --spacing-mc-6: var(--space-6);
+  --spacing-mc-8: var(--space-8);
+  --spacing-mc-10: var(--space-10);
+  --spacing-mc-12: var(--space-12);
+  --spacing-mc-16: var(--space-16);
+
+  --radius-mc-sm: var(--radius-sm);
+  --radius-mc-md: var(--radius-md);
+  --radius-mc-lg: var(--radius-lg);
+  --radius-mc-xl: var(--radius-xl);
+  --radius-mc-pill: var(--radius-pill);
+  --radius-mc-circle: var(--radius-circle);
+
+  --shadow-mc-xs: var(--shadow-xs);
+  --shadow-mc-sm: var(--shadow-sm);
+  --shadow-mc-md: var(--shadow-md);
+  --shadow-mc-lg: var(--shadow-lg);
+}
+
+@keyframes mc-spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes mc-skeleton-shimmer {
+  to {
+    background-position-x: -220%;
+  }
+}
+
+@keyframes upload-progress-slide {
+  0% {
+    transform: translateX(-110%);
+  }
+  100% {
+    transform: translateX(240%);
+  }
+}

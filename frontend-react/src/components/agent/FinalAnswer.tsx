@@ -1,5 +1,7 @@
 import { MarkdownContent } from "../chat";
 import { useI18n } from "../../i18n";
+import { cx } from "../ui/utils";
+import { agentStyles } from "./agentStyles";
 
 type FinalAnswerProps = {
   answer: string;
@@ -16,10 +18,10 @@ export function FinalAnswer({ answer }: FinalAnswerProps) {
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <article
-      className="agent-trace-card agent-final-card"
+      className={cx(agentStyles.card, agentStyles.final)}
       data-testid="agent-final-answer"
     >
-      <span className="agent-card-label">{t("agent.finalAnswer")}</span>
+      <span className={agentStyles.label}>{t("agent.finalAnswer")}</span>
       <MarkdownContent content={answer} />
     </article>
   );

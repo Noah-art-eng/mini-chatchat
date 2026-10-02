@@ -8,6 +8,8 @@ import { useAuth } from "../auth";
 import { useConversationStore } from "../stores/conversationStore";
 import type { AppPage } from "../pages/App";
 import { useNavigate } from "../router";
+import { cx } from "./ui/utils";
+import { shellStyles } from "./shellStyles";
 
 type TopBarProps = {
   activePage: AppPage;
@@ -42,21 +44,21 @@ export function TopBar({ activePage }: TopBarProps) {
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <header className="top-bar">
-      <div className="top-bar-status">
-        <strong className="top-bar-page">
+    <header className={shellStyles.topBar}>
+      <div className={cx(shellStyles.topBarGroup, shellStyles.topBarStatus)}>
+        <strong className={shellStyles.page}>
           {t(`nav.${activePage === "kb" ? "knowledgeBase" : activePage}`)}
         </strong>
         {(activePage === "chat" || activePage === "agent") && (
-          <span className="top-bar-context">{t(`modes.${chatMode}`)}</span>
+          <span className={shellStyles.context}>{t(`modes.${chatMode}`)}</span>
         )}
         {(activePage === "chat" || activePage === "agent" || activePage === "kb") && (
-          <span className="top-bar-context">
+          <span className={shellStyles.context}>
             {t("app.currentKb")} <strong>{kbName}</strong>
           </span>
         )}
         <span
-          className={`top-bar-health status-${health?.status || "loading"}`}
+          className={cx(shellStyles.health, `status-${health?.status || "loading"}`)}
           title={`${health?.status || t("common.loading")} · ${health?.version ? `v${health.version}` : "v1.0"}`}
         >
           <Icon
@@ -66,29 +68,29 @@ export function TopBar({ activePage }: TopBarProps) {
           />
           <span>{health?.status || t("common.loading")}</span>
         </span>
-        <span className="top-bar-version">
+        <span className={shellStyles.version}>
           {health?.version ? `v${health.version}` : "v1.0"}
         </span>
       </div>
-      <div className="top-bar-actions">
+      <div className={cx(shellStyles.topBarGroup, shellStyles.actions)}>
         {session.isGuest ? (
-          <div className="top-bar-auth-actions" aria-label={t("auth.session")}>
-            <button onClick={() => navigate("/login")} type="button">
+          <div className={shellStyles.authActions} aria-label={t("auth.session")}>
+            <button className={shellStyles.authButton} onClick={() => navigate("/login")} type="button">
               {t("auth.signIn")}
             </button>
-            <button onClick={() => navigate("/register")} type="button">
+            <button className={shellStyles.authButton} onClick={() => navigate("/register")} type="button">
               {t("auth.register")}
             </button>
           </div>
         ) : (
-          <div className="top-bar-auth-actions" aria-label={t("auth.session")}>
-            <span className="top-bar-user-pill">
+          <div className={shellStyles.authActions} aria-label={t("auth.session")}>
+            <span className={shellStyles.user}>
               {session.displayName || session.email}
             </span>
-            <button onClick={() => navigate("/account")} type="button">
+            <button className={shellStyles.authButton} onClick={() => navigate("/account")} type="button">
               {t("account.menu")}
             </button>
-            <button onClick={() => logout().catch(console.error)} type="button">
+            <button className={shellStyles.authButton} onClick={() => logout().catch(console.error)} type="button">
               {t("account.logout")}
             </button>
           </div>

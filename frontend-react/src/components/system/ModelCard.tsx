@@ -3,6 +3,7 @@ import { useI18n } from "../../i18n";
 import { Icon } from "../ui";
 import type { ModelsResponse } from "../../api/system";
 import type { ChatMode } from "../../types/chat";
+import { systemBadgeClassName, systemCardClassName } from "./systemStyles";
 
 type ModelCardProps = {
   chatMode: ChatMode;
@@ -15,8 +16,8 @@ export function ModelCard({ chatMode, models }: ModelCardProps) {
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <article className="settings-card">
-      <span className="settings-badge provider-badge">
+    <article className={systemCardClassName}>
+      <span className={`${systemBadgeClassName} provider-badge`}>
         {models?.chat.provider || t("common.loading")}
       </span>
       <h2><Icon icon={Cpu} size="sm" tone="brand" />{t("settings.model")}</h2>

@@ -6,10 +6,11 @@ export function LanguageSwitcher() {
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <label className="language-switcher">
+    <label className="flex min-w-max items-center gap-mc-2 text-mc-caption font-mc-bold text-mc-secondary">
       <span>{t("language.label")}</span>
       <select
         aria-label={t("language.label")}
+        className="min-h-[34px] min-w-[132px] py-[5px] pr-[28px] pl-mc-2"
         data-testid="language-switcher"
         onChange={event => setLanguage(event.target.value as LanguageCode)}
         value={language}

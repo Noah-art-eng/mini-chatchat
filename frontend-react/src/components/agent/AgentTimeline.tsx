@@ -1,5 +1,6 @@
 import type { AgentStep as AgentStepType } from "../../types/agent";
 import { AgentStep } from "./AgentStep";
+import { agentStyles } from "./agentStyles";
 
 type AgentTimelineProps = {
   steps: AgentStepType[];
@@ -13,7 +14,7 @@ export function AgentTimeline({ steps }: AgentTimelineProps) {
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <div className="agent-timeline">
+    <div className={agentStyles.timeline}>
       {steps.map(step => (
         <AgentStep key={step.step} step={step} />
       ))}

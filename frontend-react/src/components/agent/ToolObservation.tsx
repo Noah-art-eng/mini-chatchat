@@ -3,6 +3,7 @@ import { ToolResult } from "./ToolResult";
 import { getToolVisualByName } from "./agentToolVisuals";
 import { useI18n } from "../../i18n";
 import { Icon } from "../ui";
+import { agentStyles } from "./agentStyles";
 
 type ToolObservationProps = {
   toolCall?: AgentToolCall | null;
@@ -19,8 +20,8 @@ export function ToolObservation({
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <article className="agent-trace-card" data-testid="agent-tool-result">
-      <strong className="agent-card-title">
+    <article className={agentStyles.card} data-testid="agent-tool-result">
+      <strong className={agentStyles.title}>
         <Icon icon={toolVisual.icon} size="sm" tone={toolVisual.tone} />
         {t("agent.toolResult")} / {t("agent.observation")}
       </strong>

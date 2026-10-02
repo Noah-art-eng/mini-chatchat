@@ -5,6 +5,8 @@ import { ToolResult } from "./ToolResult";
 import { useI18n } from "../../i18n";
 import { Icon } from "../ui";
 import { getToolVisualByName } from "./agentToolVisuals";
+import { cx } from "../ui/utils";
+import { agentStyles } from "./agentStyles";
 
 type AgentStepProps = {
   step: AgentStepType;
@@ -18,14 +20,14 @@ export function AgentStep({ step }: AgentStepProps) {
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <article
-      className="agent-trace-card agent-timeline-step"
+      className={cx(agentStyles.card, agentStyles.timelineStep)}
       data-testid="agent-step"
     >
-      <div className="timeline-marker" aria-hidden="true">
+      <div className={agentStyles.marker} aria-hidden="true">
         <Icon icon={Wrench} size="sm" tone={toolVisual.tone} />
       </div>
-      <div className="timeline-content">
-        <div className="agent-step-heading">
+      <div className={agentStyles.timelineContent}>
+        <div className={agentStyles.stepHeading}>
           <span>{t("agent.step")} {step.step}</span>
           <strong>
             <Icon icon={toolVisual.icon} size="sm" tone={toolVisual.tone} />

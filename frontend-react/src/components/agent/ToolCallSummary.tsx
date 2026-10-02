@@ -1,6 +1,7 @@
 import type { AgentToolCall } from "../../types/agent";
 import { formatJson } from "./agentFormatters";
 import { useI18n } from "../../i18n";
+import { agentStyles } from "./agentStyles";
 
 type ToolCallSummaryProps = {
   toolCall: AgentToolCall;
@@ -12,8 +13,8 @@ export function ToolCallSummary({ toolCall }: ToolCallSummaryProps) {
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <article className="agent-trace-card" data-testid="agent-tool-call">
-      <span className="agent-card-label">{t("agent.selectedTool")}</span>
+    <article className={agentStyles.card} data-testid="agent-tool-call">
+      <span className={agentStyles.label}>{t("agent.selectedTool")}</span>
       <strong>{toolCall.tool}</strong>
       {toolCall.reason && <small>{toolCall.reason}</small>}
       <details>

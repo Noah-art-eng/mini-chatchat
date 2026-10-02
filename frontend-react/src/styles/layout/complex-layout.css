@@ -1,0 +1,354 @@
+/* Only cross-feature and viewport-dependent shell geometry lives here. */
+.app-shell {
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  background:
+    radial-gradient(
+      circle at 68% 0%,
+      color-mix(in srgb, var(--color-accent-soft) 72%, transparent),
+      transparent 34%
+    ),
+    linear-gradient(180deg, var(--color-bg-app), var(--color-bg-subtle));
+}
+
+.app-rail,
+.conversation-dock {
+  background: color-mix(in srgb, var(--color-bg-sidebar) 82%, transparent);
+  backdrop-filter: blur(18px);
+}
+
+.top-bar {
+  min-height: var(--topbar-height);
+  background: color-mix(in srgb, var(--color-bg-app) 84%, transparent);
+  backdrop-filter: blur(18px);
+}
+
+.app-workspace {
+  grid-template-rows: var(--topbar-height) minmax(0, 1fr);
+}
+
+.page-surface {
+  height: 100%;
+  overflow-y: auto;
+  padding: clamp(20px, 3vw, 36px);
+}
+
+.page-surface > .page-header {
+  width: min(100%, 1280px);
+  margin-inline: auto;
+}
+
+.workspace-body.with-conversation-dock {
+  grid-template-columns: 292px minmax(0, 1fr);
+}
+
+.workspace-body.full-width {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 1600px) and (min-width: 721px) {
+  .chat-workbench.context-open {
+    position: relative;
+  }
+
+  .chat-workbench.context-open .shell-context-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: var(--z-sticky);
+    width: var(--context-panel-width);
+    max-width: min(420px, 48%);
+    box-shadow: var(--shadow-md);
+  }
+
+  .chat-workbench.context-open .shell-context-panel__close {
+    display: inline-flex;
+  }
+}
+
+@media (max-width: 1450px) and (min-width: 721px) {
+  .app-shell {
+    grid-template-columns: var(--sidebar-collapsed-width) minmax(0, 1fr);
+  }
+
+  .app-rail {
+    padding: var(--space-3);
+  }
+
+  .brand-copy,
+  .rail-footnote,
+  .primary-navigation button > span:not(.nav-glyph):not(.nav-lock),
+  .top-bar-version,
+  .top-bar-status .top-bar-context:last-of-type,
+  .top-bar-health > span:last-child {
+    display: none;
+  }
+
+  .primary-navigation button {
+    justify-content: center;
+    padding-inline: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .app-rail {
+    align-items: center;
+    flex-direction: row;
+    gap: var(--space-3);
+    border-right: 0;
+    border-bottom: var(--border-width-default) var(--border-style-default)
+      var(--color-border-subtle);
+    padding: var(--space-3);
+  }
+
+  .brand-copy {
+    display: grid;
+  }
+
+  .primary-navigation {
+    display: flex;
+    flex: 1;
+    justify-content: flex-end;
+  }
+
+  .primary-navigation button {
+    width: var(--control-height-md);
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .primary-navigation .nav-glyph {
+    width: 24px;
+    height: 24px;
+    border: 0;
+    background: transparent;
+  }
+
+  .primary-navigation .nav-glyph .ui-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .primary-navigation button > span:not(.nav-glyph):not(.nav-lock),
+  .rail-footnote {
+    display: none;
+  }
+
+  .app-workspace {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .top-bar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-height: auto;
+    padding: var(--space-3);
+    background: var(--color-bg-app);
+  }
+
+  .top-bar-status {
+    overflow-x: auto;
+  }
+
+  .top-bar-actions {
+    justify-content: space-between;
+  }
+
+  .workspace-body,
+  .workspace-body.with-conversation-dock,
+  .workspace-body.full-width {
+    grid-template-columns: minmax(0, 1fr);
+    position: relative;
+  }
+
+  .mobile-sidebar-toggle {
+    display: inline-flex;
+    position: absolute;
+    left: var(--space-3);
+    top: var(--space-3);
+    z-index: var(--z-dropdown);
+  }
+
+  .mobile-sidebar-backdrop {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: var(--z-overlay);
+    background: color-mix(in srgb, var(--color-text-primary) 16%, transparent);
+  }
+
+  .conversation-dock {
+    position: absolute;
+    inset: 0 auto 0 0;
+    z-index: calc(var(--z-overlay) + 1);
+    width: min(328px, 88vw);
+    transform: translateX(-104%);
+    transition: transform var(--motion-duration-normal)
+      var(--motion-ease-standard);
+    box-shadow: var(--shadow-md);
+  }
+
+  .conversation-dock.open {
+    transform: translateX(0);
+  }
+
+  .context-panel-mobile-trigger {
+    position: fixed;
+    right: var(--space-4);
+    bottom: calc(var(--space-4) + var(--safe-area-bottom));
+    z-index: var(--z-sticky);
+    display: inline-flex;
+  }
+
+  .context-panel-mobile-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-overlay);
+    display: block;
+    background: color-mix(in srgb, var(--color-text-primary) 18%, transparent);
+  }
+
+  .shell-context-panel {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: calc(var(--z-overlay) + 1);
+    display: grid;
+    max-height: var(--bottom-sheet-max-height);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    box-shadow: var(--shadow-md);
+    transform: translateY(104%);
+    transition: transform var(--motion-duration-normal)
+      var(--motion-ease-standard);
+  }
+
+  .shell-context-panel.mobile-open {
+    transform: translateY(0);
+  }
+
+  .shell-context-panel__close {
+    display: inline-flex;
+  }
+}
+
+/* Chat uses CSS for cross-panel and viewport geometry; component visuals live in Tailwind. */
+.chat-thread {
+  display: grid;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.chat-thread.has-messages {
+  align-content: start;
+}
+
+.chat-workbench.context-collapsed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.kb-page-grid.context-collapsed,
+.knowledge-workspace > .kb-page-grid.context-collapsed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 1100px) {
+  .chat-workbench,
+  .chat-workbench.context-open,
+  .kb-page-grid.context-open,
+  .knowledge-workspace > .kb-page-grid.context-open {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .chat-header {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hero-status-card {
+    display: none;
+  }
+
+  .mode-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .chat-area {
+    padding: 58px 12px 12px;
+  }
+
+  .chat-header-actions,
+  .mode-context-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .mode-cards,
+  .suggestion-grid,
+  .empty-action-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .message {
+    max-width: 100%;
+    grid-template-columns: 30px minmax(0, 1fr);
+  }
+
+  .message.user {
+    grid-template-columns: minmax(0, 1fr) 30px;
+  }
+}
+
+@media (max-width: 1450px) and (min-width: 721px) {
+  .chat-area > .chat-header,
+  .chat-area > .chat-control-bar,
+  .chat-area > .chat-workbench {
+    width: min(100%, 1180px);
+    justify-self: center;
+  }
+}
+
+@media (max-width: 1600px) and (min-width: 721px) {
+  .chat-workbench.context-open {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-height: 820px) and (min-width: 721px) {
+  .chat-area {
+    gap: var(--space-2);
+    padding-block: var(--space-3);
+  }
+
+  .product-hero {
+    padding-block: var(--space-3);
+  }
+
+  .product-hero .page-intro,
+  .hero-status-card,
+  .mode-cards button small,
+  .chat-empty-state .empty-brand-mark {
+    display: none;
+  }
+
+  .empty-action-grid button {
+    min-height: 92px;
+    padding: var(--space-3);
+  }
+
+  .suggestion-grid {
+    margin-top: var(--space-3);
+  }
+
+  .chat-empty-state {
+    align-content: start;
+    padding-block: var(--space-3);
+  }
+}

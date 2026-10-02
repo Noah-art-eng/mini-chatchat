@@ -18,7 +18,7 @@ export function MCPStatus({
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <div className="system-summary-strip">
+    <div className="system-summary-strip flex flex-wrap gap-mc-2 [&>span]:rounded-mc-pill [&>span]:border [&>span]:border-solid [&>span]:border-mc-border-subtle [&>span]:bg-mc-subtle [&>span]:px-mc-2 [&>span]:py-mc-1 [&>span]:text-mc-caption [&>span]:font-mc-semibold [&>span]:text-mc-secondary">
       <span>{t("settings.mcpStatus")}: {enabled === false ? "disabled" : "enabled"}</span>
       <span>{t("settings.servers")}: {serversCount}</span>
       <span>{t("settings.tools")}: {toolsCount}</span>

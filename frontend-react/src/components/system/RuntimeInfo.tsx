@@ -2,6 +2,7 @@ import { SquareTerminal } from "lucide-react";
 import { useI18n } from "../../i18n";
 import { Icon } from "../ui";
 import type { HealthResponse, ModelsResponse } from "../../api/system";
+import { systemBadgeClassName, systemCardClassName } from "./systemStyles";
 
 type RuntimeInfoProps = {
   health: HealthResponse | null;
@@ -14,8 +15,8 @@ export function RuntimeInfo({ health, models }: RuntimeInfoProps) {
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <article className="settings-card system-wide-card">
-      <span className="settings-badge">{t("settings.readonly")}</span>
+    <article className={`${systemCardClassName} system-wide-card col-span-full`}>
+      <span className={systemBadgeClassName}>{t("settings.readonly")}</span>
       <h2><Icon icon={SquareTerminal} size="sm" tone="system" />{t("settings.runtime")}</h2>
       <dl>
         <div>

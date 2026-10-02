@@ -15,7 +15,10 @@ type OAuthButtonsProps = {
 function providerIcon(provider: string) {
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <span className="oauth-provider-mark" aria-hidden="true">
+    <span
+      className="oauth-provider-mark inline-grid h-[18px] w-[18px] place-items-center rounded-mc-circle bg-mc-selected text-mc-caption font-mc-bold text-mc-brand"
+      aria-hidden="true"
+    >
       {provider === "github" ? "GH" : "G"}
     </span>
   );
@@ -53,7 +56,11 @@ export function OAuthButtons({ mode }: OAuthButtonsProps) {
   }
 
   if (isLoading) {
-    return <div className="oauth-loading">{t("auth.loadingProviders")}</div>;
+    return (
+      <div className="oauth-loading text-center text-mc-caption text-mc-muted">
+        {t("auth.loadingProviders")}
+      </div>
+    );
   }
 
   if (providers.length === 0) {
@@ -62,11 +69,11 @@ export function OAuthButtons({ mode }: OAuthButtonsProps) {
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <div className="oauth-auth-section" data-testid="oauth-auth-section">
-      <div className="oauth-divider">
+    <div className="oauth-auth-section grid gap-mc-3" data-testid="oauth-auth-section">
+      <div className="oauth-divider flex items-center gap-mc-3 text-mc-caption text-mc-muted before:h-px before:flex-1 before:bg-mc-border-subtle before:content-[''] after:h-px after:flex-1 after:bg-mc-border-subtle after:content-['']">
         <span>{t("auth.orContinueWith")}</span>
       </div>
-      <div className="oauth-button-grid">
+      <div className="oauth-button-grid grid gap-mc-3">
         {providers.map(provider => (
           <Button
             disabled={!provider.configured}

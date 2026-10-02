@@ -27,16 +27,16 @@ export function ModeIntroDialog({
   return (
     <Dialog
       actions={[{ label: t("common.close"), onClick: onClose, variant: "primary" }]}
-      className="mode-intro-dialog"
+      className="mode-intro-dialog [&_.ui-dialog__header]:text-center"
       description={t("onboarding.modeIntroDescription")}
       isOpen={isOpen}
       onClose={onClose}
       size="lg"
       title={t("onboarding.modeIntroTitle")}
     >
-      <div className="mode-intro-grid" data-testid="mode-intro-grid">
+      <div className="grid grid-cols-2 gap-mc-3 max-[640px]:grid-cols-1" data-testid="mode-intro-grid">
         {modes.map(item => (
-          <article className="mode-intro-card" key={item.key}>
+          <article className="grid grid-cols-[auto_1fr] gap-mc-2 rounded-mc-lg border border-mc-border-subtle bg-[color-mix(in_srgb,var(--color-bg-surface)_82%,transparent)] p-mc-4 [&_p]:m-[0] [&_p]:text-mc-body-small [&_p]:text-mc-secondary [&_small]:mt-mc-2 [&_small]:block [&_small]:text-mc-muted [&_code]:mt-mc-2 [&_code]:inline-flex [&_code]:w-fit [&_code]:rounded-mc-sm [&_code]:bg-mc-subtle [&_code]:px-mc-2 [&_code]:py-mc-1 [&_code]:text-mc-caption [&_code]:text-mc-muted" key={item.key}>
             <Icon icon={item.icon} size="md" tone={item.tone} />
             <div>
               <strong>{t(`onboarding.mode${item.key}Title`)}</strong>

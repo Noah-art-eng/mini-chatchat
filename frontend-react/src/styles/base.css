@@ -23,6 +23,8 @@
   --danger-soft: var(--color-danger-soft);
   --shadow: var(--shadow-md);
   --shadow-soft: var(--shadow-sm);
+  --shadow-hairline: inset 0 1px 0
+    color-mix(in srgb, var(--color-bg-surface) 84%, transparent);
   --radius: var(--radius-md);
   --rail-width: 236px;
   --conversation-width: 292px;
@@ -45,7 +47,9 @@
 body {
   margin: 0;
   min-width: 320px;
-  background: var(--bg);
+  background:
+    linear-gradient(180deg, var(--color-bg-app), var(--color-bg-subtle));
+  color: var(--color-text-primary);
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
 }
@@ -55,6 +59,12 @@ input,
 select,
 textarea {
   font: inherit;
+  transition:
+    background var(--motion-duration-fast) var(--motion-ease-standard),
+    border-color var(--motion-duration-fast) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-fast) var(--motion-ease-standard),
+    color var(--motion-duration-fast) var(--motion-ease-standard),
+    transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 button {
@@ -62,9 +72,14 @@ button {
   touch-action: manipulation;
 }
 
+button:active:not(:disabled) {
+  transform: translateY(1px) scale(0.99);
+}
+
 button:disabled,
 input:disabled,
-select:disabled {
+select:disabled,
+textarea:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
@@ -74,11 +89,17 @@ select,
 textarea {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: var(--surface);
+  background: var(--color-bg-elevated);
   color: var(--text);
   min-height: 38px;
   min-width: 0;
   padding: 8px 10px;
+}
+
+input:hover,
+select:hover,
+textarea:hover {
+  border-color: var(--color-border-strong);
 }
 
 input:focus,
@@ -89,6 +110,13 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--color-border-focus);
+  box-shadow: var(--shadow-focus), var(--shadow-hairline);
+}
+
 p,
 h1,
 h2,
@@ -96,16 +124,31 @@ h3 {
   margin-top: 0;
 }
 
-pre {
-  overflow: auto;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-subtle);
-  color: var(--text);
-  font-size: 12px;
-  line-height: 1.55;
-  padding: 10px;
-  white-space: pre-wrap;
+h1,
+h2,
+h3 {
+  letter-spacing: 0;
+}
+
+h1 {
+  font-size: clamp(34px, 4vw, 56px);
+  line-height: var(--line-height-display);
+}
+
+h2 {
+  font-size: clamp(24px, 2.5vw, 34px);
+  line-height: var(--line-height-heading);
+}
+
+h3 {
+  font-size: 20px;
+  line-height: 1.18;
+}
+
+p,
+dd,
+li {
+  line-height: var(--line-height-body);
 }
 
 .sr-only {
@@ -142,4 +185,53 @@ pre {
   font-size: 13px;
   margin: 0;
   padding: 10px 12px;
+}
+
+.section-kicker {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: fit-content;
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-badge);
+  font-weight: var(--font-weight-bold);
+  padding: var(--space-1) var(--space-2);
+}
+
+.status-indexed,
+.status-ok,
+.status-healthy,
+.status-ready {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.status-uploaded,
+.status-loading,
+.status-running {
+  background: var(--color-info-soft);
+  color: var(--color-info);
+}
+
+.status-failed,
+.status-error {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.status-degraded,
+.status-none,
+.status-unknown,
+.status-unavailable {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
 }

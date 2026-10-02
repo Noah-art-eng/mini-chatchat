@@ -1,5 +1,6 @@
 import { useI18n } from "../../i18n";
 import type { ModelsResponse } from "../../api/system";
+import { systemBadgeClassName, systemCardClassName } from "./systemStyles";
 
 type ModelCapabilitiesProps = {
   kbName: string;
@@ -12,8 +13,8 @@ export function ModelCapabilities({ kbName, models }: ModelCapabilitiesProps) {
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <article className="settings-card">
-      <span className="settings-badge status-ok">
+    <article className={systemCardClassName}>
+      <span className={`${systemBadgeClassName} status-ok`}>
         {models?.embedding.default_model ? "ok" : t("common.loading")}
       </span>
       <h2>{t("settings.retrieval")}</h2>

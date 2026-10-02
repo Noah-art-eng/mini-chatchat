@@ -11,6 +11,7 @@ import {
 import { getToolVisualByName } from "./agentToolVisuals";
 import { useI18n } from "../../i18n";
 import { Icon } from "../ui";
+import { agentStyles } from "./agentStyles";
 
 type ToolResultProps = {
   result: AgentToolResult;
@@ -21,12 +22,12 @@ type ToolResultProps = {
 function renderCalculatorResult(result: Record<string, unknown>, t: Translate) {
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <div className="agent-tool-fields">
-      <div>
+    <div className={agentStyles.fields}>
+      <div className={agentStyles.field}>
         <span>{t("agent.expression")}</span>
         <strong>{asText(result.expression) || "-"}</strong>
       </div>
-      <div>
+      <div className={agentStyles.field}>
         <span>{t("agent.result")}</span>
         <strong>{String(result.value ?? "-")}</strong>
       </div>
@@ -40,7 +41,7 @@ function renderKbSearchResult(result: Record<string, unknown>, t: Translate) {
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <div className="agent-observation-list">
+    <div className={agentStyles.observationList}>
       {sources.length === 0 && <p className="muted">{t("agent.noSources")}</p>}
       {sources.slice(0, 5).map((source, index) => {
         const item = isRecord(source) ? source : {};
@@ -54,7 +55,7 @@ function renderKbSearchResult(result: Record<string, unknown>, t: Translate) {
 
         /** 用途：负责 return 的界面或数据处理职责。 */
         return (
-          <article className="agent-observation-item" key={index}>
+          <article className={agentStyles.observationItem} key={index}>
             <strong>
               {asText(item.source) || t("sources.source", { index: index + 1 })}
             </strong>
@@ -78,16 +79,16 @@ function renderSqliteResult(result: Record<string, unknown>, t: Translate) {
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div className="agent-sqlite-result">
-      <div className="agent-tool-fields">
-        <div>
+      <div className={agentStyles.fields}>
+        <div className={agentStyles.field}>
           <span>{t("agent.columns")}</span>
           <strong>{columns.map(String).join(", ") || "-"}</strong>
         </div>
-        <div>
+        <div className={agentStyles.field}>
           <span>{t("agent.rows")}</span>
           <strong>{String(result.row_count ?? rows.length)}</strong>
         </div>
-        <div>
+        <div className={agentStyles.field}>
           <span>{t("agent.truncated")}</span>
           <strong>{String(Boolean(result.truncated))}</strong>
         </div>
@@ -102,16 +103,16 @@ function renderFilesystemResult(result: Record<string, unknown>, t: Translate) {
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div className="agent-filesystem-result">
-      <div className="agent-tool-fields">
-        <div>
+      <div className={agentStyles.fields}>
+        <div className={agentStyles.field}>
           <span>{t("agent.path")}</span>
           <strong>{asText(result.path) || "-"}</strong>
         </div>
-        <div>
+        <div className={agentStyles.field}>
           <span>{t("agent.characters")}</span>
           <strong>{String(result.char_count ?? "-")}</strong>
         </div>
-        <div>
+        <div className={agentStyles.field}>
           <span>{t("agent.truncated")}</span>
           <strong>{String(Boolean(result.truncated))}</strong>
         </div>
@@ -126,20 +127,20 @@ function renderBrowserReadResult(result: Record<string, unknown>, t: Translate) 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div className="agent-browser-read-result">
-      <div className="agent-tool-fields">
-        <div>
+      <div className={agentStyles.fields}>
+        <div className={agentStyles.field}>
           <span>{t("agent.title")}</span>
           <strong>{asText(result.title) || "-"}</strong>
         </div>
-        <div>
+        <div className={agentStyles.field}>
           <span>{t("agent.url")}</span>
           <strong>{asText(result.url) || "-"}</strong>
         </div>
-        <div>
+        <div className={agentStyles.field}>
           <span>{t("agent.characters")}</span>
           <strong>{String(result.char_count ?? "-")}</strong>
         </div>
-        <div>
+        <div className={agentStyles.field}>
           <span>{t("agent.truncated")}</span>
           <strong>{String(Boolean(result.truncated))}</strong>
         </div>
@@ -155,7 +156,7 @@ function renderBrowserSearchResult(result: Record<string, unknown>, t: Translate
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <div className="agent-observation-list">
+    <div className={agentStyles.observationList}>
       {results.length === 0 && <p className="muted">{t("agent.noSearchResults")}</p>}
       {results.slice(0, 5).map((item, index) => {
         const record = isRecord(item) ? item : {};
@@ -163,7 +164,7 @@ function renderBrowserSearchResult(result: Record<string, unknown>, t: Translate
 
         /** 用途：负责 return 的界面或数据处理职责。 */
         return (
-          <article className="agent-observation-item" key={`${url}-${index}`}>
+          <article className={agentStyles.observationItem} key={`${url}-${index}`}>
             <strong>{asText(record.title) || t("sources.source", { index: index + 1 })}</strong>
             {url && (
               <a href={url} rel="noopener noreferrer" target="_blank">
@@ -206,12 +207,12 @@ export function ToolResult({ result, toolName }: ToolResultProps) {
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div data-testid="agent-step-result">
-      <strong className="agent-card-title">
+      <strong className={agentStyles.title}>
         <Icon icon={toolName ? toolVisual.icon : Eye} size="sm" tone={toolVisual.tone} />
         {t("agent.observation")}
       </strong>
       {result.error && (
-        <div className="agent-tool-error">
+        <div className={agentStyles.toolError}>
           <strong>{t("agent.toolError")}</strong>
           <p>{result.error}</p>
         </div>

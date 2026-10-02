@@ -11,6 +11,7 @@ import { ToolCallSummary } from "./ToolCallSummary";
 import { ToolObservation } from "./ToolObservation";
 import { MarkdownContent } from "../chat";
 import { useI18n } from "../../i18n";
+import { agentStyles } from "./agentStyles";
 
 type AgentWorkspaceProps = {
   error: string | null;
@@ -41,7 +42,7 @@ export function AgentWorkspace({
   return (
     <section
       aria-label="Agent trace"
-      className="agent-trace-panel"
+      className={agentStyles.panel}
       data-testid="agent-trace-panel"
     >
       <AgentHeader isRunning={isRunning} />
@@ -61,7 +62,7 @@ export function AgentWorkspace({
       )}
       <FinalAnswer answer={result?.answer || ""} />
       {streamTokenText && (
-        <article className="agent-trace-card" data-testid="agent-stream-token">
+        <article className={agentStyles.card} data-testid="agent-stream-token">
           <strong>{t("agent.tokenStreaming")}</strong>
           <MarkdownContent content={streamTokenText} />
         </article>

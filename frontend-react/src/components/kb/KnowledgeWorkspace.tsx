@@ -18,6 +18,8 @@ import { KnowledgeStats } from "./KnowledgeStats";
 import { KnowledgeToolbar } from "./KnowledgeToolbar";
 import { UploadPanel } from "./UploadPanel";
 import { ConfirmDialog } from "../ConfirmDialog";
+import { cx } from "../ui/utils";
+import { kbPlainControlClassName } from "./kbStyles";
 
 type KnowledgeWorkspaceProps = {
   activeDocumentAction: string | null;
@@ -142,26 +144,25 @@ export function KnowledgeWorkspace({
     <section className="page-surface knowledge-workspace" aria-label={t("kb.title")}>
       <KnowledgeHeader />
       <div
-        className={
-          isContextOpen
-            ? "kb-page-grid context-open"
-            : "kb-page-grid context-collapsed"
-        }
+        className={cx(
+          "kb-page-grid mx-auto grid min-h-0 w-[min(100%,1280px)] min-w-0 grid-cols-1 items-start gap-[var(--panel-gap)]",
+          isContextOpen ? "context-open" : "context-collapsed"
+        )}
       >
         <section
           aria-label={t("kb.title")}
-          className="kb-panel-page"
+          className="kb-panel-page min-w-0"
           data-testid="kb-panel"
           id="kb-panel"
         >
-          <div className="kb-panel">
-            <div className="panel-heading">
+          <div className="kb-panel grid min-h-0 min-w-0 grid-cols-[minmax(260px,320px)_minmax(0,1fr)] [grid-template-areas:'heading_heading'_'current_stats'_'list_toolbar'_'select_upload'_'actions_documents'] gap-mc-4 rounded-mc-lg border border-solid border-mc-border-subtle bg-[color-mix(in_srgb,var(--color-bg-surface)_86%,transparent)] p-[18px] [box-shadow:none] [backdrop-filter:blur(18px)] max-[900px]:grid-cols-1 max-[900px]:[grid-template-areas:'heading'_'current'_'stats'_'list'_'select'_'actions'_'toolbar'_'upload'_'documents']">
+            <div className="grid gap-mc-1 [grid-area:heading] [&_h2]:m-0 [&_h2]:text-mc-title [&_p:not(.eyebrow)]:mt-[6px] [&_p:not(.eyebrow)]:mb-0 [&_p:not(.eyebrow)]:leading-[1.55] [&_p:not(.eyebrow)]:text-mc-secondary">
               <p className="eyebrow">{t("kb.current")}</p>
               <h2>{t("kb.files")}</h2>
               <p>{t("kb.workspaceSummary")}</p>
             </div>
 
-            <div className="current-kb" data-testid="current-kb">
+            <div className="current-kb grid gap-mc-1 rounded-[18px] bg-mc-brand p-mc-4 text-mc-inverse [box-shadow:var(--shadow-xs)] [grid-area:current] [&>span]:text-mc-caption [&>span]:font-[850] [&>span]:text-[color-mix(in_srgb,var(--color-text-inverse)_72%,transparent)] [&>span]:uppercase [&>strong]:text-[20px]" data-testid="current-kb">
               <span>{t("kb.current")}</span>
               <strong>{kbName}</strong>
             </div>
@@ -180,7 +181,7 @@ export function KnowledgeWorkspace({
               onSelectKnowledgeBase={onSelectKnowledgeBase}
             />
 
-            <div className="kb-lifecycle-actions">
+            <div className="kb-lifecycle-actions grid grid-cols-[minmax(180px,1fr)_auto_auto] items-end gap-mc-2 [grid-column:2] max-[900px]:[grid-column:1] max-[720px]:grid-cols-1 [&_label]:grid [&_label]:gap-mc-1 [&_label>span]:text-mc-label [&_label>span]:font-mc-medium [&_label>span]:text-mc-secondary">
               <label>
                 <span>{t("kb.newKbName")}</span>
                 <input
@@ -191,6 +192,7 @@ export function KnowledgeWorkspace({
                 />
               </label>
               <button
+                className={kbPlainControlClassName}
                 disabled={isKbActionLoading || !newKbName.trim()}
                 onClick={() => {
                   void onCreateKnowledgeBase(newKbName).then(created => {
@@ -202,7 +204,7 @@ export function KnowledgeWorkspace({
                 {t("kb.createKb")}
               </button>
               <button
-                className="danger"
+                className={`${kbPlainControlClassName} danger`}
                 disabled={isKbActionLoading || kbName === "default"}
                 onClick={() => setIsDeleteKbOpen(true)}
                 type="button"
@@ -213,7 +215,7 @@ export function KnowledgeWorkspace({
 
             {isLoading && <p className="muted">{t("kb.loading")}</p>}
             {isLoading && (
-              <div className="skeleton-grid" aria-hidden="true">
+              <div className="skeleton-grid grid gap-mc-3 [grid-column:2] max-[900px]:[grid-column:1] [&>span]:block [&>span]:h-[74px] [&>span]:animate-[mc-skeleton-shimmer_1.35s_ease-in-out_infinite] [&>span]:rounded-mc-md [&>span]:bg-[linear-gradient(90deg,rgba(255,255,255,.34),rgba(66,99,235,.1),rgba(255,255,255,.34)),var(--color-bg-subtle)] [&>span]:[background-size:220%_100%] motion-reduce:[&>span]:animate-none" aria-hidden="true">
                 <span />
                 <span />
                 <span />
@@ -222,7 +224,7 @@ export function KnowledgeWorkspace({
             {error && <p className="inline-error">{error}</p>}
             {documentActionStatus && (
               <p
-                className="document-action-status"
+                className="document-action-status m-0 text-mc-caption text-mc-muted [grid-column:2] [overflow-wrap:anywhere] max-[900px]:[grid-column:1]"
                 data-testid="document-action-status"
               >
                 {documentActionStatus}

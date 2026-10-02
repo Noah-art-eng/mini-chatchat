@@ -1,6 +1,7 @@
 import { Route } from "lucide-react";
 import { useI18n } from "../../i18n";
 import { Icon } from "../ui";
+import { agentStyles } from "./agentStyles";
 
 /** 用途：负责 EmptyAgentState 的界面或数据处理职责。 */
 export function EmptyAgentState() {
@@ -18,14 +19,14 @@ export function EmptyAgentState() {
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <section className="empty-agent-state">
+    <section className={agentStyles.empty}>
       <div className="empty-state-icon" aria-hidden="true">
         <Icon icon={Route} size="lg" tone="mcp" />
       </div>
       <p className="eyebrow">{t("agent.traceTitle")}</p>
       <h2>{t("onboarding.agentEmptyTitle")}</h2>
       <p className="muted">{t("onboarding.agentEmptyDescription")}</p>
-      <ul className="agent-empty-examples">
+      <ul className={agentStyles.emptyExamples}>
         {examples.map(example => (
           <li key={example}>{example}</li>
         ))}

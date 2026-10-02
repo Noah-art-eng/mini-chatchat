@@ -12,6 +12,8 @@ import {
   ChatModeControls,
   TempFilePanel
 } from "../../components/chat";
+import { chatStyles } from "../../components/chat/chatStyles";
+import { cx } from "../../components/ui/utils";
 import { DeveloperModeIntroDialog } from "../../components/onboarding";
 import { useI18n } from "../../i18n";
 import {
@@ -23,6 +25,11 @@ import type { ChatMode } from "../../types/chat";
 import type { ChatMessage } from "../../types/conversation";
 
 export type DetailsTab = "sources" | "debug" | "trace";
+
+const developerToggleClass =
+  "developer-toggle text-mc-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mc-border-focus";
+const activeDeveloperToggleClass =
+  "developer-toggle active border-[color-mix(in_srgb,var(--color-info)_24%,var(--color-border-subtle))] bg-mc-info-soft text-mc-info focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mc-border-focus";
 
 type ChatWorkspaceProps = {
   activeModeDescription: string;
@@ -213,7 +220,7 @@ export function ChatWorkspace({
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <section className="chat-area product-chat" aria-label={t("chat.title")}>
+    <section className={chatStyles.area} aria-label={t("chat.title")}>
       <ChatHeader
         activeModeDescription={activeModeDescription}
         activeModeLabel={activeModeLabel}
@@ -235,25 +242,21 @@ export function ChatWorkspace({
       />
 
       <div
-        className={
-          isContextOpen
-            ? "chat-workbench context-open"
-            : "chat-workbench context-collapsed"
-        }
+        className={cx(chatStyles.workbench, isContextOpen ? "context-open" : "context-collapsed")}
       >
-        <div className="chat-primary-panel">
-          <div className="mode-context-row" aria-label={t("chat.runtimeSummary")}>
+        <div className={chatStyles.primaryPanel}>
+          <div className={chatStyles.modeContext} aria-label={t("chat.runtimeSummary")}>
             {chatMode === "search_engine" && (
-              <span className="mode-status" data-testid="search-engine-mode-status">
+              <span className={chatStyles.status} data-testid="search-engine-mode-status">
                 {t("chat.searchModeStatus")}
               </span>
             )}
             {chatMode === "agent" && (
-              <span className="mode-status" data-testid="agent-mode-status">
+              <span className={chatStyles.status} data-testid="agent-mode-status">
                 {t("chat.agentModeStatus")}
               </span>
             )}
-            <div className="details-launchers">
+            <div className={chatStyles.details}>
               {chatMode === "agent" ? (
                 <>
                   <button
@@ -264,7 +267,7 @@ export function ChatWorkspace({
                   </button>
                   <button
                     aria-pressed={isDeveloperMode}
-                    className={isDeveloperMode ? "developer-toggle active" : "developer-toggle"}
+                    className={isDeveloperMode ? activeDeveloperToggleClass : developerToggleClass}
                     onClick={toggleDeveloperMode}
                     type="button"
                   >
@@ -281,7 +284,7 @@ export function ChatWorkspace({
                   </button>
                   <button
                     aria-pressed={isDeveloperMode}
-                    className={isDeveloperMode ? "developer-toggle active" : "developer-toggle"}
+                    className={isDeveloperMode ? activeDeveloperToggleClass : developerToggleClass}
                     onClick={toggleDeveloperMode}
                     type="button"
                   >
@@ -343,13 +346,13 @@ export function ChatWorkspace({
           </ChatMessageViewport>
 
           {(streamStatus || isStreaming) && (
-            <div className="stream-status" data-testid="agent-stream-status">
-              <span className="live-dot" aria-hidden="true" />
+            <div className={chatStyles.streamStatus} data-testid="agent-stream-status">
+              <span className="live-dot h-mc-2 w-mc-2 rounded-full bg-mc-success" aria-hidden="true" />
               {streamStatus || t("chat.streamingNow")}
             </div>
           )}
           {chatMode === "agent" && isAgentRunning && (
-            <div className="agent-progress-summary" aria-live="polite">
+            <div className="agent-progress-summary flex items-center justify-between gap-mc-3 rounded-mc-md border border-mc-border-subtle bg-mc-brand-soft px-mc-3 py-mc-2 text-mc-body-small text-mc-secondary [&>strong]:text-mc-text" aria-live="polite">
               <strong>{streamStatus || t("agent.thinking")}</strong>
               <span>
                 {t("agent.steps")}: {visibleAgentResult?.steps?.length || 0}
@@ -358,7 +361,7 @@ export function ChatWorkspace({
               </span>
             </div>
           )}
-          {error && chatMode !== "agent" && <p className="inline-error">{error}</p>}
+          {error && chatMode !== "agent" && <p className="m-[0] rounded-mc-md border border-mc-danger-soft bg-mc-danger-soft px-mc-3 py-[10px] text-[13px] text-mc-danger">{error}</p>}
 
           <ChatComposer
             disabledReason={disabledReason}

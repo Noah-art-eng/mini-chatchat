@@ -32,7 +32,7 @@ export function DocumentTable({
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <div className="document-list" data-testid="documents" id="documents">
+    <div className="document-list grid max-h-[calc(100vh-260px)] min-w-0 gap-[10px] overflow-y-auto [grid-area:documents]" data-testid="documents" id="documents">
       {documents.map(file => (
         <DocumentRow
           activeDocumentAction={activeDocumentAction}

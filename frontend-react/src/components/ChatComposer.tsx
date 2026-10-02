@@ -2,6 +2,7 @@ import type { FormEvent, KeyboardEvent } from "react";
 import { ArrowUp, Square } from "lucide-react";
 import { Icon } from "./ui";
 import { useI18n } from "../i18n";
+import { chatStyles } from "./chat/chatStyles";
 
 type ChatComposerProps = {
   disabledReason?: string | null;
@@ -42,15 +43,16 @@ export function ChatComposer({
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <form className="chat-composer" onSubmit={handleSubmit}>
-      {disabledReason && <p className="composer-warning">{disabledReason}</p>}
-      <div className="composer-topline">
+    <form className={chatStyles.composer} onSubmit={handleSubmit}>
+      {disabledReason && <p className={chatStyles.composerWarning}>{disabledReason}</p>}
+      <div className={chatStyles.composerTop}>
         <span>{t("chat.composerHint")}</span>
         <span>{isSending ? t("chat.streamingNow") : t("chat.enterToSend")}</span>
       </div>
-      <div className="composer-input-row">
+      <div className={chatStyles.composerRow}>
         <textarea
           aria-label={t("chat.composerPlaceholder")}
+          className={chatStyles.textarea}
           onKeyDown={handleKeyDown}
           onChange={event => onChangeInput(event.target.value)}
           placeholder={t("chat.composerPlaceholder")}
@@ -59,7 +61,7 @@ export function ChatComposer({
         />
         <button
           aria-label={isSending ? t("chat.stop") : t("chat.send")}
-          className="send-button"
+          className={chatStyles.send}
           disabled={!isSending && disabled}
           onClick={isSending ? onStop : undefined}
           type={isSending ? "button" : "submit"}

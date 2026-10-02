@@ -13,6 +13,7 @@ import { Icon } from "../ui";
 import type { KnowledgeFile } from "../../types/kb";
 import { DocumentActions } from "./DocumentActions";
 import { safeFileName } from "./utils";
+import { cx } from "../ui/utils";
 
 type DocumentRowProps = {
   activeDocumentAction: string | null;
@@ -55,7 +56,10 @@ export function DocumentRow({
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <article
-      className={isSelected ? "document-row selected" : "document-row"}
+      className={cx(
+        "document-row cursor-pointer rounded-[18px] border border-solid bg-[color-mix(in_srgb,var(--color-bg-surface)_88%,transparent)] p-mc-4 [box-shadow:none] transition-[background-color,border-color,transform,box-shadow] duration-[var(--motion-duration-fast)] ease-[var(--motion-ease-standard)] hover:border-mc-border-strong hover:bg-mc-hover hover:shadow-mc-xs",
+        isSelected ? "selected border-mc-border-strong bg-mc-selected" : "border-mc-border-subtle"
+      )}
       data-testid={`document-row-${safeName}`}
       onClick={() => onSelect(file)}
       role="button"
@@ -68,12 +72,12 @@ export function DocumentRow({
         }
       }}
     >
-      <div className="document-row-header">
-        <div className="document-title-cell">
-          <span className="document-file-icon" aria-hidden="true">
+      <div className="document-row-header flex items-start justify-between gap-[14px] [&_small]:mt-mc-1 [&_small]:block [&_small]:max-w-full [&_small]:overflow-hidden [&_small]:text-ellipsis [&_small]:whitespace-nowrap [&_small]:text-mc-caption [&_small]:text-mc-muted">
+        <div className="document-title-cell inline-flex min-w-0 items-center gap-mc-2">
+          <span className="document-file-icon inline-flex h-[var(--icon-container-md)] w-[var(--icon-container-md)] items-center justify-center rounded-mc-md bg-[var(--color-accent-soft)] text-[var(--color-accent-primary)]" aria-hidden="true">
             <Icon icon={FileIcon} size="md" tone="file" />
           </span>
-          <div>
+          <div className="grid min-w-0 [&>small]:overflow-hidden [&>small]:text-ellipsis [&>small]:whitespace-nowrap [&>strong]:overflow-hidden [&>strong]:text-ellipsis [&>strong]:whitespace-nowrap">
             <strong data-testid={`document-filename-${safeName}`}>
               {file.filename}
             </strong>
@@ -92,7 +96,7 @@ export function DocumentRow({
           {file.status || t("kb.statusUnknown")}
         </span>
       </div>
-      <dl>
+      <dl className="mt-mc-3 mb-0 grid grid-cols-3 gap-mc-2 max-[720px]:grid-cols-1 [&_dt]:text-[11px] [&_dt]:text-mc-muted [&_dd]:mt-[2px] [&_dd]:mb-0 [&_dd]:font-mc-bold [&_dd]:text-mc-text">
         <div>
           <dt>{t("kb.chunks")}</dt>
           <dd data-testid={`document-chunks-${safeName}`}>

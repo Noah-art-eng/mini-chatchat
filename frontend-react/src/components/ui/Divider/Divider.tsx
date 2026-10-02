@@ -1,9 +1,19 @@
 import type { HTMLAttributes } from "react";
 import { cx } from "../utils";
-import "./Divider.css";
 
 type DividerOrientation = "horizontal" | "vertical";
 type DividerTone = "subtle" | "default" | "strong";
+
+const orientationClasses: Record<DividerOrientation, string> = {
+  horizontal: "w-full border-t border-solid",
+  vertical: "min-h-[var(--control-height-sm)] self-stretch border-l border-solid",
+};
+
+const toneClasses: Record<DividerTone, string> = {
+  subtle: "border-mc-border-subtle",
+  default: "border-mc-border",
+  strong: "border-mc-border-strong",
+};
 
 type DividerProps = {
   orientation?: DividerOrientation;
@@ -22,9 +32,9 @@ export function Divider({
     <hr
       aria-orientation={orientation}
       className={cx(
-        "ui-divider",
-        `ui-divider--${orientation}`,
-        `ui-divider--${tone}`,
+        "m-0 flex-none border-0",
+        orientationClasses[orientation],
+        toneClasses[tone],
         className
       )}
       {...props}

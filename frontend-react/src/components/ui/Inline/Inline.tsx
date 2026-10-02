@@ -1,9 +1,35 @@
 import type { ComponentPropsWithoutRef, ElementType, ReactNode } from "react";
 import { cx, type SpacingToken } from "../utils";
-import "./Inline.css";
 
 type InlineAlign = "start" | "center" | "end" | "stretch";
 type InlineJustify = "start" | "center" | "end" | "between";
+
+const alignClasses: Record<InlineAlign, string> = {
+  start: "items-start",
+  center: "items-center",
+  end: "items-end",
+  stretch: "items-stretch",
+};
+
+const justifyClasses: Record<InlineJustify, string> = {
+  start: "justify-start",
+  center: "justify-center",
+  end: "justify-end",
+  between: "justify-between",
+};
+
+const gapClasses: Record<SpacingToken, string> = {
+  "1": "gap-mc-1",
+  "2": "gap-mc-2",
+  "3": "gap-mc-3",
+  "4": "gap-mc-4",
+  "5": "gap-mc-5",
+  "6": "gap-mc-6",
+  "8": "gap-mc-8",
+  "10": "gap-mc-10",
+  "12": "gap-mc-12",
+  "16": "gap-mc-16",
+};
 
 type InlineProps<T extends ElementType> = {
   align?: InlineAlign;
@@ -32,11 +58,11 @@ export function Inline<T extends ElementType = "div">({
   return (
     <Component
       className={cx(
-        "ui-inline",
-        `ui-inline--gap-${gap}`,
-        `ui-inline--align-${align}`,
-        `ui-inline--justify-${justify}`,
-        wrap && "ui-inline--wrap",
+        "flex min-w-0 flex-row",
+        gapClasses[gap],
+        alignClasses[align],
+        justifyClasses[justify],
+        wrap && "flex-wrap",
         className
       )}
       {...props}

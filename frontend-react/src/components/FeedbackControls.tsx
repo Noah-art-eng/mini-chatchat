@@ -3,6 +3,7 @@ import { sendMessageFeedback } from "../api/feedback";
 import { useI18n } from "../i18n";
 import { useConversationStore } from "../stores/conversationStore";
 import { useToast } from "./ui";
+import { chatStyles } from "./chat/chatStyles";
 
 type FeedbackControlsProps = {
   messageId?: number;
@@ -62,7 +63,7 @@ export function FeedbackControls({
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <div className="feedback-controls">
+    <div className={chatStyles.feedback}>
       <button
         disabled={!messageId || isSaving}
         onClick={event => {

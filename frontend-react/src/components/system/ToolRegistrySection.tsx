@@ -1,6 +1,7 @@
 import { ToolList } from "./ToolList";
 import { useI18n } from "../../i18n";
 import type { ToolSpecResponse } from "../../api/system";
+import { systemBadgeClassName, systemCardClassName } from "./systemStyles";
 
 type ToolRegistrySectionProps = {
   mcpTools?: ToolSpecResponse[];
@@ -19,10 +20,10 @@ export function ToolRegistrySection({
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <article className="settings-card system-wide-card tool-catalog">
-      <div className="tool-catalog-header">
+    <article className={`${systemCardClassName} system-wide-card tool-catalog col-span-full overflow-hidden`}>
+      <div className="tool-catalog-header mb-mc-5 flex items-start justify-between gap-mc-4 [&_h2]:m-0 [&_p]:m-0 [&_p]:mt-mc-1 [&_p]:text-mc-body-small [&_p]:text-mc-secondary">
         <div>
-          <span className="settings-badge status-ok">{totalTools}</span>
+          <span className={`${systemBadgeClassName} status-ok`}>{totalTools}</span>
           <h2>{t("tools.title")}</h2>
           <p>{t("tools.subtitle")}</p>
         </div>

@@ -22,7 +22,7 @@ export function DocumentDetailPanel({
   if (!document) {
     /** 用途：负责 return 的界面或数据处理职责。 */
     return (
-      <section className="document-detail-panel">
+      <section className="document-detail-panel grid min-w-0 gap-mc-4 [&_dl]:m-0 [&_dl]:grid [&_dl]:gap-mc-3 [&_dt]:text-mc-caption [&_dt]:font-mc-semibold [&_dt]:text-mc-muted [&_dd]:mt-mc-1 [&_dd]:mb-0 [&_dd]:text-mc-body-small [&_dd]:text-mc-text [&_dd]:[overflow-wrap:anywhere]">
         <p className="muted">{t("kb.emptyFiles")}</p>
         <dl>
           <div>
@@ -48,7 +48,7 @@ export function DocumentDetailPanel({
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <section className="document-detail-panel">
+    <section className="document-detail-panel grid min-w-0 gap-mc-4 [&_h2]:m-0 [&_h2]:text-mc-title [&_h2]:[overflow-wrap:anywhere] [&_dl]:m-0 [&_dl]:grid [&_dl]:gap-mc-3 [&_dt]:text-mc-caption [&_dt]:font-mc-semibold [&_dt]:text-mc-muted [&_dd]:mt-mc-1 [&_dd]:mb-0 [&_dd]:text-mc-body-small [&_dd]:text-mc-text [&_dd]:[overflow-wrap:anywhere]">
       <p className="eyebrow">{t("kb.managedFile")}</p>
       <h2>{document.filename}</h2>
       <dl>

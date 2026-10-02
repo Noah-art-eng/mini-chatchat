@@ -2,6 +2,7 @@ import { FileSearch, FileText, Globe2 } from "lucide-react";
 import { useI18n } from "../i18n";
 import { useConversationStore } from "../stores/conversationStore";
 import { Icon } from "./ui";
+import { contextStyles } from "./ContextPanel/contextStyles";
 
 /** 用途：负责 SourcesPanel 的界面或数据处理职责。 */
 export function SourcesPanel() {
@@ -23,25 +24,25 @@ export function SourcesPanel() {
   return (
     <section
       aria-label="Sources"
-      className="sources-panel"
+      className={contextStyles.panelSection}
       data-testid="sources-panel"
       id="sources-panel"
     >
       <p className="eyebrow">{t("sources.title")}</p>
-      <h2>{selectedMessage ? t("sources.messageSources") : t("sources.latestSources")}</h2>
+      <h2 className={contextStyles.panelTitle}>{selectedMessage ? t("sources.messageSources") : t("sources.latestSources")}</h2>
 
       {showHistoricalMissing && (
         <p className="muted">{t("sources.missing")}</p>
       )}
 
       {!showHistoricalMissing && visibleSources.length === 0 && (
-        <div className="source-empty-state">
+        <div className={contextStyles.empty}>
           <Icon icon={FileSearch} size="lg" tone="muted" />
           <p className="muted">{t("sources.empty")}</p>
         </div>
       )}
 
-      <div className="source-list">
+      <div className={contextStyles.list}>
         {visibleSources.map((source, index) => {
           const label =
             source.title ||
@@ -56,12 +57,12 @@ export function SourcesPanel() {
 
           /** 用途：负责 return 的界面或数据处理职责。 */
           return (
-            <article className="source-card" key={`${label}-${index}`}>
-              <span className="source-index">
+            <article className={contextStyles.card} key={`${label}-${index}`}>
+              <span className={contextStyles.sourceIndex}>
                 <Icon icon={isUrl ? Globe2 : FileText} size="sm" tone={isUrl ? "browser" : "file"} />
                 {String(index + 1).padStart(2, "0")}
               </span>
-              <div className="source-meta">
+              <div className={contextStyles.sourceMeta}>
                 {isUrl ? (
                   <a
                     data-testid="source-url"
@@ -76,14 +77,14 @@ export function SourcesPanel() {
                 )}
               </div>
               {isUrl && (
-                <strong className="source-title" data-testid="source-title">
+                <strong className={contextStyles.sourceTitle} data-testid="source-title">
                   {source.title || label}
                 </strong>
               )}
-              <p data-testid="source-preview">{preview}</p>
+              <p className={contextStyles.sourcePreview} data-testid="source-preview">{preview}</p>
               {isUrl && (
                 <a
-                  className="source-open-link"
+                  className={contextStyles.sourceLink}
                   href={sourceUrl}
                   rel="noopener noreferrer"
                   target="_blank"

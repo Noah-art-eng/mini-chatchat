@@ -1,8 +1,14 @@
 import type { ComponentPropsWithoutRef, ElementType, ReactNode } from "react";
 import { cx } from "../utils";
-import "./Surface.css";
 
 type SurfaceVariant = "base" | "subtle" | "elevated" | "critical";
+
+const variantClasses: Record<SurfaceVariant, string> = {
+  base: "bg-mc-surface",
+  subtle: "bg-mc-subtle",
+  elevated: "bg-mc-elevated shadow-mc-sm",
+  critical: "border-mc-danger-soft bg-mc-danger-soft",
+};
 
 type SurfaceProps<T extends ElementType> = {
   as?: T;
@@ -27,9 +33,10 @@ export function Surface<T extends ElementType = "div">({
   return (
     <Component
       className={cx(
-        "ui-surface",
-        `ui-surface--${variant}`,
-        interactive && "ui-surface--interactive",
+        "rounded-mc-lg border border-solid border-mc-border-subtle",
+        variantClasses[variant],
+        interactive &&
+          "transition-[background-color,border-color,box-shadow] duration-[var(--motion-duration-fast)] ease-[var(--motion-ease-standard)] hover:border-mc-border hover:shadow-mc-xs",
         className
       )}
       {...props}

@@ -34,19 +34,19 @@ export function WelcomeDialog({ isOpen, onComplete }: WelcomeDialogProps) {
           variant: "primary"
         }
       ]}
-      className="onboarding-dialog"
+      className="onboarding-dialog [&_.ui-dialog__header]:text-center"
       description={t("onboarding.welcomeDescription")}
       isOpen={isOpen}
       onClose={onComplete}
       size="lg"
       title={t("onboarding.welcomeTitle")}
     >
-      <div className="onboarding-brand">
+      <div className="my-mc-2 mb-mc-5 flex justify-center">
         <BrandLogo size={56} title={t("app.name")} />
       </div>
-      <div className="onboarding-capability-grid">
+      <div className="grid grid-cols-2 gap-mc-3 max-[640px]:grid-cols-1">
         {capabilities.map(item => (
-          <article className="onboarding-capability-card" key={item.key}>
+          <article className="grid gap-mc-2 rounded-mc-lg border border-mc-border-subtle bg-[color-mix(in_srgb,var(--color-bg-surface)_82%,transparent)] p-mc-4 [&_p]:m-[0] [&_p]:text-mc-body-small [&_p]:text-mc-secondary" key={item.key}>
             <Icon icon={item.icon} size="md" tone={item.tone} />
             <strong>{t(`onboarding.${item.key}Title`)}</strong>
             <p>{t(`onboarding.${item.key}Description`)}</p>

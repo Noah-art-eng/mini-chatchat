@@ -1,5 +1,6 @@
 import type { RefObject } from "react";
 import { useI18n } from "../../i18n";
+import { chatStyles } from "./chatStyles";
 
 type TempFilePanelProps = {
   inputRef: RefObject<HTMLInputElement | null>;
@@ -27,7 +28,7 @@ export function TempFilePanel({
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <section className="temp-file-panel" data-testid="temp-file-mode-status">
+    <section className={chatStyles.tempPanel} data-testid="temp-file-mode-status">
       <div>
         <p className="eyebrow">{t("chat.tempModeStatus")}</p>
         <strong>
@@ -36,7 +37,7 @@ export function TempFilePanel({
             : t("chat.disabledTempFile")}
         </strong>
       </div>
-      <div className="temp-file-upload">
+      <div className={chatStyles.tempUpload}>
         <input
           accept=".txt,.pdf,.docx,.md,.csv"
           data-testid="temp-file-input"
@@ -49,7 +50,7 @@ export function TempFilePanel({
           type="file"
         />
         <button
-          className="button-secondary"
+          className={chatStyles.tempUploadButton}
           data-testid="temp-file-upload-button"
           disabled={isUploading || !selectedFile}
           onClick={onUpload}
@@ -58,7 +59,7 @@ export function TempFilePanel({
           {isUploading ? t("chat.uploading") : t("chat.uploadTempFile")}
         </button>
       </div>
-      <p className="temp-file-status" data-testid="temp-file-status">
+      <p className={chatStyles.tempStatus} data-testid="temp-file-status">
         {status ||
           (selectedFile
             ? `${t("chat.selectedTempFile")}: ${selectedFile.name}`

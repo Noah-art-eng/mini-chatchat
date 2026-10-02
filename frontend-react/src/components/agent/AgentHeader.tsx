@@ -1,4 +1,5 @@
 import { useI18n } from "../../i18n";
+import { agentStyles } from "./agentStyles";
 
 type AgentHeaderProps = {
   isRunning: boolean;
@@ -10,7 +11,7 @@ export function AgentHeader({ isRunning }: AgentHeaderProps) {
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <div className="panel-heading">
+    <div className={agentStyles.heading}>
       <p className="eyebrow">{t("agent.traceTitle")}</p>
       <h3>{isRunning ? t("agent.thinking") : t("agent.runDetails")}</h3>
     </div>

@@ -13,7 +13,6 @@ import { Icon } from "../Icon";
 import { IconButton } from "../IconButton";
 import { Text } from "../Text";
 import { cx } from "../utils";
-import "./Toast.css";
 
 type ToastVariant = "success" | "info" | "warning" | "error";
 
@@ -41,6 +40,13 @@ type ToastContextValue = {
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 const MAX_TOASTS = 3;
+
+const variantClasses: Record<ToastVariant, string> = {
+  success: "border-mc-success-soft",
+  info: "border-mc-info-soft",
+  warning: "border-mc-warning-soft",
+  error: "border-mc-danger-soft",
+};
 
 /** 用途：负责 ToastProvider 的界面或数据处理职责。 */
 export function ToastProvider({ children }: { children: ReactNode }) {
@@ -98,12 +104,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {createPortal(
         <div
           aria-live="polite"
-          className="ui-toast-viewport"
+          className="fixed right-[var(--toast-offset-x)] top-[var(--toast-offset-y)] z-[var(--z-toast)] grid w-max max-w-[min(420px,calc(100vw-var(--space-8)))] gap-mc-2 max-[480px]:inset-x-mc-4 max-[480px]:top-auto max-[480px]:bottom-[calc(var(--toast-offset-y)+var(--safe-area-bottom))] max-[480px]:w-auto"
           data-testid="toast-viewport"
         >
           {toasts.map(toast => (
             <article
-              className={cx("ui-toast", `ui-toast--${toast.variant}`)}
+              className={cx(
+                "grid min-h-[var(--control-height-lg)] grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-mc-3 rounded-mc-lg border border-solid bg-mc-elevated py-mc-3 pr-mc-3 pl-mc-4 shadow-mc-sm",
+                variantClasses[toast.variant]
+              )}
               key={toast.id}
               onFocus={() => pauseToast(toast.id, timersRef.current)}
               onMouseEnter={() => pauseToast(toast.id, timersRef.current)}
@@ -113,7 +122,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               </Text>
               {toast.action && (
                 <button
-                  className="ui-toast__action"
+                  className="border-0 bg-transparent px-mc-2 py-mc-1 text-mc-caption font-mc-semibold text-mc-brand focus-visible:[outline-width:var(--focus-ring-width)] focus-visible:[outline-style:solid] focus-visible:[outline-color:var(--color-border-focus)] focus-visible:outline-offset-[var(--focus-ring-offset)]"
                   onClick={toast.action.onClick}
                   type="button"
                 >

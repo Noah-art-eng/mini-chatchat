@@ -17,6 +17,7 @@ import type {
   ToolSpecResponse
 } from "../../api/system";
 import type { ChatMode } from "../../types/chat";
+import { systemCardClassName } from "./systemStyles";
 
 type SystemWorkspaceProps = {
   chatMode: ChatMode;
@@ -63,16 +64,16 @@ export function SystemWorkspace({
         <p className="inline-error">{error || t("settings.systemLoadFailed")}</p>
       )}
 
-      <div className="settings-grid system-workspace-grid">
+      <div className="settings-grid system-workspace-grid mx-auto grid w-[min(100%,1280px)] grid-cols-2 items-start gap-mc-4 max-[900px]:grid-cols-1">
         <HealthOverview health={health} status={status} />
         <ModelSection chatMode={chatMode} kbName={kbName} models={models} />
-        <section className="settings-card guide-settings-card">
+        <section className={`${systemCardClassName} guide-settings-card gap-mc-4`}>
           <div className="settings-card-heading">
             <p className="eyebrow">{t("settings.guides")}</p>
             <h2>{t("settings.guidesTitle")}</h2>
             <p>{t("settings.guidesDescription")}</p>
           </div>
-          <div className="guide-settings-actions">
+          <div className="guide-settings-actions flex flex-wrap gap-mc-2">
             <Button onClick={onShowWelcomeGuide} variant="secondary">
               {t("settings.showWelcomeGuide")}
             </Button>

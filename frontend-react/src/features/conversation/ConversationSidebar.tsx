@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { MessageSquare, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { Icon } from "../../components/ui";
+import { cx } from "../../components/ui/utils";
 import { useToast } from "../../components/ui";
 import { useI18n } from "../../i18n";
 import { useConversationStore } from "../../stores/conversationStore";
 import type { Conversation } from "../../types/conversation";
+import { conversationStyles } from "./conversationStyles";
 
 /** 用途：负责 formatConversationTime 的界面或数据处理职责。 */
 function formatConversationTime(value?: string) {
@@ -223,35 +225,37 @@ export function ConversationSidebar({
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <section className="conversation-sidebar" aria-label={t("conversations.title")}>
-      <div className="sidebar-header">
+    <section className={conversationStyles.sidebar} aria-label={t("conversations.title")}>
+      <div className={conversationStyles.header}>
         <div>
           <p className="eyebrow">{t("app.name")}</p>
           <h2>{t("conversations.title")}</h2>
         </div>
         <button
-          className="button-primary"
+          className={conversationStyles.newButton}
           onClick={onStartNewConversation}
           type="button"
         >
           {t("conversations.new")}
-          <kbd>{t("conversations.newShortcut")}</kbd>
+          <kbd className={conversationStyles.shortcut}>{t("conversations.newShortcut")}</kbd>
         </button>
       </div>
 
-      <label className="search-field">
+      <label className={conversationStyles.search}>
         <span className="sr-only">{t("conversations.search")}</span>
         <input
           aria-label={t("conversations.search")}
+          className={conversationStyles.searchInput}
           onChange={event => setQuery(event.target.value)}
           placeholder={t("conversations.search")}
           value={query}
         />
       </label>
 
-      <div className="conversation-sidebar-actions">
-        <span>{t("conversations.recent")}</span>
+      <div className={conversationStyles.actions}>
+        <span className={conversationStyles.actionsLabel}>{t("conversations.recent")}</span>
         <button
+          className={conversationStyles.clearButton}
           disabled={conversations.length === 0 || isDeletingAll}
           onClick={() => setIsDeleteAllOpen(true)}
           type="button"
@@ -260,13 +264,13 @@ export function ConversationSidebar({
         </button>
       </div>
 
-      <div className="conversation-list">
+      <div className={conversationStyles.list}>
         {isLoadingConversations && <p className="muted">{t("conversations.loading")}</p>}
 
         {!isLoadingConversations && filteredConversations.length === 0 && (
-          <div className="conversation-empty-state">
-            <strong>{query ? t("conversations.noSearchResults") : t("conversations.empty")}</strong>
-            <p>
+          <div className={conversationStyles.empty}>
+            <strong className="block text-mc-body-small font-mc-semibold text-mc-text">{query ? t("conversations.noSearchResults") : t("conversations.empty")}</strong>
+            <p className="mt-mc-1 text-mc-caption text-mc-muted">
               {query
                 ? t("conversations.noSearchResultsHint")
                 : t("conversations.emptyHint")}
@@ -274,11 +278,11 @@ export function ConversationSidebar({
           </div>
         )}
 
-        {groupedConversations.map(group => (
-          <div className="conversation-group" key={group.key}>
+        {groupedConversations.map((group, groupIndex) => (
+          <div className={cx(conversationStyles.group, groupIndex > 0 && conversationStyles.groupAfter)} key={group.key}>
             <button
               aria-expanded={!collapsedGroups.has(group.key)}
-              className="conversation-group-label"
+              className={conversationStyles.groupLabel}
               onClick={() =>
                 /** 用途：负责 setCollapsedGroups 的界面或数据处理职责。 */
                 setCollapsedGroups(current => {
@@ -305,34 +309,33 @@ export function ConversationSidebar({
               /** 用途：负责 return 的界面或数据处理职责。 */
               return (
                 <article
-                  className={
-                    conversation.id === conversationId
-                      ? "conversation-item active"
-                      : "conversation-item"
-                  }
+                  className={cx(
+                    conversationStyles.item,
+                    conversation.id === conversationId && conversationStyles.itemActive
+                  )}
                   key={conversation.id}
                 >
                   <button
-                    className="conversation-row"
+                    className={conversationStyles.row}
                     onClick={() => loadConversation(conversation)}
                     type="button"
                   >
                     <Icon icon={MessageSquare} size="sm" tone="muted" />
-                    <span className="conversation-row-text">
-                      <span>{title}</span>
-                      <small>{t("conversations.updated", { time: updatedTime })}</small>
+                    <span className={conversationStyles.rowText}>
+                      <span className={conversationStyles.rowTitle}>{title}</span>
+                      <small className={conversationStyles.rowTime}>{t("conversations.updated", { time: updatedTime })}</small>
                     </span>
                   </button>
 
                   <div
-                    className={
-                      openMenuId === conversation.id
-                        ? "conversation-menu open"
-                        : "conversation-menu"
-                    }
+                    className={cx(
+                      conversationStyles.menu,
+                      openMenuId === conversation.id && conversationStyles.menuOpen
+                    )}
                   >
                     <button
                       aria-label={t("conversations.menu")}
+                      className={conversationStyles.menuTrigger}
                       data-testid={`conversation-menu-${conversation.id}`}
                       onClick={() =>
                         /** 用途：负责 setOpenMenuId 的界面或数据处理职责。 */
@@ -345,8 +348,9 @@ export function ConversationSidebar({
                       <Icon icon={MoreHorizontal} size="sm" />
                     </button>
                     {openMenuId === conversation.id && (
-                      <div className="conversation-menu-popover">
+                      <div className={conversationStyles.popover}>
                         <button
+                          className={conversationStyles.popoverButton}
                           data-testid={`rename-conversation-${conversation.id}`}
                           onClick={() => renameConversationItem(conversation)}
                           type="button"
@@ -355,7 +359,7 @@ export function ConversationSidebar({
                           {t("conversations.rename")}
                         </button>
                         <button
-                          className="danger"
+                          className={cx(conversationStyles.popoverButton, conversationStyles.dangerButton)}
                           data-testid={`delete-conversation-${conversation.id}`}
                           onClick={() => {
                             /** 用途：负责 setOpenMenuId 的界面或数据处理职责。 */

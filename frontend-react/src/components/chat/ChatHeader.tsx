@@ -1,5 +1,6 @@
 import { useI18n } from "../../i18n";
 import type { ChatMode } from "../../types/chat";
+import { chatStyles } from "./chatStyles";
 
 type ChatHeaderProps = {
   activeModeDescription: string;
@@ -25,17 +26,17 @@ export function ChatHeader({
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <header className="chat-header product-hero">
+    <header className={chatStyles.header}>
       <div>
         <p className="eyebrow">
           {conversationId
             ? `${t("chat.conversation")} ${conversationId}`
             : t("chat.newConversation")}
         </p>
-        <h1>{preferredMode === "agent" ? t("chat.agentTitle") : t("chat.title")}</h1>
-        <p className="page-intro">{activeModeDescription}</p>
+        <h1 className={chatStyles.heroTitle}>{preferredMode === "agent" ? t("chat.agentTitle") : t("chat.title")}</h1>
+        <p className={chatStyles.intro}>{activeModeDescription}</p>
       </div>
-      <div className="hero-status-card">
+      <div className={chatStyles.heroStatus}>
         <span>{t("chat.activeWorkspace")}</span>
         <strong>{activeModeLabel}</strong>
         <small>

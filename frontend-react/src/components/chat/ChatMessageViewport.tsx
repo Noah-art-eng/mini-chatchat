@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { cx } from "../ui/utils";
+import { chatStyles } from "./chatStyles";
 
 type ChatMessageViewportProps = {
   children: ReactNode;
@@ -16,7 +18,7 @@ export function ChatMessageViewport({
 }: ChatMessageViewportProps) {
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <div className={hasMessages ? "chat-thread has-messages" : "chat-thread"}>
+    <div className={cx(chatStyles.thread, hasMessages && chatStyles.threadWithMessages)}>
       {isLoadingMessages && <p className="muted">{loadingLabel}</p>}
       {!isLoadingMessages && children}
     </div>

@@ -4,6 +4,7 @@ import {
   UserMessage
 } from "./chat";
 import type { ChatMessage } from "../types/conversation";
+import { chatStyles } from "./chat/chatStyles";
 
 type ChatMessageListProps = {
   messages: ChatMessage[];
@@ -23,7 +24,7 @@ export function ChatMessageList({
 }: ChatMessageListProps) {
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <div className="message-list" data-testid="message-list">
+    <div className={chatStyles.list} data-testid="message-list">
       {messages.map((message, index) => {
         if (message.role === "user") {
           return <UserMessage key={message.id || index} message={message} />;

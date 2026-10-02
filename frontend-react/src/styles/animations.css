@@ -1,0 +1,88 @@
+@keyframes page-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes message-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes typing-bounce {
+  0%, 80%, 100% { opacity: 0.45; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-3px); }
+}
+
+@keyframes cursor-blink {
+  0%, 45% { opacity: 1; }
+  46%, 100% { opacity: 0; }
+}
+
+.page-surface,
+.chat-area,
+.knowledge-workspace,
+.system-page {
+  animation: page-fade-in var(--motion-duration-normal) var(--motion-ease-standard);
+}
+
+.message {
+  animation: message-enter var(--motion-duration-normal) var(--motion-ease-standard);
+}
+
+.typing-indicator {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.typing-indicator span {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--color-text-muted);
+  animation: typing-bounce 1s ease-in-out infinite;
+}
+
+.typing-indicator span:nth-child(2) { animation-delay: 120ms; }
+.typing-indicator span:nth-child(3) { animation-delay: 240ms; }
+
+.message.streaming .message-markdown p:last-child::after {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 1em;
+  margin-left: 4px;
+  vertical-align: -0.14em;
+  border-radius: 2px;
+  background: var(--color-brand-primary);
+  animation: cursor-blink 1s steps(2, start) infinite;
+}
+
+.skeleton-bubble {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.skeleton-bubble span {
+  height: 12px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, var(--color-bg-subtle), var(--color-bg-hover), var(--color-bg-subtle));
+  background-size: 220% 100%;
+  animation: mc-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-bubble span:nth-child(1) { width: 82%; }
+.skeleton-bubble span:nth-child(2) { width: 64%; }
+.skeleton-bubble span:nth-child(3) { width: 42%; }
+
+@media (prefers-reduced-motion: reduce) {
+  .page-surface,
+  .chat-area,
+  .knowledge-workspace,
+  .system-page,
+  .message,
+  .typing-indicator span,
+  .message.streaming .message-markdown p:last-child::after,
+  .skeleton-bubble span {
+    animation: none;
+  }
+}

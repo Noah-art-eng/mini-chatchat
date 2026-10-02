@@ -1,0 +1,5 @@
+export const systemCardClassName =
+  "settings-card grid min-w-0 content-start gap-mc-3 rounded-mc-lg border border-solid border-mc-border-subtle bg-[color-mix(in_srgb,var(--color-bg-surface)_86%,transparent)] p-[18px] [box-shadow:none] [backdrop-filter:blur(18px)] transition-[background-color,border-color,box-shadow] duration-[var(--motion-duration-fast)] ease-[var(--motion-ease-standard)] hover:shadow-mc-xs [&_h2]:m-0 [&_h2]:inline-flex [&_h2]:items-center [&_h2]:gap-mc-2 [&_dl]:m-0 [&_dl]:grid [&_dl]:gap-mc-3 [&_dl>div]:grid [&_dl>div]:grid-cols-[minmax(120px,.42fr)_minmax(0,1fr)] [&_dl>div]:items-start [&_dl>div]:gap-mc-3 max-[900px]:[&_dl>div]:grid-cols-1 max-[900px]:[&_dl>div]:gap-mc-1 [&_dt]:text-mc-caption [&_dt]:font-[800] [&_dt]:text-mc-muted [&_dd]:mt-mc-1 [&_dd]:mb-0 [&_dd]:min-w-0 [&_dd]:[overflow-wrap:anywhere]";
+
+export const systemBadgeClassName =
+  "settings-badge block w-fit justify-self-start rounded-mc-pill bg-mc-subtle px-mc-2 py-mc-1 text-mc-badge leading-[normal] font-[800] text-mc-secondary";

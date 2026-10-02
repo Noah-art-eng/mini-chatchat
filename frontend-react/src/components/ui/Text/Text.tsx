@@ -1,6 +1,5 @@
 import type { ComponentPropsWithoutRef, ElementType, ReactNode } from "react";
 import { cx } from "../utils";
-import "./Text.css";
 
 type TextVariant = "body" | "bodySmall" | "caption" | "label" | "muted";
 type TextTone =
@@ -10,6 +9,22 @@ type TextTone =
   | "warning"
   | "success"
   | "info";
+
+const variantClasses: Record<TextVariant, string> = {
+  body: "text-mc-body",
+  bodySmall: "text-mc-body-small",
+  caption: "text-mc-caption",
+  label: "text-mc-label font-mc-semibold",
+  muted: "text-mc-body-small",
+};
+
+const toneClasses: Record<Exclude<TextTone, "default">, string> = {
+  muted: "text-mc-muted",
+  danger: "text-mc-danger",
+  warning: "text-mc-warning",
+  success: "text-mc-success",
+  info: "text-mc-info",
+};
 
 type TextProps<T extends ElementType> = {
   as?: T;
@@ -31,15 +46,21 @@ export function Text<T extends ElementType = "p">({
   ...props
 }: TextProps<T>) {
   const Component = as || "p";
+  const colorClass =
+    tone === "default"
+      ? variant === "muted"
+        ? "text-mc-muted"
+        : "text-mc-text"
+      : toneClasses[tone];
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <Component
       className={cx(
-        "ui-text",
-        `ui-text--${variant}`,
-        `ui-text--tone-${tone}`,
-        truncate && "ui-text--truncate",
+        "m-0 font-mc-sans font-mc-regular tracking-[0]",
+        variantClasses[variant],
+        colorClass,
+        truncate && "overflow-hidden text-ellipsis whitespace-nowrap",
         className
       )}
       {...props}

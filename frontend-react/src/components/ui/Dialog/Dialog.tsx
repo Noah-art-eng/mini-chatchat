@@ -11,7 +11,6 @@ import { Heading } from "../Heading";
 import { InlineError } from "../InlineError";
 import { Text } from "../Text";
 import { cx } from "../utils";
-import "./Dialog.css";
 
 type DialogSize = "sm" | "md" | "lg";
 
@@ -45,6 +44,12 @@ const focusableSelector = [
   "select:not([disabled])",
   "[tabindex]:not([tabindex='-1'])"
 ].join(",");
+
+const sizeClasses: Record<DialogSize, string> = {
+  sm: "w-[min(100%,var(--dialog-width-sm))]",
+  md: "w-[min(100%,var(--dialog-width-md))]",
+  lg: "w-[min(100%,var(--dialog-width-lg))]",
+};
 
 /** 用途：负责 Dialog 的界面或数据处理职责。 */
 export function Dialog({
@@ -125,19 +130,26 @@ export function Dialog({
   }
 
   return createPortal(
-    <div className="ui-dialog-backdrop" onMouseDown={handleBackdropClick}>
+    <div
+      className="fixed inset-0 z-[var(--z-dialog)] flex items-center justify-center bg-[color-mix(in_srgb,var(--color-text-primary)_18%,transparent)] p-mc-6 max-[480px]:items-end max-[480px]:p-mc-3 max-[480px]:pb-[calc(var(--space-3)+var(--safe-area-bottom))]"
+      onMouseDown={handleBackdropClick}
+    >
       <section
         aria-describedby={description ? descriptionId : undefined}
         aria-labelledby={titleId}
         aria-modal="true"
-        className={cx("ui-dialog", `ui-dialog--${size}`, className)}
+        className={cx(
+          "ui-dialog grid max-h-[min(720px,calc(100vh-var(--space-12)))] gap-mc-5 overflow-auto rounded-mc-xl border border-solid border-mc-border-subtle bg-mc-elevated p-mc-6 shadow-mc-md focus:outline-none max-[480px]:max-h-[var(--bottom-sheet-max-height)] max-[480px]:rounded-[var(--radius-xl)_var(--radius-xl)_var(--radius-lg)_var(--radius-lg)] max-[480px]:p-mc-5",
+          sizeClasses[size],
+          className
+        )}
         onKeyDown={handleKeyDown}
         onMouseDown={event => event.stopPropagation()}
         ref={dialogRef}
         role="dialog"
         tabIndex={-1}
       >
-        <div className="ui-dialog__header">
+        <div className="ui-dialog__header grid gap-mc-3">
           <Heading level={2} variant="panel" id={titleId}>
             {title}
           </Heading>
@@ -147,10 +159,10 @@ export function Dialog({
             </Text>
           )}
         </div>
-        {children && <div className="ui-dialog__body">{children}</div>}
+        {children && <div className="grid gap-mc-3">{children}</div>}
         {error && <InlineError message={error} urgent />}
         {actions.length > 0 && (
-          <div className="ui-dialog__actions">
+          <div className="flex items-center justify-end gap-mc-3 max-[480px]:flex-col-reverse max-[480px]:items-stretch">
             {actions.map((action, index) => (
               <Button
                 data-dialog-cancel={index === 0 ? "true" : undefined}

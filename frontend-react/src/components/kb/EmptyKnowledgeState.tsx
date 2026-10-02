@@ -14,7 +14,7 @@ export function EmptyKnowledgeState({
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <section className="empty-knowledge-state">
+    <section className="empty-knowledge-state grid min-h-[220px] content-center gap-mc-2 rounded-mc-lg border border-dashed border-mc-border bg-mc-subtle p-mc-6 text-center text-mc-secondary [grid-area:documents] [&_h2]:m-0 [&_p]:m-0">
       <div className="empty-state-icon" aria-hidden="true">
         <Icon icon={FilePlus} size="lg" tone="file" />
       </div>

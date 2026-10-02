@@ -14,7 +14,7 @@ export function MCPServerCard({ server }: MCPServerCardProps) {
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <article className="system-tool-card">
+    <article className="system-tool-card rounded-mc-lg border border-solid border-mc-border-subtle bg-[color-mix(in_srgb,var(--color-bg-surface)_86%,transparent)] [box-shadow:none] [backdrop-filter:blur(18px)]">
       <strong>{server.server}</strong>
       <div>
         <span className={`status status-${status}`}>{status}</span>

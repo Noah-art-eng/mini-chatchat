@@ -14,6 +14,7 @@ import {
 import { useAuth } from "../../auth";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { Button, Icon, StatusBadge, useToast } from "../../components/ui";
+import { cx } from "../../components/ui/utils";
 import { useI18n } from "../../i18n";
 
 type PendingAction =
@@ -199,7 +200,10 @@ export function AccountPage() {
   function providerIcon(provider: string) {
     /** 用途：负责 return 的界面或数据处理职责。 */
     return (
-      <span className="oauth-provider-mark" aria-hidden="true">
+      <span
+        className="oauth-provider-mark inline-grid h-[18px] w-[18px] place-items-center rounded-mc-circle bg-mc-selected text-mc-caption font-mc-bold text-mc-brand"
+        aria-hidden="true"
+      >
         {provider === "github" ? "GH" : "G"}
       </span>
     );
@@ -208,11 +212,15 @@ export function AccountPage() {
   if (auth.session.isGuest) {
     /** 用途：负责 return 的界面或数据处理职责。 */
     return (
-      <section className="account-page">
+      <section className="account-page mx-auto grid max-w-[1120px] gap-mc-6 px-mc-6 py-mc-8 max-[720px]:px-mc-3 max-[720px]:py-mc-5">
         <div className="account-hero">
-          <p className="auth-eyebrow">{t("account.privateWorkspace")}</p>
-          <h1>{t("account.signInRequiredTitle")}</h1>
-          <p>{t("account.signInRequiredDescription")}</p>
+          <p className="auth-eyebrow m-0 text-mc-label font-mc-semibold tracking-[.08em] text-mc-brand uppercase">
+            {t("account.privateWorkspace")}
+          </p>
+          <h1 className="m-0 text-mc-text">{t("account.signInRequiredTitle")}</h1>
+          <p className="mt-mc-1 mb-0 text-mc-secondary">
+            {t("account.signInRequiredDescription")}
+          </p>
         </div>
       </section>
     );
@@ -220,50 +228,70 @@ export function AccountPage() {
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <section className="account-page" data-testid="account-page">
-      <header className="account-hero">
-        <div className="account-hero-icon" aria-hidden="true">
+    <section
+      className="account-page mx-auto grid max-w-[1120px] gap-mc-6 px-mc-6 py-mc-8 max-[720px]:px-mc-3 max-[720px]:py-mc-5"
+      data-testid="account-page"
+    >
+      <header className="account-hero flex items-center gap-mc-4 rounded-mc-xl border border-solid border-mc-border-subtle bg-[color-mix(in_srgb,var(--color-bg-surface)_92%,transparent)] p-[28px] max-[720px]:grid">
+        <div className="account-hero-icon grid h-[56px] w-[56px] flex-none place-items-center rounded-mc-lg bg-mc-brand-soft text-mc-brand" aria-hidden="true">
           <Icon icon={UserRound} size="lg" />
         </div>
         <div>
-          <p className="auth-eyebrow">{t("account.title")}</p>
-          <h1>{t("account.heading")}</h1>
-          <p>{t("account.subtitle")}</p>
+          <p className="auth-eyebrow m-0 text-mc-label font-mc-semibold tracking-[.08em] text-mc-brand uppercase">
+            {t("account.title")}
+          </p>
+          <h1 className="m-0 text-mc-text">{t("account.heading")}</h1>
+          <p className="mt-mc-1 mb-0 text-mc-secondary">{t("account.subtitle")}</p>
         </div>
       </header>
 
-      {error && <div className="account-error">{error}</div>}
+      {error && (
+        <div className="account-error rounded-mc-lg border border-solid border-[#fecaca] bg-mc-danger-soft px-mc-4 py-mc-3 text-mc-danger">
+          {error}
+        </div>
+      )}
 
-      <div className="account-grid">
-        <section className="account-card" data-testid="profile-section">
-          <div className="account-card-heading">
-            <Icon icon={UserRound} size="md" />
+      <div className="account-grid grid grid-cols-[minmax(0,1.2fr)_minmax(280px,.8fr)] gap-mc-5 max-[900px]:grid-cols-1">
+        <section className="account-card grid gap-mc-5 rounded-mc-lg border border-solid border-mc-border-subtle bg-[color-mix(in_srgb,var(--color-bg-surface)_92%,transparent)] p-mc-6 hover:shadow-mc-xs" data-testid="profile-section">
+          <div className="account-card-heading flex items-start gap-mc-3">
+            <Icon icon={UserRound} size="md" tone="brand" />
             <div>
-              <h2>{t("account.profile")}</h2>
-              <p>{t("account.profileDescription")}</p>
+              <h2 className="m-0 text-mc-text">{t("account.profile")}</h2>
+              <p className="mt-mc-1 mb-0 text-mc-secondary">
+                {t("account.profileDescription")}
+              </p>
             </div>
           </div>
 
-          <form className="account-form" onSubmit={handleProfileSubmit}>
-            <label>
-              <span>{t("account.displayName")}</span>
+          <form className="account-form grid gap-mc-4" onSubmit={handleProfileSubmit}>
+            <label className="grid gap-mc-2">
+              <span className="text-mc-label font-mc-medium text-mc-muted">
+                {t("account.displayName")}
+              </span>
               <input
+                className="min-h-[var(--control-height-md)] rounded-mc-md border border-solid border-mc-border bg-mc-elevated px-mc-3 text-mc-text focus:border-mc-border-focus focus:outline-none focus:shadow-[var(--shadow-focus)]"
                 maxLength={80}
                 onChange={event => setDisplayName(event.target.value)}
                 value={displayName}
               />
             </label>
-            <div className="account-readonly-grid">
-              <div>
-                <span>{t("account.email")}</span>
+            <div className="account-readonly-grid grid grid-cols-2 gap-mc-3 max-[720px]:grid-cols-1">
+              <div className="grid gap-mc-1 rounded-mc-md border border-solid border-mc-border-subtle bg-mc-subtle p-mc-3">
+                <span className="text-mc-label font-mc-medium text-mc-muted">
+                  {t("account.email")}
+                </span>
                 <strong>{auth.session.email}</strong>
               </div>
-              <div>
-                <span>{t("account.authProvider")}</span>
+              <div className="grid gap-mc-1 rounded-mc-md border border-solid border-mc-border-subtle bg-mc-subtle p-mc-3">
+                <span className="text-mc-label font-mc-medium text-mc-muted">
+                  {t("account.authProvider")}
+                </span>
                 <strong>{auth.session.authProvider}</strong>
               </div>
-              <div>
-                <span>{t("account.createdAt")}</span>
+              <div className="grid gap-mc-1 rounded-mc-md border border-solid border-mc-border-subtle bg-mc-subtle p-mc-3">
+                <span className="text-mc-label font-mc-medium text-mc-muted">
+                  {t("account.createdAt")}
+                </span>
                 <strong>{formatDate(auth.session.createdAt)}</strong>
               </div>
             </div>
@@ -273,26 +301,30 @@ export function AccountPage() {
           </form>
         </section>
 
-        <section className="account-card" data-testid="oauth-section">
-          <div className="account-card-heading">
-            <Icon icon={Link2} size="md" />
+        <section className="account-card grid gap-mc-5 rounded-mc-lg border border-solid border-mc-border-subtle bg-[color-mix(in_srgb,var(--color-bg-surface)_92%,transparent)] p-mc-6 hover:shadow-mc-xs" data-testid="oauth-section">
+          <div className="account-card-heading flex items-start gap-mc-3">
+            <Icon icon={Link2} size="md" tone="brand" />
             <div>
-              <h2>{t("account.connectedAccounts")}</h2>
-              <p>{t("account.connectedAccountsDescription")}</p>
+              <h2 className="m-0 text-mc-text">{t("account.connectedAccounts")}</h2>
+              <p className="mt-mc-1 mb-0 text-mc-secondary">
+                {t("account.connectedAccountsDescription")}
+              </p>
             </div>
           </div>
           {isLoadingProviders && (
-            <div className="account-session-empty">{t("account.loadingProviders")}</div>
+            <div className="account-session-empty rounded-mc-lg border border-dashed border-mc-border p-mc-6 text-center text-mc-secondary">
+              {t("account.loadingProviders")}
+            </div>
           )}
           {!isLoadingProviders && (
-            <div className="oauth-provider-list">
+            <div className="oauth-provider-list grid gap-mc-3">
               {oauthProviders.map(provider => (
-                <article className="oauth-provider-row" key={provider.provider}>
-                  <div className="oauth-provider-main">
+                <article className="oauth-provider-row flex items-center justify-between gap-mc-4 rounded-mc-lg border border-solid border-mc-border-subtle bg-mc-elevated p-mc-4" key={provider.provider}>
+                  <div className="oauth-provider-main flex min-w-0 items-center gap-mc-3">
                     {providerIcon(provider.provider)}
                     <div>
                       <strong>{provider.label}</strong>
-                      <p>
+                      <p className="mt-mc-1 mb-0 break-words text-mc-secondary">
                         {provider.linked
                           ? provider.account?.provider_email || t("account.oauthLinked")
                           : provider.configured
@@ -325,15 +357,17 @@ export function AccountPage() {
           )}
         </section>
 
-        <section className="account-card" data-testid="security-section">
-          <div className="account-card-heading">
-            <Icon icon={ShieldCheck} size="md" />
+        <section className="account-card grid gap-mc-5 rounded-mc-lg border border-solid border-mc-border-subtle bg-[color-mix(in_srgb,var(--color-bg-surface)_92%,transparent)] p-mc-6 hover:shadow-mc-xs" data-testid="security-section">
+          <div className="account-card-heading flex items-start gap-mc-3">
+            <Icon icon={ShieldCheck} size="md" tone="brand" />
             <div>
-              <h2>{t("account.security")}</h2>
-              <p>{t("account.securityDescription")}</p>
+              <h2 className="m-0 text-mc-text">{t("account.security")}</h2>
+              <p className="mt-mc-1 mb-0 text-mc-secondary">
+                {t("account.securityDescription")}
+              </p>
             </div>
           </div>
-          <div className="account-security-actions">
+          <div className="account-security-actions flex flex-wrap gap-mc-3">
             <Button
               disabled={otherSessions.length === 0}
               onClick={() => setPendingAction({ kind: "logout-others" })}
@@ -353,31 +387,40 @@ export function AccountPage() {
         </section>
       </div>
 
-      <section className="account-card account-sessions" data-testid="session-list">
-        <div className="account-card-heading">
-          <Icon icon={Monitor} size="md" />
+      <section className="account-card account-sessions grid gap-mc-4 rounded-mc-lg border border-solid border-mc-border-subtle bg-[color-mix(in_srgb,var(--color-bg-surface)_92%,transparent)] p-mc-6 hover:shadow-mc-xs" data-testid="session-list">
+        <div className="account-card-heading flex items-start gap-mc-3">
+          <Icon icon={Monitor} size="md" tone="brand" />
           <div>
-            <h2>{t("account.sessions")}</h2>
-            <p>{t("account.sessionsDescription")}</p>
+            <h2 className="m-0 text-mc-text">{t("account.sessions")}</h2>
+            <p className="mt-mc-1 mb-0 text-mc-secondary">
+              {t("account.sessionsDescription")}
+            </p>
           </div>
         </div>
 
         {isLoadingSessions && (
-          <div className="account-session-empty">{t("account.loadingSessions")}</div>
+          <div className="account-session-empty rounded-mc-lg border border-dashed border-mc-border p-mc-6 text-center text-mc-secondary">
+            {t("account.loadingSessions")}
+          </div>
         )}
 
         {!isLoadingSessions && sessions.length === 0 && (
-          <div className="account-session-empty">{t("account.noSessions")}</div>
+          <div className="account-session-empty rounded-mc-lg border border-dashed border-mc-border p-mc-6 text-center text-mc-secondary">
+            {t("account.noSessions")}
+          </div>
         )}
 
         {!isLoadingSessions && sessions.map(session => (
           <article
-            className={session.is_current ? "session-row current" : "session-row"}
+            className={cx(
+              "session-row grid grid-cols-[minmax(0,1fr)_auto] items-center gap-mc-4 rounded-mc-lg border border-solid border-mc-border-subtle bg-mc-elevated p-mc-4 max-[720px]:grid-cols-1",
+              session.is_current && "current border-mc-border-focus bg-mc-brand-soft"
+            )}
             data-testid={`session-row-${session.is_current ? "current" : "other"}`}
             key={session.session_id}
           >
-            <div className="session-row-main">
-              <div className="session-row-title">
+            <div className="session-row-main grid gap-mc-2">
+              <div className="session-row-title flex items-center gap-mc-2">
                 <strong>
                   {session.is_current
                     ? t("account.currentDevice")
@@ -392,20 +435,30 @@ export function AccountPage() {
                   status={session.is_active ? "success" : "neutral"}
                 />
               </div>
-              <p>{session.device}</p>
-              <dl className="session-row-meta">
-                <div>
-                  <dt>{t("account.lastActivity")}</dt>
-                  <dd>{formatDate(session.last_used_at || session.created_at)}</dd>
+              <p className="m-0 text-mc-secondary">{session.device}</p>
+              <dl className="session-row-meta m-0 flex flex-wrap gap-mc-4">
+                <div className="grid gap-[2px]">
+                  <dt className="text-mc-label font-mc-medium text-mc-muted">
+                    {t("account.lastActivity")}
+                  </dt>
+                  <dd className="m-0 text-mc-secondary">
+                    {formatDate(session.last_used_at || session.created_at)}
+                  </dd>
                 </div>
-                <div>
-                  <dt>{t("account.expiresAt")}</dt>
-                  <dd>{formatDate(session.expires_at)}</dd>
+                <div className="grid gap-[2px]">
+                  <dt className="text-mc-label font-mc-medium text-mc-muted">
+                    {t("account.expiresAt")}
+                  </dt>
+                  <dd className="m-0 text-mc-secondary">
+                    {formatDate(session.expires_at)}
+                  </dd>
                 </div>
                 {session.ip_address && (
-                  <div>
-                    <dt>{t("account.ipAddress")}</dt>
-                    <dd>{session.ip_address}</dd>
+                  <div className="grid gap-[2px]">
+                    <dt className="text-mc-label font-mc-medium text-mc-muted">
+                      {t("account.ipAddress")}
+                    </dt>
+                    <dd className="m-0 text-mc-secondary">{session.ip_address}</dd>
                   </div>
                 )}
               </dl>

@@ -1,4 +1,6 @@
 import { useI18n } from "../../i18n";
+import { cx } from "../ui/utils";
+import { agentStyles } from "./agentStyles";
 
 type AgentStatusProps = {
   isRunning: boolean;
@@ -17,10 +19,10 @@ export function AgentStatus({ isRunning, streamStatus }: AgentStatusProps) {
   return (
     <article
       aria-live="polite"
-      className="agent-trace-card agent-running-card"
+      className={cx(agentStyles.card, agentStyles.running)}
       data-testid="agent-stream-status"
     >
-      <span className="live-dot" aria-hidden="true" />
+      <span className={agentStyles.liveDot} aria-hidden="true" />
       <strong>{streamStatus || t("agent.thinking")}</strong>
     </article>
   );

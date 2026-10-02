@@ -3,6 +3,7 @@ import { ServiceStatus } from "./ServiceStatus";
 import { useI18n } from "../../i18n";
 import { Icon } from "../ui";
 import type { HealthResponse } from "../../api/system";
+import { systemBadgeClassName, systemCardClassName } from "./systemStyles";
 
 type HealthCardProps = {
   health: HealthResponse | null;
@@ -16,8 +17,8 @@ export function HealthCard({ health, status }: HealthCardProps) {
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <article className="settings-card">
-      <span className={`settings-badge status-${health?.status || status}`}>
+    <article className={systemCardClassName}>
+      <span className={`${systemBadgeClassName} status-${health?.status || status}`}>
         <Icon icon={isOk ? CircleCheck : CircleAlert} size="sm" tone={isOk ? "success" : "warning"} />
         {health?.status || status}
       </span>

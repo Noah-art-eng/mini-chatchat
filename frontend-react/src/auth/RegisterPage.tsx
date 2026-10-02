@@ -40,13 +40,19 @@ export function RegisterPage() {
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <main className="auth-page">
-      <section className="auth-card">
+    <main className="auth-page flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,rgba(86,140,112,0.12),transparent_34%),var(--color-bg-app)] p-mc-8">
+      <section className="auth-card grid w-full max-w-[440px] gap-mc-5 rounded-mc-xl border border-solid border-mc-border-subtle bg-mc-surface p-mc-8 shadow-mc-md">
         <BrandLogo size={48} title="Mini ChatChat" />
         <div>
-          <p className="auth-eyebrow">{t("auth.userIsolation")}</p>
-          <h1>{t("auth.registerTitle")}</h1>
-          <p>{t("auth.registerDescription")}</p>
+          <p className="auth-eyebrow m-0 text-mc-label font-mc-semibold tracking-[.08em] text-mc-brand uppercase">
+            {t("auth.userIsolation")}
+          </p>
+          <h1 className="m-0 text-mc-heading leading-[var(--line-height-heading)] text-mc-text">
+            {t("auth.registerTitle")}
+          </h1>
+          <p className="mt-mc-2 mb-0 text-mc-secondary">
+            {t("auth.registerDescription")}
+          </p>
         </div>
         <EmailPasswordForm
           error={error}
@@ -55,10 +61,16 @@ export function RegisterPage() {
           onSubmit={handleSubmit}
         />
         <OAuthButtons mode="register" />
-        <p className="auth-switch">
-          {t("auth.alreadyRegistered")} <Link to="/login">{t("auth.signIn")}</Link>
+        <p className="auth-switch text-mc-body-small text-mc-secondary">
+          {t("auth.alreadyRegistered")}{" "}
+          <Link className="font-mc-medium text-mc-brand no-underline" to="/login">
+            {t("auth.signIn")}
+          </Link>
         </p>
-        <Link className="auth-back-link" to="/chat">
+        <Link
+          className="auth-back-link text-mc-body-small font-mc-medium text-mc-brand no-underline"
+          to="/chat"
+        >
           {t("auth.continueAsGuest")}
         </Link>
       </section>

@@ -7,6 +7,7 @@ import type {
   McpServersResponse,
   McpToolsResponse
 } from "../../api/system";
+import { systemBadgeClassName, systemCardClassName } from "./systemStyles";
 
 type MCPSectionProps = {
   mcpError: string | null;
@@ -26,8 +27,8 @@ export function MCPSection({
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <article className="settings-card system-wide-card">
-      <span className={`settings-badge status-${mcpError ? "degraded" : "ok"}`}>
+    <article className={`${systemCardClassName} system-wide-card col-span-full`}>
+      <span className={`${systemBadgeClassName} status-${mcpError ? "degraded" : "ok"}`}>
         MCP
       </span>
       <h2><Icon icon={Plug} size="sm" tone="mcp" />{t("settings.mcp")}</h2>
@@ -40,7 +41,7 @@ export function MCPSection({
       {servers.length === 0 && !mcpError && (
         <p className="muted">{t("settings.noMcpServers")}</p>
       )}
-      <div className="system-tool-list">
+      <div className="system-tool-list grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-mc-4 max-[1100px]:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] max-[720px]:grid-cols-1">
         {servers.map(server => (
           <MCPServerCard key={server.server} server={server} />
         ))}

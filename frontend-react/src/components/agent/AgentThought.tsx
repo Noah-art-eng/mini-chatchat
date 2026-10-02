@@ -10,6 +10,8 @@ import type { PlannerState } from "../../types/agent";
 import { getPreview } from "./agentFormatters";
 import { useI18n } from "../../i18n";
 import { Icon } from "../ui";
+import { cx } from "../ui/utils";
+import { agentStyles } from "./agentStyles";
 
 type AgentThoughtProps = {
   planner: PlannerState;
@@ -40,32 +42,36 @@ export function AgentThought({ planner }: AgentThoughtProps) {
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <article
-      className="agent-trace-card planner-card"
+      className={cx(agentStyles.card, "planner-card")}
       data-testid="planner-panel"
     >
       <strong>{t("agent.planning")}</strong>
-      <div className="planner-summary">
+      <div className={agentStyles.plannerSummary}>
         <span>{t("agent.goal")}</span>
         <p data-testid="planner-goal">{planner.goal}</p>
       </div>
-      <div className="agent-tool-fields">
-        <div>
+      <div className={agentStyles.fields}>
+        <div className={agentStyles.field}>
           <span>{t("agent.status")}</span>
           <strong data-testid="planner-status">{planner.status}</strong>
         </div>
-        <div>
+        <div className={agentStyles.field}>
           <span>{t("agent.currentStep")}</span>
           <strong>{String(planner.current_step ?? "-")}</strong>
         </div>
-        <div>
+        <div className={agentStyles.field}>
           <span>{t("agent.steps")}</span>
           <strong>{String(planner.steps.length)}</strong>
         </div>
       </div>
-      <ol className="planner-step-list">
+      <ol className={agentStyles.list}>
         {planner.steps.map(step => (
           <li
-            className={`planner-step ${step.status}`}
+            className={cx(
+              agentStyles.plannerStep,
+              step.status,
+              step.status === "completed" && agentStyles.completed
+            )}
             data-testid="planner-step"
             key={step.id}
           >

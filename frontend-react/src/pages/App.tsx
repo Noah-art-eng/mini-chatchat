@@ -165,15 +165,23 @@ export function App() {
       }
     >
       {!canUseCurrentPage && (
-        <section className="restricted-workspace">
-          <p className="auth-eyebrow">{t("auth.privateWorkspace")}</p>
-          <h1>{t("auth.restrictedTitle")}</h1>
-          <p>{t("auth.restrictedDescription")}</p>
-          <div className="restricted-actions">
+        <section className="restricted-workspace max-w-[560px] self-center justify-self-center rounded-mc-xl border border-solid border-mc-border-subtle bg-mc-surface p-mc-8 text-center shadow-mc-sm">
+          <p className="auth-eyebrow m-0 text-mc-label font-mc-semibold tracking-[.08em] text-mc-brand uppercase">
+            {t("auth.privateWorkspace")}
+          </p>
+          <h1 className="m-0 text-mc-heading leading-[var(--line-height-heading)] text-mc-text">
+            {t("auth.restrictedTitle")}
+          </h1>
+          <p className="mt-mc-2 mb-0 text-mc-secondary">
+            {t("auth.restrictedDescription")}
+          </p>
+          <div className="restricted-actions mt-mc-5 inline-flex items-center justify-center gap-mc-4">
             <Button onClick={() => navigate("/login")} variant="primary">
               {t("auth.signIn")}
             </Button>
-            <Link to="/register">{t("auth.createAccount")}</Link>
+            <Link className="font-mc-medium text-mc-brand no-underline" to="/register">
+              {t("auth.createAccount")}
+            </Link>
           </div>
         </section>
       )}

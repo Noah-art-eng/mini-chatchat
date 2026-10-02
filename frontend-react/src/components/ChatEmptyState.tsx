@@ -8,6 +8,8 @@ import type { ChatMode } from "../types/chat";
 import { useI18n } from "../i18n";
 import { BrandLogo } from "./brand";
 import { Icon } from "./ui";
+import { cx } from "./ui/utils";
+import { chatStyles } from "./chat/chatStyles";
 
 type ChatEmptyStateProps = {
   mode: ChatMode;
@@ -58,17 +60,17 @@ export function ChatEmptyState({
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <section className="chat-empty-state" data-testid="chat-empty-state">
-      <div className="empty-brand-mark" aria-hidden="true">
+    <section className={chatStyles.empty} data-testid="chat-empty-state">
+      <div className={chatStyles.emptyBrand} aria-hidden="true">
         <BrandLogo size={56} title="" />
       </div>
       <p className="eyebrow">{t(`modes.${mode}`)}</p>
-      <h1>{t("onboarding.emptyStartTitle")}</h1>
-      <p>{t("onboarding.emptyStartDescription")}</p>
-      <div className="empty-action-grid" aria-label={t("chat.availableCapabilities")}>
+      <h1 className={chatStyles.emptyTitle}>{t("onboarding.emptyStartTitle")}</h1>
+      <p className="mx-auto max-w-[58ch] text-mc-secondary">{t("onboarding.emptyStartDescription")}</p>
+      <div className={chatStyles.actionGrid} aria-label={t("chat.availableCapabilities")}>
         {actionModes.map(actionMode => (
           <button
-            className={mode === actionMode ? "active" : ""}
+            className={cx(chatStyles.action, mode === actionMode && chatStyles.actionActive)}
             data-testid={`empty-action-${actionMode.replace("_", "-")}`}
             key={actionMode}
             onClick={() => onStartMode(actionMode)}
@@ -85,9 +87,10 @@ export function ChatEmptyState({
         ))}
       </div>
       {mode === "agent" && (
-        <div className="suggestion-grid agent-example-grid" aria-label={t("onboarding.agentExamplesTitle")}>
+        <div className={`${chatStyles.suggestions} agent-example-grid mt-mc-4`} aria-label={t("onboarding.agentExamplesTitle")}>
           {agentExamples.map(suggestion => (
             <button
+              className={chatStyles.suggestion}
               key={suggestion}
               onClick={() => onUseSuggestion(suggestion)}
               type="button"
@@ -98,14 +101,14 @@ export function ChatEmptyState({
         </div>
       )}
       {mode !== "agent" && (
-        <div className="suggestion-grid" aria-label={t("chat.suggestionsTitle")}>
-          <button
+        <div className={chatStyles.suggestions} aria-label={t("chat.suggestionsTitle")}>
+          <button className={chatStyles.suggestion}
             onClick={() => onUseSuggestion(t("chat.localSuggestion"))}
             type="button"
           >
             {t("chat.localSuggestion")}
           </button>
-          <button
+          <button className={chatStyles.suggestion}
             onClick={() => onUseSuggestion(t("chat.searchSuggestion"))}
             type="button"
           >

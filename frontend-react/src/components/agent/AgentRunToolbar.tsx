@@ -1,5 +1,6 @@
 import { useI18n } from "../../i18n";
 import type { AgentRunResponse } from "../../types/agent";
+import { agentStyles } from "./agentStyles";
 
 type AgentRunToolbarProps = {
   result: AgentRunResponse | null;
@@ -15,10 +16,10 @@ export function AgentRunToolbar({ result }: AgentRunToolbarProps) {
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <div className="agent-run-toolbar">
-      <span>{t("agent.steps")}: {result.steps?.length || 0}</span>
-      <span>{t("agent.toolCall")}: {result.tool_count || 0}</span>
-      {result.error && <span className="agent-error">{result.error}</span>}
+    <div className={agentStyles.toolbar}>
+      <span className={agentStyles.toolbarItem}>{t("agent.steps")}: {result.steps?.length || 0}</span>
+      <span className={agentStyles.toolbarItem}>{t("agent.toolCall")}: {result.tool_count || 0}</span>
+      {result.error && <span className={agentStyles.error}>{result.error}</span>}
     </div>
   );
 }

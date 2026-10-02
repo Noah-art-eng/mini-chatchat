@@ -3,6 +3,7 @@ import { DependencyList } from "./DependencyList";
 import { useI18n } from "../../i18n";
 import { Icon } from "../ui";
 import type { HealthDepsResponse } from "../../api/system";
+import { systemBadgeClassName, systemCardClassName } from "./systemStyles";
 
 type DependencySectionProps = {
   deps: HealthDepsResponse | null;
@@ -15,8 +16,8 @@ export function DependencySection({ deps, status }: DependencySectionProps) {
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <article className="settings-card">
-      <span className={`settings-badge status-${deps?.status || status}`}>
+    <article className={systemCardClassName}>
+      <span className={`${systemBadgeClassName} status-${deps?.status || status}`}>
         {deps?.status || t("common.loading")}
       </span>
       <h2><Icon icon={Boxes} size="sm" tone="database" />{t("settings.dependencies")}</h2>

@@ -3,7 +3,6 @@ import { Button } from "../Button";
 import { Stack } from "../Stack";
 import { Text } from "../Text";
 import { cx } from "../utils";
-import "./InlineError.css";
 
 type InlineErrorTone = "danger" | "warning";
 
@@ -15,6 +14,11 @@ type InlineErrorProps = {
   onAction?: () => void;
   urgent?: boolean;
   tone?: InlineErrorTone;
+};
+
+const toneClasses: Record<InlineErrorTone, string> = {
+  danger: "border-mc-danger-soft bg-mc-danger-soft",
+  warning: "border-mc-warning-soft bg-mc-warning-soft",
 };
 
 /** 用途：负责 InlineError 的界面或数据处理职责。 */
@@ -31,7 +35,11 @@ export function InlineError({
   return (
     <div
       aria-live={urgent ? undefined : "polite"}
-      className={cx("ui-inline-error", `ui-inline-error--${tone}`, className)}
+      className={cx(
+        "rounded-mc-md border border-solid px-mc-4 py-mc-3",
+        toneClasses[tone],
+        className
+      )}
       role={urgent ? "alert" : "status"}
     >
       <Stack gap="2">

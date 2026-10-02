@@ -1,6 +1,5 @@
 import type { HTMLAttributes } from "react";
 import { cx } from "../utils";
-import "./StatusBadge.css";
 
 export type StatusBadgeStatus =
   | "neutral"
@@ -46,6 +45,30 @@ const defaultLabels: Record<StatusBadgeStatus, string> = {
   warning: "Warning"
 };
 
+const sizeClasses: Record<NonNullable<StatusBadgeProps["size"]>, string> = {
+  sm: "min-h-[22px] px-mc-2",
+  md: "min-h-[26px] px-mc-3",
+};
+
+const statusClasses: Record<StatusBadgeStatus, string> = {
+  neutral: "bg-mc-subtle text-mc-muted",
+  unavailable: "bg-mc-subtle text-mc-muted",
+  info: "bg-mc-info-soft text-mc-info",
+  running: "bg-mc-info-soft text-mc-info",
+  success: "bg-mc-success-soft text-mc-success",
+  completed: "bg-mc-success-soft text-mc-success",
+  healthy: "bg-mc-success-soft text-mc-success",
+  indexed: "bg-mc-success-soft text-mc-success",
+  ok: "bg-mc-success-soft text-mc-success",
+  warning: "bg-mc-warning-soft text-mc-warning",
+  pending: "bg-mc-warning-soft text-mc-warning",
+  uploaded: "bg-mc-warning-soft text-mc-warning",
+  degraded: "bg-mc-warning-soft text-mc-warning",
+  danger: "bg-mc-danger-soft text-mc-danger",
+  failed: "bg-mc-danger-soft text-mc-danger",
+  error: "bg-mc-danger-soft text-mc-danger",
+};
+
 /** 用途：负责 StatusBadge 的界面或数据处理职责。 */
 export function StatusBadge({
   className,
@@ -61,14 +84,16 @@ export function StatusBadge({
   return (
     <span
       className={cx(
-        "ui-status-badge",
-        `ui-status-badge--${status}`,
-        `ui-status-badge--${size}`,
+        "inline-flex max-w-full items-center gap-mc-1 rounded-mc-pill font-mc-sans text-mc-badge font-mc-semibold",
+        statusClasses[status],
+        sizeClasses[size],
         className
       )}
       {...props}
     >
-      {showDot && <span className="ui-status-badge__dot" aria-hidden="true" />}
+      {showDot && (
+        <span className="h-[6px] w-[6px] rounded-mc-circle bg-current" aria-hidden="true" />
+      )}
       {badgeLabel}
     </span>
   );

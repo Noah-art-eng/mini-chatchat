@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FeedbackControls } from "../FeedbackControls";
 import { useToast } from "../ui";
 import { useI18n } from "../../i18n";
+import { chatStyles } from "./chatStyles";
 
 type MessageActionsProps = {
   content: string;
@@ -40,7 +41,7 @@ export function MessageActions({
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div
-      className="message-actions"
+      className={chatStyles.actions}
       onClick={event => {
         event.stopPropagation();
       }}

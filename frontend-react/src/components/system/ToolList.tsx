@@ -15,6 +15,7 @@ import {
 } from "../../onboarding/preferences";
 import { DeveloperModeIntroDialog } from "../onboarding";
 import { Icon, IconButton } from "../ui";
+import { cx } from "../ui/utils";
 import type { ToolSpecResponse } from "../../api/system";
 
 type ToolListProps = {
@@ -141,16 +142,16 @@ export function ToolList({ mcpTools = [], tools }: ToolListProps) {
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <div className="tool-center">
-      <section className="tool-center-intro">
+    <div className="tool-center relative grid min-w-0 gap-mc-6">
+      <section className="tool-center-intro grid gap-mc-2 rounded-mc-xl border border-solid border-mc-border-subtle bg-[color-mix(in_srgb,var(--color-brand-soft)_48%,var(--color-bg-surface))] p-mc-5 [&_h3]:m-0 [&_p]:m-0">
         <p className="eyebrow">{t("tools.title")}</p>
         <h3>{t("tools.introTitle")}</h3>
         <p>{t("tools.introDescription")}</p>
         <p className="muted">{t("tools.introHowToUse")}</p>
       </section>
 
-      <div className="tool-center-controls">
-        <label className="tool-search-field">
+      <div className="tool-center-controls grid grid-cols-[minmax(220px,320px)_minmax(0,1fr)_auto] items-end gap-mc-3 max-[1100px]:grid-cols-1">
+        <label className="tool-search-field grid gap-mc-2 [&>span]:text-mc-label [&>span]:font-mc-semibold [&>span]:text-mc-secondary [&>input]:min-h-[var(--control-height-md)] [&>input]:rounded-mc-pill">
           <span>{t("tools.searchLabel")}</span>
           <input
             autoComplete="off"
@@ -162,11 +163,16 @@ export function ToolList({ mcpTools = [], tools }: ToolListProps) {
           />
         </label>
 
-        <div className="tool-filter-list" aria-label={t("tools.filterLabel")}>
+        <div className="tool-filter-list flex flex-wrap gap-mc-2" aria-label={t("tools.filterLabel")}>
           {categoryFilters.map(category => (
             <button
               aria-pressed={activeFilter === category}
-              className={activeFilter === category ? "active" : ""}
+              className={cx(
+                "min-h-[var(--control-height-sm)] rounded-mc-pill border border-solid border-mc-border-subtle px-mc-3 [padding-block:0px] text-mc-body-small leading-[normal] font-mc-medium transition-[background-color,border-color,color] duration-[var(--motion-duration-fast)] ease-[var(--motion-ease-standard)] hover:bg-mc-hover hover:text-mc-text focus-visible:[box-shadow:var(--shadow-focus)]",
+                activeFilter === category
+                  ? "active bg-mc-brand-soft text-mc-brand-active"
+                  : "bg-transparent text-mc-secondary"
+              )}
               key={category}
               onClick={() => setActiveFilter(category)}
               type="button"
@@ -187,19 +193,19 @@ export function ToolList({ mcpTools = [], tools }: ToolListProps) {
       </div>
 
       {filteredItems.length === 0 && (
-        <div className="tool-empty-state">
+        <div className="tool-empty-state rounded-mc-lg border border-dashed border-mc-border bg-mc-subtle p-mc-6 text-center text-mc-secondary [&_p]:m-0 [&_strong]:m-0">
           <strong>{t("tools.emptyTitle")}</strong>
           <p>{t("tools.emptyDescription")}</p>
         </div>
       )}
 
       {recommendedTools.length > 0 && activeFilter !== "mcp" && (
-        <section className="tool-section" aria-label={t("tools.recommended")}>
-          <div className="tool-section-heading">
+        <section className="tool-section grid gap-mc-3" aria-label={t("tools.recommended")}>
+          <div className="tool-section-heading flex items-end justify-between gap-mc-4 max-[720px]:flex-col max-[720px]:items-start [&_h3]:m-0 [&_h3]:text-mc-title [&_p]:m-0 [&_p]:max-w-[560px] [&_p]:text-mc-body-small [&_p]:text-mc-secondary">
             <h3>{t("tools.recommended")}</h3>
             <p>{t("tools.recommendedDescription")}</p>
           </div>
-          <div className="system-tool-list">
+          <div className="system-tool-list grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-mc-4 max-[1100px]:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] max-[720px]:grid-cols-1">
             {recommendedTools.map(tool => (
               <ToolCard
                 isSelected={selectedTool?.id === tool.id}
@@ -214,12 +220,12 @@ export function ToolList({ mcpTools = [], tools }: ToolListProps) {
       )}
 
       {sectionItems.map(section => (
-        <section className="tool-section" key={section.category}>
-          <div className="tool-section-heading">
+        <section className="tool-section grid gap-mc-3" key={section.category}>
+          <div className="tool-section-heading flex items-end justify-between gap-mc-4 max-[720px]:flex-col max-[720px]:items-start [&_h3]:m-0 [&_h3]:text-mc-title [&_p]:m-0 [&_p]:max-w-[560px] [&_p]:text-mc-body-small [&_p]:text-mc-secondary">
             <h3>{t(getCategoryLabelKey(section.category))}</h3>
             <p>{t(getCategoryDescriptionKey(section.category))}</p>
           </div>
-          <div className="system-tool-list">
+          <div className="system-tool-list grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-mc-4 max-[1100px]:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] max-[720px]:grid-cols-1">
             {section.items.map(tool => (
               <ToolCard
                 isSelected={selectedTool?.id === tool.id}
@@ -234,10 +240,10 @@ export function ToolList({ mcpTools = [], tools }: ToolListProps) {
       ))}
 
       {selectedTool && (
-        <aside className="tool-detail-drawer" aria-label={t("tools.detailTitle")}>
-          <div className="tool-detail-header">
+        <aside className="tool-detail-drawer fixed top-[calc(var(--topbar-height)+var(--space-6))] right-mc-6 z-[var(--z-dropdown)] grid max-h-[min(720px,82vh)] w-[min(420px,calc(100vw-var(--space-12)))] gap-mc-4 overflow-y-auto rounded-mc-xl border border-solid border-mc-border-subtle bg-[color-mix(in_srgb,var(--color-bg-surface)_86%,transparent)] p-mc-5 shadow-mc-md [backdrop-filter:blur(18px)] max-[720px]:top-auto max-[720px]:right-0 max-[720px]:bottom-0 max-[720px]:left-0 max-[720px]:max-h-[var(--bottom-sheet-max-height)] max-[720px]:w-full max-[720px]:rounded-t-mc-xl max-[720px]:rounded-b-none" aria-label={t("tools.detailTitle")}>
+          <div className="tool-detail-header grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-mc-3 [&_h3]:m-0">
             <span
-              className={`tool-product-icon icon-tone-${selectedTool.iconTone}`}
+              className="tool-product-icon inline-flex h-[var(--icon-container-md)] w-[var(--icon-container-md)] flex-none items-center justify-center rounded-mc-md border border-solid border-mc-border-subtle bg-mc-elevated"
               aria-hidden="true"
             >
               <Icon icon={selectedTool.icon} size="md" tone={selectedTool.iconTone} />
@@ -257,7 +263,7 @@ export function ToolList({ mcpTools = [], tools }: ToolListProps) {
 
           <p>{selectedTool.fullDescription}</p>
 
-          <dl className="tool-detail-list">
+          <dl className="tool-detail-list m-0 grid gap-mc-3 [&>div]:grid [&>div]:gap-mc-1 [&>div]:border-t [&>div]:border-solid [&>div]:border-mc-border-subtle [&>div]:pt-mc-3 [&_dt]:text-mc-caption [&_dt]:font-mc-semibold [&_dt]:text-mc-muted [&_dd]:m-0 [&_dd]:text-mc-body-small [&_dd]:text-mc-text [&_dd]:[overflow-wrap:anywhere]">
             <div>
               <dt>{t("tools.capability")}</dt>
               <dd>{isDeveloperMode ? selectedTool.capability : selectedTool.displayName}</dd>
@@ -283,13 +289,13 @@ export function ToolList({ mcpTools = [], tools }: ToolListProps) {
           </dl>
 
           {isDeveloperMode && (
-            <details className="tool-schema-detail">
+            <details className="tool-schema-detail rounded-mc-md border border-solid border-mc-border-subtle p-mc-3 [&>summary]:cursor-pointer [&>summary]:font-mc-semibold">
               <summary>{t("tools.schema")}</summary>
               <pre>{JSON.stringify(getSchema(selectedTool), null, 2)}</pre>
             </details>
           )}
 
-          <div className="tool-example-box">
+          <div className="tool-example-box grid gap-mc-1 rounded-mc-lg bg-mc-subtle p-mc-4 [&_p]:m-0 [&_strong]:m-0">
             <strong>{t("tools.example")}</strong>
             <p>{selectedTool.example}</p>
           </div>

@@ -5,6 +5,8 @@ import { Bot } from "lucide-react";
 import { useI18n } from "../../i18n";
 import { Icon } from "../ui";
 import type { ChatMessage, Source } from "../../types/conversation";
+import { cx } from "../ui/utils";
+import { chatStyles } from "./chatStyles";
 
 type AssistantMessageProps = {
   isSelected: boolean;
@@ -31,25 +33,18 @@ export function AssistantMessage({
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <article
-      className={[
-        "message",
-        "assistant",
-        isSelected ? "selected" : "",
-        message.metadata?.agent ? "agent-message" : ""
-      ]
-        .filter(Boolean)
-        .join(" ")}
+      className={cx("group", chatStyles.message, chatStyles.assistantMessage, isSelected && chatStyles.selectedMessage, message.metadata?.agent && "agent-message")}
       onClick={onSelect}
     >
-      <div className="message-avatar" aria-hidden="true">
+      <div className={chatStyles.avatar} aria-hidden="true">
         <Icon icon={Bot} size="sm" tone={message.metadata?.agent ? "mcp" : "brand"} />
       </div>
-      <div className="message-content">
-        <div className="message-meta-row">
-          <span className="message-role">
+      <div className={cx(chatStyles.content, isSelected && chatStyles.selectedContent)}>
+        <div className={chatStyles.meta}>
+          <span className={chatStyles.role}>
             {message.metadata?.agent ? t("nav.agent") : t("chat.messageRoleAssistant")}
           </span>
-          <span className="message-context-hint">
+          <span className={chatStyles.hint}>
             {message.metadata?.agent
               ? t("agent.trace")
               : sources.length > 0

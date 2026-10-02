@@ -33,10 +33,10 @@ export function SourceReferenceList({
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <div className="source-reference-list" aria-label={t("sources.messageSources")}>
+    <div className="source-reference-list grid gap-mc-2 text-mc-caption text-mc-muted" aria-label={t("sources.messageSources")}>
       <button
         aria-expanded={isExpanded}
-        className="source-reference-toggle"
+        className="source-reference-toggle inline-flex min-h-[var(--control-height-sm)] cursor-pointer items-center gap-mc-2 justify-self-start rounded-mc-pill border border-mc-border-subtle bg-mc-subtle px-mc-3 text-mc-caption font-mc-semibold text-mc-secondary transition-[background,border-color] duration-[var(--motion-duration-fast)] hover:border-mc-border-strong hover:bg-mc-hover hover:text-mc-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mc-border-focus"
         onClick={event => {
           event.stopPropagation();
           /** 用途：负责 setIsExpanded 的界面或数据处理职责。 */
@@ -50,9 +50,10 @@ export function SourceReferenceList({
         <span aria-hidden="true">{isExpanded ? "−" : "+"}</span>
       </button>
       {isExpanded && (
-        <div className="source-reference-preview">
+        <div className="source-reference-preview grid gap-mc-2">
           {sources.slice(0, 3).map((source, index) => (
             <button
+              className="grid cursor-pointer gap-mc-1 rounded-mc-md border border-mc-border-subtle bg-mc-subtle p-mc-3 text-left text-mc-secondary hover:border-mc-border-strong hover:bg-mc-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mc-border-focus [&_strong]:overflow-hidden [&_strong]:text-ellipsis [&_strong]:whitespace-nowrap [&_strong]:text-mc-body-small [&_strong]:text-mc-text [&_span]:text-mc-caption"
               key={`${sourceLabel(source, index)}-${source.chunk_id ?? index}`}
               onClick={event => {
                 event.stopPropagation();

@@ -2,6 +2,8 @@ import { Bot, BookOpen, FileText, Globe2 } from "lucide-react";
 import { useI18n } from "../../i18n";
 import { Icon } from "../ui";
 import type { ChatMode } from "../../types/chat";
+import { cx } from "../ui/utils";
+import { chatStyles } from "./chatStyles";
 
 type ChatModeControlsProps = {
   chatMode: ChatMode;
@@ -41,12 +43,12 @@ export function ChatModeControls({
 
   /** 用途：负责 return 的界面或数据处理职责。 */
   return (
-    <div className="chat-control-bar" aria-label={t("app.currentMode")}>
-      <div className="chat-header-actions">
-        <div className="mode-toggle mode-cards">
+    <div className={chatStyles.controls} aria-label={t("app.currentMode")}>
+      <div className={chatStyles.controlRow}>
+        <div className={chatStyles.modeGrid}>
           {modes.map(mode => (
             <button
-              className={chatMode === mode ? "active" : ""}
+              className={cx(chatStyles.modeButton, chatMode === mode && chatStyles.modeButtonActive)}
               data-testid={`chat-mode-${mode.replace("_", "-")}`}
               key={mode}
               onClick={() => onChangeMode(mode)}
@@ -60,7 +62,7 @@ export function ChatModeControls({
             </button>
           ))}
         </div>
-        <label className="compact-field">
+        <label className={chatStyles.compactField}>
           <span>{t("app.currentKb")}</span>
           <select
             aria-label={t("app.currentKb")}
@@ -76,7 +78,7 @@ export function ChatModeControls({
           </select>
         </label>
         <button
-          className="mode-guide-button"
+          className={chatStyles.guideButton}
           onClick={onOpenModeGuide}
           type="button"
         >

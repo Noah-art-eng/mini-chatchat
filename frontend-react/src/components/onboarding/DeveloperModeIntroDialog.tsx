@@ -31,14 +31,14 @@ export function DeveloperModeIntroDialog({
           variant: "primary"
         }
       ]}
-      className="developer-mode-intro-dialog"
+      className="developer-mode-intro-dialog [&_.ui-dialog__header]:text-center"
       description={t("onboarding.developerIntroDescription")}
       isOpen={isOpen}
       onClose={onCancel}
       size="md"
       title={t("onboarding.developerIntroTitle")}
     >
-      <div className="developer-intro-body">
+      <div className="grid justify-items-center gap-mc-3 text-center [&_p]:m-[0] [&_p]:max-w-[46ch] [&_p]:text-mc-secondary">
         <Icon icon={Code2} size="lg" tone="mcp" />
         <p>{t("onboarding.developerIntroBody")}</p>
       </div>

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { Button } from "./ui";
 import { useI18n } from "../i18n";
+import { cx } from "./ui/utils";
+import { contextStyles } from "./ContextPanel/contextStyles";
 
 export type ContextPanelTab = {
   id: string;
@@ -40,7 +42,7 @@ export function ContextPanel({
   return (
     <>
       <button
-        className="context-panel-mobile-trigger"
+        className={contextStyles.mobileTrigger}
         onClick={() => onOpen?.()}
         type="button"
       >
@@ -49,32 +51,28 @@ export function ContextPanel({
       {isOpen && (
         <button
           aria-label={t("common.close")}
-          className="context-panel-mobile-backdrop"
+          className={contextStyles.mobileBackdrop}
           onClick={() => onClose?.()}
           type="button"
         />
       )}
       <aside
         aria-label={ariaLabel}
-        className={[
-          "context-panel",
-          "shell-context-panel",
+        className={cx(
+          contextStyles.panel,
           `shell-context-panel--${workspace}`,
-          isOpen ? "open" : "collapsed",
-          isOpen && "mobile-open",
-          className || ""
-        ]
-          .filter(Boolean)
-          .join(" ")}
+          isOpen ? contextStyles.open : contextStyles.collapsed,
+          className
+        )}
       >
-        <header className="shell-context-panel__header">
+        <header className={contextStyles.header}>
           <div>
             <p className="eyebrow">{t("chat.details")}</p>
             <h2>{title}</h2>
           </div>
           {onClose && (
             <Button
-              className="shell-context-panel__close"
+              className={contextStyles.close}
               onClick={onClose}
               size="sm"
               variant="ghost"
@@ -84,11 +82,11 @@ export function ContextPanel({
           )}
         </header>
         {tabs.length > 0 && (
-          <div className="context-tabs" role="tablist">
+          <div className={contextStyles.tabs} role="tablist">
             {tabs.map(tab => (
               <button
                 aria-selected={activeTab === tab.id}
-                className={activeTab === tab.id ? "active" : ""}
+                className={cx(contextStyles.tab, activeTab === tab.id && contextStyles.tabActive)}
                 key={tab.id}
                 onClick={() => onChangeTab?.(tab.id)}
                 role="tab"
@@ -99,7 +97,7 @@ export function ContextPanel({
             ))}
           </div>
         )}
-        <div className="context-panel-body">{children}</div>
+        <div className={contextStyles.body}>{children}</div>
       </aside>
     </>
   );
