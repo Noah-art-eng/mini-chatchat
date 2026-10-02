@@ -1,4 +1,5 @@
 import os
+import threading
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -132,3 +133,26 @@ def get_openai_client():
         client_kwargs["base_url"] = base_url
 
     return OpenAI(**client_kwargs)
+
+
+class LazyOpenAIClient:
+    """将共享 LLM client 延迟到第一次真正调用模型时再创建。"""
+
+    def __init__(self):
+        self._client = None
+        self._lock = threading.Lock()
+
+    def _get_client(self):
+        if self._client is None:
+            with self._lock:
+                if self._client is None:
+                    self._client = get_openai_client()
+        return self._client
+
+    def __getattr__(self, name):
+        return getattr(self._get_client(), name)
+
+
+def get_lazy_openai_client():
+    """供应用启动使用，使非 LLM 功能不依赖 provider key。"""
+    return LazyOpenAIClient()

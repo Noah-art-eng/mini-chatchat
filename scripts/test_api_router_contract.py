@@ -20,6 +20,8 @@ atexit.register(TEST_RUNTIME.cleanup)
 os.environ["MINI_CHATCHAT_DB_PATH"] = str(Path(TEST_RUNTIME.name) / "mini.db")
 os.environ["MINI_CHATCHAT_DATA_ROOT"] = str(Path(TEST_RUNTIME.name) / "data")
 os.environ["MINI_CHATCHAT_UPLOADS_DIR"] = str(Path(TEST_RUNTIME.name) / "uploads")
+os.environ["OPENAI_API_KEY"] = ""
+os.environ["DEEPSEEK_API_KEY"] = ""
 
 
 class FakeEmbeddingModel:

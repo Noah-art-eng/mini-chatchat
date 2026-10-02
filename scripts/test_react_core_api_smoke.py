@@ -3,11 +3,16 @@ import sys
 
 import requests
 
+from smoke_auth import register_user
+
 
 API_BASE = os.getenv(
     "MINI_CHATCHAT_API_BASE",
     "http://127.0.0.1:8000",
 ).rstrip("/")
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SAMPLE_FILE = os.path.join(ROOT_DIR, "test_files", "sample_rag.txt")
+SMOKE_TOKEN = None
 
 FORBIDDEN_TEXT = (
     "OPENAI_API_KEY",
@@ -35,11 +40,15 @@ def fail_step(message, response=None):
 
 def request(method, path, **kwargs):
     """负责 request 的函数职责。"""
+    headers = kwargs.pop("headers", {})
+    if SMOKE_TOKEN:
+        headers = {**headers, "Authorization": f"Bearer {SMOKE_TOKEN}"}
     try:
         return requests.request(
             method,
             f"{API_BASE}{path}",
             timeout=90,
+            headers=headers,
             **kwargs,
         )
     except requests.ConnectionError:
@@ -132,12 +141,12 @@ def check_kb_chat_local():
     pass_step("POST /kb_chat local_kb")
 
 
-def check_kb_chat_return_direct():
-    """负责 check_kb_chat_return_direct 的函数职责。"""
+def request_return_direct():
+    """请求默认知识库的直接检索结果。"""
     payload = {
         "mode": "local_kb",
         "kb_name": "default",
-        "query": "Docker",
+        "query": "Mini ChatChat",
         "stream": False,
         "top_k": 3,
         "score_threshold": 0.8,
@@ -147,7 +156,34 @@ def check_kb_chat_return_direct():
         "rerank_top_n": 3,
     }
     response = request("POST", "/kb_chat", json=payload)
-    data = expect_ok_json(response, "POST /kb_chat return_direct")
+    return expect_ok_json(response, "POST /kb_chat return_direct"), response
+
+
+def check_empty_kb_return_direct():
+    """确认 clean clone 的空知识库可以正常返回空 Sources。"""
+    data, response = request_return_direct()
+    if data.get("sources"):
+        fail_step("empty KB return_direct unexpectedly returned sources", response)
+
+    pass_step("POST /kb_chat return_direct allows empty KB sources")
+
+
+def upload_smoke_document():
+    """由 smoke 自己准备检索 fixture，避免依赖工作区残留知识库。"""
+    with open(SAMPLE_FILE, "rb") as sample_file:
+        response = request(
+            "POST",
+            "/upload",
+            data={"kb_name": "default"},
+            files={"file": ("sample_rag.txt", sample_file, "text/plain")},
+        )
+    expect_ok_json(response, "POST /upload sample_rag.txt")
+    pass_step("POST /upload prepares default KB fixture")
+
+
+def check_kb_chat_return_direct():
+    """确认 smoke 自建文档可通过 return_direct 返回 Sources。"""
+    data, response = request_return_direct()
     sources = data.get("sources", [])
 
     if not sources:
@@ -213,9 +249,13 @@ def check_documents():
 
 def main():
     """负责 main 的函数职责。"""
+    global SMOKE_TOKEN
+    SMOKE_TOKEN = register_user("react_core")["token"]
     print(f"API_BASE={API_BASE}")
     check_models()
     check_kb_chat_local()
+    check_empty_kb_return_direct()
+    upload_smoke_document()
     check_kb_chat_return_direct()
     check_kb_chat_search_engine()
     check_conversations()

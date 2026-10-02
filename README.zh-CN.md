@@ -189,7 +189,7 @@ Knowledge 工作区支持本地 RAG 演示所需的核心文档生命周期。
 5. 打开回答来源并查看检索到的 chunk
 6. 重建索引、删除、导入或导出 KB 数据
 
-![Knowledge 工作区](docs/release/screenshots/v1.0.0-rc.1/knowledge-desktop.png)
+![Knowledge 工作区](docs/release/media/github-readme/hero-chat.png)
 
 ## Testing & Quality
 
@@ -225,7 +225,7 @@ python3 scripts/run_smoke_tests.py
 - 真实 stdio MCP smoke tests 还可能依赖 `npx` 等外部运行环境和软件包
 - Docker dev/prod build 已通过
 - Browser QA 已生成桌面、平板和移动端截图
-- React 项目 `npm audit` 和 `npm audit --omit=dev` 均为 0 vulnerabilities
+- React 项目 `npm audit --omit=dev` 的生产依赖为 0 vulnerabilities；完整 audit 仍包含仅开发环境使用的 advisories
 
 ## Docker & Deployment
 

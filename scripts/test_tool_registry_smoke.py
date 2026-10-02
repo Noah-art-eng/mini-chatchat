@@ -3,6 +3,8 @@ import sys
 
 import requests
 
+from smoke_auth import auth_headers
+
 
 API_BASE = os.getenv(
     "MINI_CHATCHAT_API_BASE",
@@ -35,11 +37,14 @@ def fail_step(message, response=None):
 
 def request(method, path, **kwargs):
     """负责 request 的函数职责。"""
+    headers = kwargs.pop("headers", {})
+    headers = {**auth_headers(), **headers}
     try:
         return requests.request(
             method,
             f"{API_BASE}{path}",
             timeout=90,
+            headers=headers,
             **kwargs,
         )
     except requests.ConnectionError:
@@ -159,7 +164,11 @@ def check_kb_search():
     data, response = run_tool(
         "kb_search",
         {
-            "query": "Docker",
+            "query": (
+                "Docker packages applications and their dependencies into portable "
+                "containers. Mini ChatChat is a local knowledge base and Agent "
+                "workspace for RAG, search, temporary file chat, and tool use."
+            ),
             "kb_name": "default",
             "top_k": 3,
         },

@@ -10,6 +10,7 @@ import shutil
 import time
 from model_config import (
     get_openai_client,
+    get_lazy_openai_client,
     get_llm_provider,
     get_llm_base_url,
     get_deepseek_api_key,
@@ -174,7 +175,7 @@ async def request_id_and_access_log(request: Request, call_next):
     )
     return response
 
-client = get_openai_client()
+client = get_lazy_openai_client()
 app.include_router(create_openai_compat_router(client))
 kb_service = MiniKBService()
 current_kb_by_scope = {}

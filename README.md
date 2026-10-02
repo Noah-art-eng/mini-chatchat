@@ -189,7 +189,7 @@ The Knowledge workspace supports the core document lifecycle for local RAG demos
 5. Open answer sources and inspect retrieved chunks
 6. Reindex, delete, import, or export KB data
 
-![Knowledge workspace](docs/release/screenshots/v1.0.0-rc.1/knowledge-desktop.png)
+![Knowledge workspace](docs/release/media/github-readme/hero-chat.png)
 
 ## Testing & Quality
 
@@ -225,7 +225,7 @@ Current release candidate evidence:
 - Real stdio MCP smoke tests may additionally require external runtimes and packages such as `npx`
 - Docker dev/prod builds passed
 - Browser QA captured desktop, tablet, and mobile screenshots
-- `npm audit` and `npm audit --omit=dev` reported 0 vulnerabilities in the React project
+- `npm audit --omit=dev` reports 0 production dependency vulnerabilities; the full audit still includes development-only advisories
 
 ## Docker & Deployment
 

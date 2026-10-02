@@ -45,6 +45,7 @@ ALLOWED_MCP_TOOLS = {
     },
 }
 MCP_TIMEOUT_SECONDS = 5
+DEFAULT_MCP_STARTUP_TIMEOUT_SECONDS = 5
 FORBIDDEN_ERROR_FRAGMENTS = (
     "OPENAI_API_KEY",
     "DEEPSEEK_API_KEY",
@@ -445,7 +446,10 @@ class MCPClient:
                         "npm_config_offline",
                         "npm_config_prefer_offline",
                     ],
-                    startup_timeout=float(os.getenv("MINI_CHATCHAT_MCP_STARTUP_TIMEOUT", "90")),
+                    startup_timeout=float(os.getenv(
+                        "MINI_CHATCHAT_MCP_STARTUP_TIMEOUT",
+                        str(DEFAULT_MCP_STARTUP_TIMEOUT_SECONDS),
+                    )),
                     call_timeout=float(os.getenv("MINI_CHATCHAT_MCP_CALL_TIMEOUT", "15")),
                 )
             ),
@@ -472,7 +476,10 @@ class MCPClient:
                     env={
                         "SQLITE_DB_PATH": SQLITE_DB_PATH,
                     },
-                    startup_timeout=float(os.getenv("MINI_CHATCHAT_MCP_STARTUP_TIMEOUT", "90")),
+                    startup_timeout=float(os.getenv(
+                        "MINI_CHATCHAT_MCP_STARTUP_TIMEOUT",
+                        str(DEFAULT_MCP_STARTUP_TIMEOUT_SECONDS),
+                    )),
                     call_timeout=float(os.getenv("MINI_CHATCHAT_MCP_CALL_TIMEOUT", "15")),
                 )
             ),
@@ -501,6 +508,7 @@ class MCPClient:
         """负责 discover_tools 的函数职责。"""
         server_names = [server_name] if server_name else sorted(self.servers)
         tools: list[MCPToolSpec] = []
+        stdio_servers = []
 
         for name in server_names:
             if name not in ALLOWED_MCP_SERVERS:
@@ -510,17 +518,34 @@ class MCPClient:
             if server is None:
                 continue
 
+            if isinstance(server, StdioMCPServer):
+                stdio_servers.append(server)
+                continue
+
             try:
-                if isinstance(server, StdioMCPServer):
-                    discovered = server.list_tools()
-                else:
-                    discovered = self._with_timeout(server.list_tools)
+                discovered = self._with_timeout(server.list_tools)
             except Exception:
                 continue
 
             for tool in discovered:
                 if self._is_allowed_spec(tool):
                     tools.append(tool)
+
+        # 外部 stdio MCP 是可选能力；并行初始化避免多个失败服务串行放大等待。
+        if stdio_servers:
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=len(stdio_servers)
+            ) as executor:
+                futures = [executor.submit(server.list_tools) for server in stdio_servers]
+                for future in futures:
+                    try:
+                        discovered = future.result()
+                    except Exception:
+                        continue
+
+                    for tool in discovered:
+                        if self._is_allowed_spec(tool):
+                            tools.append(tool)
 
         return tools
 
