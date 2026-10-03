@@ -34,7 +34,12 @@ RAG_STREAM_ERROR_MESSAGE = "Streaming response failed. Please try again."
 
 
 def get_metadata_filter(request):
-    """负责 get_metadata_filter 的函数职责。"""
+    """整理传给检索层的 metadata_filter，即对候选文本块的字段过滤条件。
+
+    request 中的通用元数据条件会与 source/file_name 指定的文件范围合并。
+    条件直接进入候选检索，而不是先从全库取 top-k 再过滤；后者可能让目标文件
+    的有效文本块在过滤前就被截掉。整理后的条件随后交给 `search_docs()` 使用。
+    """
     metadata_filter = request.metadata_filter or {}
     source = request.source or request.file_name
 
@@ -364,7 +369,12 @@ def run_temp_kb_chat(request, client, user_id=None):
 
 
 def get_local_kb_service(kb_name: str, user_id=None):
-    """负责 get_local_kb_service 的函数职责。"""
+    """取得正式知识库对应的 MiniKBService，用于后续检索其中的文档文本块。
+
+    MiniKBService 是封装知识库索引、检索和持久化操作的服务对象。创建它之前
+    必须同时用 kb_name 和 user_id 检查用户归属，避免打开其他用户的同名知识库。
+    校验通过后，返回的服务对象会继续交给 `search_docs()` 执行检索。
+    """
     if not user_owns_kb(kb_name, user_id=user_id):
         return None
 
@@ -372,7 +382,13 @@ def get_local_kb_service(kb_name: str, user_id=None):
 
 
 def get_rerank_model(service):
-    """负责 get_rerank_model 的函数职责。"""
+    """取得 Rerank 所需的 embedding 模型，用于重新排列初检索候选结果。
+
+    该模型会把用户问题和每个候选文本块转换成向量，再按余弦相似度排序。
+    `local_kb` 和 `temp_kb` 复用当前 MiniKBService 已加载的模型；`search_engine`
+    没有对应的知识库服务对象，因此尝试复用 default 知识库的模型。模型不可用时
+    返回 None，让调用方保留初检索顺序。
+    """
     if service is not None:
         return getattr(service, "model", None)
 
@@ -384,13 +400,27 @@ def get_rerank_model(service):
 
 
 def get_rerank_candidate_count(top_k, rerank_top_n):
-    """Reranker 先看更大的初检索池，关闭 rerank 时不调用此规则。"""
+    """计算送入 Rerank 的初检索候选数量。
+
+    top_k 是不开启 Rerank 时希望检索返回的数量，rerank_top_n 是精排后最终
+    保留的数量。开启 Rerank 时先召回两者较大值的 4 倍，让精排能从更多文本块
+    中挑选。返回的 retrieval_top_k 只是粗检索候选数量，不是最终回答使用的数量，
+    也不参与 FAISS/BM25 的相关性分数计算。
+    """
     return max(int(top_k), int(rerank_top_n)) * 4
 
-
 def run_kb_chat(request, client, user_id=None):
-    """负责 run_kb_chat 的函数职责。"""
+    """编排 RAG 问答：选择数据源、维护对话记录、检索并生成回答。
+
+    conversation_id 指向数据库中保存连续消息的对话记录；service 是当前知识库的
+    MiniKBService；results 是检索得到、随后可供 Rerank 和 Prompt 使用的文本块。
+    `local_kb`、`temp_kb` 和 `search_engine` 的数据源不同，因此先分流，得到统一
+    结构的 results 后再汇合到回答/SSE 流程。user_id 始终参与知识库归属、对话
+    校验和消息读写，避免不同用户之间共享状态。
+    """
     if request.mode == "local_kb":
+        # local_kb 使用用户长期保存的知识库。这里先确认知识库归属并取得
+        # MiniKBService；会话准备完成后，再用这个服务对象进入 search_docs()。
         service = get_local_kb_service(request.kb_name, user_id=user_id)
 
         if service is None:
@@ -398,23 +428,10 @@ def run_kb_chat(request, client, user_id=None):
                 "error": "knowledge base not found"
             }
 
-        conversation_id = request.conversation_id
-
-        if conversation_id is None:
-            conversation_id = create_conversation(request.query, user_id=user_id)
-        elif get_conversation(conversation_id, user_id=user_id) is None:
-            return {
-                "error": "conversation not found"
-            }
-
-        save_message(conversation_id, "user", request.query, user_id=user_id)
-        history = get_conversation_messages(conversation_id, user_id=user_id)
-        response_meta = {
-            "conversation_id": conversation_id,
-            "mode": request.mode,
-            "kb_name": request.kb_name
-        }
+        mode_meta = {"kb_name": request.kb_name}
     elif request.mode == "temp_kb":
+        # temp_kb 来自临时文件问答。这里先验证临时 ID，再按 user_id 取得对应的
+        # MiniKBService；后续与正式知识库一样进入 search_docs()，但不会混用目录。
         if not request.temp_kb_id:
             return {
                 "error": "temp_kb_id is required for temp_kb mode"
@@ -427,44 +444,45 @@ def run_kb_chat(request, client, user_id=None):
                 "error": "temp knowledge base not found"
             }
 
-        conversation_id = request.conversation_id
-
-        if conversation_id is None:
-            conversation_id = create_conversation(request.query, user_id=user_id)
-        elif get_conversation(conversation_id, user_id=user_id) is None:
-            return {
-                "error": "conversation not found"
-            }
-
-        save_message(conversation_id, "user", request.query, user_id=user_id)
-        history = get_conversation_messages(conversation_id, user_id=user_id)
-        response_meta = {
-            "conversation_id": conversation_id,
-            "mode": request.mode,
-            "temp_kb_id": request.temp_kb_id
-        }
+        mode_meta = {"temp_kb_id": request.temp_kb_id}
     elif request.mode == "search_engine":
+        # search_engine 不读取本地知识库，因此不创建 MiniKBService；会话准备完成后，
+        # 程序会进入 search_web() 获取联网搜索结果，并整理成统一的 results。
         service = None
-        conversation_id = request.conversation_id
-
-        if conversation_id is None:
-            conversation_id = create_conversation(request.query, user_id=user_id)
-        elif get_conversation(conversation_id, user_id=user_id) is None:
-            return {
-                "error": "conversation not found"
-            }
-
-        save_message(conversation_id, "user", request.query, user_id=user_id)
-        history = get_conversation_messages(conversation_id, user_id=user_id)
-        response_meta = {
-            "conversation_id": conversation_id,
-            "mode": request.mode
-        }
+        mode_meta = {}
     else:
         return {
             "error": "invalid mode"
         }
 
+    # 三种合法模式在上面只完成各自的数据源校验和服务对象准备；确认数据源可用后才统一
+    # 确定消息写入哪个对话。没有 conversation_id 就创建新对话，复用已有对话时则校验
+    # 用户归属，防止读取或追加其他用户的消息。
+    conversation_id = request.conversation_id
+
+    if conversation_id is None:
+        conversation_id = create_conversation(request.query, user_id=user_id)
+    elif get_conversation(conversation_id, user_id=user_id) is None:
+        return {
+            "error": "conversation not found"
+        }
+
+    # 用户归属确认后，先保存本轮问题，再读取完整历史消息；这些消息会在检索完成后
+    # 与知识库上下文一起交给 LLM，因此当前问题也必须包含在历史中。
+    save_message(conversation_id, "user", request.query, user_id=user_id)
+    history = get_conversation_messages(conversation_id, user_id=user_id)
+
+    # response_meta 记录本次回答属于哪个对话、模式和数据源；流式响应时会随 SSE 的
+    # sources 事件发给前端，避免 Sources 被关联到错误的会话或知识库。
+    response_meta = {
+        "conversation_id": conversation_id,
+        "mode": request.mode,
+        **mode_meta,
+    }
+
+    # 三种模式从这里重新汇合。top_k 是普通检索希望返回的数量；开启 Rerank 后，
+    # retrieval_top_k 会扩大为粗检索候选池，让后面的精排有足够结果可选。它不是
+    # 最终回答数量，真正保留多少条由后面的 rerank_top_n 决定。
     retrieval_top_k = (
         get_rerank_candidate_count(request.top_k, request.rerank_top_n)
         if request.rerank
@@ -472,19 +490,27 @@ def run_kb_chat(request, client, user_id=None):
     )
 
     if request.mode == "search_engine":
+        # 搜索引擎模式进入 search_web() 执行联网搜索，返回统一结构的候选 results；
+        # 调用结束后回到这里，与两种知识库模式共同进入可选的 Rerank。
         results = search_web(
             request.query,
             top_k=retrieval_top_k
         )
     else:
+        # local_kb 和 temp_kb 在这里进入 MiniKBService.search_docs()，由它执行
+        # FAISS + BM25 混合检索并返回候选文本块；调用结束后回到这里继续 Rerank。
         results = service.search_docs(
             request.query,
             top_k=retrieval_top_k,
             score_threshold=request.score_threshold,
+            # 在召回时过滤文本块，避免全库 top-k 提前挤掉目标文件中的候选内容。
             metadata_filter=get_metadata_filter(request),
         )
 
     if request.rerank:
+        # 前面的混合检索或联网搜索只负责找出一批候选结果。开启 Rerank 后，这里
+        # 根据用户问题与候选文本块的余弦相似度重新排序，只保留 rerank_top_n 条；
+        # 随后这些结果会继续用于构建最终上下文并生成回答。
         rerank_model = get_rerank_model(service)
 
         if rerank_model is not None:

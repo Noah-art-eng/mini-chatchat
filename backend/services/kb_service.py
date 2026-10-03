@@ -477,7 +477,6 @@ class MiniKBService:
                     self.kb_name,
                     len(txt_files),
                 )
-            self._build_bm25_index()
 
         self.vector_metadata = self._build_vector_metadata()
 
@@ -824,7 +823,6 @@ class MiniKBService:
     def _format_search_result(
         self,
         chunk_index: int,
-        result_id: int,
         vector_distance: float | None,
         bm25_score: float,
         hybrid_score: float,
@@ -832,7 +830,6 @@ class MiniKBService:
         chunk = self.chunks[chunk_index]
 
         return {
-            "id": result_id,
             "chunk": chunk.get("text", ""),
             "source": chunk.get("source", ""),
             "distance": vector_distance,
@@ -941,7 +938,7 @@ class MiniKBService:
 
         candidate_k = min(
             len(allowed_indexes),
-            max(top_k * 4, top_k, 10),
+            max(top_k * 4, 10),
         )
         vector_candidates = self._vector_candidates(
             query,
@@ -984,17 +981,16 @@ class MiniKBService:
         results = [
             self._format_search_result(
                 chunk_index,
-                result_id=index + 1,
                 vector_distance=vector_distance,
                 bm25_score=bm25_score,
                 hybrid_score=hybrid_score,
             )
-            for index, (
+            for (
                 chunk_index,
                 vector_distance,
                 bm25_score,
                 hybrid_score,
-            ) in enumerate(scored)
+            ) in scored
         ]
         results = self._deduplicate_results(results)
 

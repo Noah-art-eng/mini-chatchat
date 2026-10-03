@@ -202,7 +202,11 @@ def get_scope_key(current_user: CurrentUser):
 
 
 def get_scoped_user_id(current_user: CurrentUser):
-    """负责 get_scoped_user_id 的函数职责。"""
+    """把认证层解析出的 CurrentUser 转换成业务层使用的 user_id。
+
+    user_id 是知识库和对话记录的数据隔离条件，因此会随请求传进 RAG 编排和
+    数据库操作。访客用户返回 None，再由持久化层映射到公共演示用户范围。
+    """
     return get_request_user_id(current_user)
 
 
@@ -437,7 +441,12 @@ def kb_chat(
     request: KBChatRequest,
     current_user: CurrentUser = Depends(get_current_user_optional),
 ):
-    """负责 kb_chat 的函数职责。"""
+    """接收 `/kb_chat` 请求，并把请求参数和当前用户交给 RAG 编排层。
+
+    路由层不直接执行检索，只负责解析 HTTP 输入、取得用户身份并转换错误状态。
+    接下来进入 `run_kb_chat()`，由它选择数据源、维护会话、检索、Rerank，最后
+    生成普通响应或 SSE 流式响应。
+    """
     result = run_kb_chat(
         request,
         client,

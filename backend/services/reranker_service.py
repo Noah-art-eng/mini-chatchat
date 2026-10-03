@@ -35,7 +35,7 @@ def rerank_docs(query, docs, model, top_n=3):
         ranked_docs.append(ranked_doc)
 
     ranked_docs.sort(
-        key=lambda item: item.get("rerank_score", 0),
+        key=lambda item: item["rerank_score"],
         reverse=True
     )
 
