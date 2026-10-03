@@ -7,9 +7,7 @@ type SourceReferenceListProps = {
   sources: Source[];
 };
 
-/** 用途：负责 sourceLabel 的界面或数据处理职责。 */
 function sourceLabel(source: Source, index: number) {
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     source.title ||
     source.file_name ||
@@ -19,7 +17,6 @@ function sourceLabel(source: Source, index: number) {
   );
 }
 
-/** 用途：负责 SourceReferenceList 的界面或数据处理职责。 */
 export function SourceReferenceList({
   onOpenSources,
   sources
@@ -31,7 +28,6 @@ export function SourceReferenceList({
     return null;
   }
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div className="source-reference-list grid gap-mc-2 text-mc-caption text-mc-muted" aria-label={t("sources.messageSources")}>
       <button
@@ -39,9 +35,7 @@ export function SourceReferenceList({
         className="source-reference-toggle inline-flex min-h-[var(--control-height-sm)] cursor-pointer items-center gap-mc-2 justify-self-start rounded-mc-pill border border-mc-border-subtle bg-mc-subtle px-mc-3 text-mc-caption font-mc-semibold text-mc-secondary transition-[background,border-color] duration-[var(--motion-duration-fast)] hover:border-mc-border-strong hover:bg-mc-hover hover:text-mc-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mc-border-focus"
         onClick={event => {
           event.stopPropagation();
-          /** 用途：负责 setIsExpanded 的界面或数据处理职责。 */
           setIsExpanded(current => !current);
-          /** 用途：负责 onOpenSources 的界面或数据处理职责。 */
           onOpenSources();
         }}
         type="button"
@@ -57,7 +51,6 @@ export function SourceReferenceList({
               key={`${sourceLabel(source, index)}-${source.chunk_id ?? index}`}
               onClick={event => {
                 event.stopPropagation();
-                /** 用途：负责 onOpenSources 的界面或数据处理职责。 */
                 onOpenSources();
               }}
               title={sourceLabel(source, index)}

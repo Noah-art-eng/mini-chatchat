@@ -15,7 +15,6 @@ const sizeClasses: Record<SpinnerSize, string> = {
   lg: "h-[var(--icon-size-lg)] w-[var(--icon-size-lg)]",
 };
 
-/** 用途：负责 Spinner 的界面或数据处理职责。 */
 export function Spinner({
   ariaLabel = "Loading",
   className,
@@ -23,7 +22,6 @@ export function Spinner({
   size = "md",
   ...props
 }: SpinnerProps) {
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <span
       aria-hidden={decorative ? true : undefined}

@@ -15,7 +15,6 @@ __all__ = [
 
 
 def __getattr__(name):
-    """负责 __getattr__ 的函数职责。"""
     if name in {"get_current_user", "get_current_user_optional"}:
         from .dependencies import get_current_user, get_current_user_optional
 

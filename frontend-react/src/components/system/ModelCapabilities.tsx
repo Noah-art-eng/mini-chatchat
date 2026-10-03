@@ -7,11 +7,9 @@ type ModelCapabilitiesProps = {
   models: ModelsResponse | null;
 };
 
-/** 用途：负责 ModelCapabilities 的界面或数据处理职责。 */
 export function ModelCapabilities({ kbName, models }: ModelCapabilitiesProps) {
   const { t } = useI18n();
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <article className={systemCardClassName}>
       <span className={`${systemBadgeClassName} status-ok`}>

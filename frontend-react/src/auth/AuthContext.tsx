@@ -50,7 +50,7 @@ const guestSession = {
   isGuest: true
 } as const satisfies AuthSession;
 
-/** 用途：负责 sessionFromUser 的界面或数据处理职责。 */
+/** 把后端用户记录转换成前端统一使用的会话身份。 */
 function sessionFromUser(user: AuthUser): AuthSession {
   if (user.is_guest) return guestSession;
 
@@ -90,7 +90,10 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-/** 用途：负责 AuthProvider 的界面或数据处理职责。 */
+/**
+ * 维护浏览器中的登录身份、偏好和权限。
+ * 启动时用 refresh cookie 恢复会话；API 层通知令牌失效时统一退回访客状态。
+ */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSessionState] = useState<AuthSession>(guestSession);
   const [preferences, setPreferences] = useState<AuthPreferences | null>(null);
@@ -98,117 +101,86 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   const resetToGuest = useCallback(() => {
-    /** 用途：负责 clearAuthSession 的界面或数据处理职责。 */
     clearAuthSession();
-    /** 用途：负责 setSessionState 的界面或数据处理职责。 */
     setSessionState(guestSession);
-    /** 用途：负责 setPreferences 的界面或数据处理职责。 */
     setPreferences(null);
   }, []);
 
   const refreshSession = useCallback(async () => {
+    // access token 只保存在内存；刷新页面后用 HttpOnly cookie 恢复，不把新令牌写回 localStorage。
     const hasLegacyToken = hasLegacyStoredAccessToken();
     const hasSessionHint = hasStoredAuthSessionHint();
 
     if (hasLegacyToken) {
-      /** 用途：负责 clearLegacyStoredAccessToken 的界面或数据处理职责。 */
       clearLegacyStoredAccessToken();
     }
 
     if (!hasLegacyToken && !hasSessionHint) {
-      /** 用途：负责 setSessionState 的界面或数据处理职责。 */
       setSessionState(guestSession);
-      /** 用途：负责 setPreferences 的界面或数据处理职责。 */
       setPreferences(null);
-      /** 用途：负责 setIsLoading 的界面或数据处理职责。 */
       setIsLoading(false);
       return;
     }
 
     try {
       const refreshed = await refreshAuthSession();
-      /** 用途：负责 setStoredAccessToken 的界面或数据处理职责。 */
       setStoredAccessToken(refreshed.access_token);
-      /** 用途：负责 setStoredAuthSessionHint 的界面或数据处理职责。 */
       setStoredAuthSessionHint(true);
       const me = await getAuthMe();
       const nextSession = sessionFromUser(me.user);
-      /** 用途：负责 setSessionState 的界面或数据处理职责。 */
       setSessionState(nextSession);
 
       if (!nextSession.isGuest) {
         const preferenceResponse = await getAuthPreferences();
-        /** 用途：负责 setPreferences 的界面或数据处理职责。 */
         setPreferences(preferenceResponse.preferences);
       } else {
-        /** 用途：负责 setPreferences 的界面或数据处理职责。 */
         setPreferences(null);
       }
     } catch {
-      /** 用途：负责 clearAuthSession 的界面或数据处理职责。 */
       clearAuthSession();
-      /** 用途：负责 setSessionState 的界面或数据处理职责。 */
       setSessionState(guestSession);
-      /** 用途：负责 setPreferences 的界面或数据处理职责。 */
       setPreferences(null);
     } finally {
-      /** 用途：负责 setIsLoading 的界面或数据处理职责。 */
       setIsLoading(false);
     }
   }, []);
 
-  /** 用途：负责 useEffect 的界面或数据处理职责。 */
   useEffect(() => {
-    /** 用途：负责 refreshSession 的界面或数据处理职责。 */
     refreshSession().catch(() => {
-      /** 用途：负责 resetToGuest 的界面或数据处理职责。 */
       resetToGuest();
-      /** 用途：负责 setIsLoading 的界面或数据处理职责。 */
       setIsLoading(false);
     });
 
     return onAuthExpired(() => {
-      /** 用途：负责 resetToGuest 的界面或数据处理职责。 */
       resetToGuest();
     });
   }, [refreshSession, resetToGuest]);
 
   const setSession = useCallback((nextSession: AuthSession) => {
-    /** 用途：负责 setSessionState 的界面或数据处理职责。 */
     setSessionState(nextSession);
   }, []);
 
   const login = useCallback(async (payload: LoginPayload) => {
-    /** 用途：负责 setError 的界面或数据处理职责。 */
     setError(null);
     const response = await loginWithEmail(payload);
-    /** 用途：负责 setStoredAccessToken 的界面或数据处理职责。 */
     setStoredAccessToken(response.access_token);
-    /** 用途：负责 setStoredAuthSessionHint 的界面或数据处理职责。 */
     setStoredAuthSessionHint(true);
-    /** 用途：负责 setSessionState 的界面或数据处理职责。 */
     setSessionState(sessionFromUser(response.user));
     const preferenceResponse = await getAuthPreferences();
-    /** 用途：负责 setPreferences 的界面或数据处理职责。 */
     setPreferences(preferenceResponse.preferences);
   }, []);
 
   const register = useCallback(async (payload: RegisterPayload) => {
-    /** 用途：负责 setError 的界面或数据处理职责。 */
     setError(null);
     const response = await registerWithEmail({
       display_name: payload.displayName,
       email: payload.email,
       password: payload.password
     });
-    /** 用途：负责 setStoredAccessToken 的界面或数据处理职责。 */
     setStoredAccessToken(response.access_token);
-    /** 用途：负责 setStoredAuthSessionHint 的界面或数据处理职责。 */
     setStoredAuthSessionHint(true);
-    /** 用途：负责 setSessionState 的界面或数据处理职责。 */
     setSessionState(sessionFromUser(response.user));
     const preferenceResponse = await getAuthPreferences();
-    /** 用途：负责 setPreferences 的界面或数据处理职责。 */
     setPreferences(preferenceResponse.preferences);
   }, []);
 
@@ -218,18 +190,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // Stateless JWT logout is completed by local token removal.
     } finally {
-      /** 用途：负责 resetToGuest 的界面或数据处理职责。 */
       resetToGuest();
     }
   }, [resetToGuest]);
 
   const updatePreferences = useCallback(
-    /** 用途：负责 async 的界面或数据处理职责。 */
     async (payload: Partial<AuthPreferences>) => {
       if (session.isGuest) return null;
 
       const response = await updateAuthPreferences(payload);
-      /** 用途：负责 setPreferences 的界面或数据处理职责。 */
       setPreferences(response.preferences);
       return response.preferences;
     },
@@ -241,7 +210,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       display_name: payload.displayName
     });
     const nextSession = sessionFromUser(response.user);
-    /** 用途：负责 setSessionState 的界面或数据处理职责。 */
     setSessionState(nextSession);
     return nextSession;
   }, []);
@@ -288,7 +256,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-/** 用途：负责 useAuth 的界面或数据处理职责。 */
+/** 取得 AuthProvider 维护的当前身份、权限和会话操作。 */
 export function useAuth() {
   const context = useContext(AuthContext);
 

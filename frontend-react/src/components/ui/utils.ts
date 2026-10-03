@@ -1,4 +1,3 @@
-/** 用途：负责 cx 的界面或数据处理职责。 */
 export function cx(
   ...classes: Array<string | false | null | undefined>
 ): string {

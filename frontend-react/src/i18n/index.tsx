@@ -26,8 +26,8 @@ type I18nContextValue = {
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
-/** 用途：负责 detectLanguage 的界面或数据处理职责。 */
 function detectLanguage(): LanguageCode {
+  // 用户手动选择优先；没有记录时才根据浏览器语言决定首次显示语言。
   const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY);
   if (saved === "en" || saved === "zh-CN") return saved;
 
@@ -35,7 +35,6 @@ function detectLanguage(): LanguageCode {
   return browserLanguage.startsWith("zh") ? "zh-CN" : "en";
 }
 
-/** 用途：负责 interpolate 的界面或数据处理职责。 */
 function interpolate(template: string, values?: Record<string, string | number>) {
   if (!values) return template;
 
@@ -45,8 +44,8 @@ function interpolate(template: string, values?: Record<string, string | number>)
   );
 }
 
-/** 用途：负责 getTranslation 的界面或数据处理职责。 */
 function getTranslation(language: LanguageCode, key: string) {
+  // 翻译键按 `section.field` 逐层查找，缺失时返回原键，避免界面渲染失败。
   const parts = key.split(".");
   let value: unknown = dictionaries[language];
 
@@ -60,22 +59,19 @@ function getTranslation(language: LanguageCode, key: string) {
   return typeof value === "string" ? value : key;
 }
 
-/** 用途：负责 I18nProvider 的界面或数据处理职责。 */
 export function I18nProvider({ children }: { children: ReactNode }) {
+  // 语言切换同时写入 localStorage，使刷新后继续使用用户选择。
   const [language, setLanguageState] = useState<LanguageCode>(() =>
-    /** 用途：负责 detectLanguage 的界面或数据处理职责。 */
     detectLanguage()
   );
 
   const setLanguage = useCallback((nextLanguage: LanguageCode) => {
     localStorage.setItem(LANGUAGE_STORAGE_KEY, nextLanguage);
-    /** 用途：负责 setLanguageState 的界面或数据处理职责。 */
     setLanguageState(nextLanguage);
   }, []);
 
   const t = useCallback(
     (key: string, values?: Record<string, string | number>) =>
-      /** 用途：负责 interpolate 的界面或数据处理职责。 */
       interpolate(getTranslation(language, key), values),
     [language]
   );
@@ -92,7 +88,6 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
 
-/** 用途：负责 useI18n 的界面或数据处理职责。 */
 export function useI18n() {
   const context = useContext(I18nContext);
 

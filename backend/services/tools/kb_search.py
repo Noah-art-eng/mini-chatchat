@@ -6,7 +6,7 @@ from path_security import is_safe_kb_name
 
 
 def normalize_top_k(value) -> int:
-    """负责 normalize_top_k 的函数职责。"""
+    """把模型传入的 top_k 限制在工具允许的 1～20 条范围内。"""
     try:
         top_k = int(value)
     except (TypeError, ValueError):
@@ -16,7 +16,11 @@ def normalize_top_k(value) -> int:
 
 
 def execute_kb_search(arguments: dict) -> ToolResult:
-    """负责 execute_kb_search 的函数职责。"""
+    """在当前用户拥有的知识库中执行混合检索。
+
+    Agent 传入的 `_user_id` 由运行时注入，不信任模型自行指定。这里先验证知识库
+    归属，再进入 MiniKBService.search_docs()，最后把文本块包装成统一工具结果。
+    """
     query = arguments.get("query")
     kb_name = arguments.get("kb_name", "default")
     top_k = normalize_top_k(arguments.get("top_k", 3))
@@ -41,6 +45,7 @@ def execute_kb_search(arguments: dict) -> ToolResult:
             error="metadata_filter must be an object",
         )
 
+    # 工具不能借 kb_name 查询其他用户的知识库。
     if not user_owns_kb(kb_name, user_id=user_id):
         return ToolResult(
             ok=False,
@@ -74,7 +79,7 @@ def execute_kb_search(arguments: dict) -> ToolResult:
 
 
 def get_kb_search_tool() -> ToolSpec:
-    """负责 get_kb_search_tool 的函数职责。"""
+    """声明知识库检索工具的参数边界，并把执行入口交给工具注册表。"""
     return ToolSpec(
         name="kb_search",
         description="Search a local knowledge base and return matching chunks.",

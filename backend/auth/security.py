@@ -17,7 +17,7 @@ _RATE_LIMIT_BUCKETS: dict[str, list[float]] = {}
 
 
 def get_client_ip(request: Request):
-    """负责 get_client_ip 的函数职责。"""
+    """从可信请求信息中取得客户端地址，供登录限流和会话记录使用。"""
     forwarded_for = request.headers.get("x-forwarded-for")
     if forwarded_for:
         return forwarded_for.split(",", 1)[0].strip()
@@ -26,7 +26,7 @@ def get_client_ip(request: Request):
 
 
 def verify_allowed_origin(request: Request):
-    """负责 verify_allowed_origin 的函数职责。"""
+    """校验敏感认证请求的 Origin，降低跨站请求伪造风险。"""
     origin = request.headers.get("origin")
     if not origin:
         return
@@ -36,7 +36,7 @@ def verify_allowed_origin(request: Request):
 
 
 def _bucket_key(kind: str, request: Request, identifier: str | None = None):
-    """负责 _bucket_key 的函数职责。"""
+    """把邮箱与客户端地址组合成登录限流键，避免一个维度影响所有用户。"""
     normalized_identifier = (identifier or "").strip().lower()
     return f"{kind}:{get_client_ip(request)}:{normalized_identifier}"
 
@@ -46,7 +46,7 @@ def check_auth_rate_limit(
     request: Request,
     identifier: str | None = None,
 ):
-    """负责 check_auth_rate_limit 的函数职责。"""
+    """检查当前登录失败次数；窗口内超过上限时直接拒绝继续尝试。"""
     key = _bucket_key(kind, request, identifier)
     now = time.monotonic()
     window = get_auth_rate_limit_window_seconds()
@@ -69,7 +69,7 @@ def record_auth_failure(
     request: Request,
     identifier: str | None = None,
 ):
-    """负责 record_auth_failure 的函数职责。"""
+    """记录一次认证失败，并从首次失败时间开始计算限流窗口。"""
     key = _bucket_key(kind, request, identifier)
     now = time.monotonic()
     window = get_auth_rate_limit_window_seconds()
@@ -85,17 +85,17 @@ def clear_auth_failures(
     request: Request,
     identifier: str | None = None,
 ):
-    """负责 clear_auth_failures 的函数职责。"""
+    """登录成功后清除对应限流记录。"""
     _RATE_LIMIT_BUCKETS.pop(_bucket_key(kind, request, identifier), None)
 
 
 def reset_auth_rate_limits():
-    """负责 reset_auth_rate_limits 的函数职责。"""
+    """清空进程内限流状态，供隔离测试重新建立基线。"""
     _RATE_LIMIT_BUCKETS.clear()
 
 
 def validate_production_auth_config():
-    """负责 validate_production_auth_config 的函数职责。"""
+    """生产环境启动时检查密钥、Cookie 和 CORS 配置，错误配置直接失败。"""
     if not is_production_environment():
         return
 

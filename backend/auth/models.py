@@ -4,7 +4,7 @@ from typing import Any
 
 
 class AuthProvider(str, Enum):
-    """负责 AuthProvider 的类职责。"""
+    """当前支持的本地、第三方和访客身份来源。"""
     EMAIL = "email"
     GOOGLE = "google"
     GITHUB = "github"
@@ -13,7 +13,7 @@ class AuthProvider(str, Enum):
 
 @dataclass(frozen=True)
 class GuestUser:
-    """负责 GuestUser 的类职责。"""
+    """未登录请求使用的固定身份，只获得访客权限和 demo 数据范围。"""
     id: str = "guest"
     email: str | None = None
     display_name: str = "Guest"
@@ -26,7 +26,7 @@ class GuestUser:
 
 @dataclass(frozen=True)
 class AuthenticatedUser:
-    """负责 AuthenticatedUser 的类职责。"""
+    """从数据库用户记录转换出的请求身份，后续用于权限和用户隔离。"""
     id: int
     email: str | None
     display_name: str | None
@@ -41,12 +41,10 @@ CurrentUser = GuestUser | AuthenticatedUser
 
 
 def guest_user():
-    """负责 guest_user 的函数职责。"""
     return GuestUser()
 
 
 def user_from_record(record: dict[str, Any] | None) -> CurrentUser:
-    """负责 user_from_record 的函数职责。"""
     if not record:
         return guest_user()
 

@@ -184,12 +184,10 @@ const visualMap: Record<string, ToolVisual> = {
   }
 };
 
-/** 用途：负责 getToolId 的界面或数据处理职责。 */
 function getToolId(tool: ToolSpecResponse) {
   return tool.qualified_name || tool.name;
 }
 
-/** 用途：负责 normalizeToolVisualName 的界面或数据处理职责。 */
 export function normalizeToolVisualName(tool: ToolSpecResponse | string) {
   const raw =
     typeof tool === "string"
@@ -218,7 +216,6 @@ export function normalizeToolVisualName(tool: ToolSpecResponse | string) {
   return normalized;
 }
 
-/** 用途：负责 inferToolVisualCategory 的界面或数据处理职责。 */
 export function inferToolVisualCategory(tool: ToolSpecResponse): ToolVisualCategory {
   const id = getToolId(tool).toLowerCase();
   const name = normalizeToolVisualName(tool);
@@ -233,13 +230,11 @@ export function inferToolVisualCategory(tool: ToolSpecResponse): ToolVisualCateg
   return "system";
 }
 
-/** 用途：负责 getToolVisual 的界面或数据处理职责。 */
 export function getToolVisual(tool: ToolSpecResponse): ToolVisual {
   const category = inferToolVisualCategory(tool);
   return visualMap[normalizeToolVisualName(tool)] || fallbackVisualByCategory[category];
 }
 
-/** 用途：负责 getFallbackToolIcon 的界面或数据处理职责。 */
 export function getFallbackToolIcon(category: ToolVisualCategory) {
   return fallbackVisualByCategory[category].icon || Info;
 }

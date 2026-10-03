@@ -7,7 +7,6 @@ type AgentStatusProps = {
   streamStatus?: string | null;
 };
 
-/** 用途：负责 AgentStatus 的界面或数据处理职责。 */
 export function AgentStatus({ isRunning, streamStatus }: AgentStatusProps) {
   const { t } = useI18n();
 
@@ -15,7 +14,6 @@ export function AgentStatus({ isRunning, streamStatus }: AgentStatusProps) {
     return null;
   }
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <article
       aria-live="polite"

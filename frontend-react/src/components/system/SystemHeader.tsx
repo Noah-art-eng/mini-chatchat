@@ -9,11 +9,9 @@ type SystemHeaderProps = {
   status: "loading" | "ready" | "error";
 };
 
-/** 用途：负责 SystemHeader 的界面或数据处理职责。 */
 export function SystemHeader({ health, status }: SystemHeaderProps) {
   const { t } = useI18n();
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <header className="page-header system-hero relative flex items-start gap-[14px] overflow-hidden rounded-mc-lg border border-solid border-transparent bg-transparent px-0 pt-mc-2 pb-mc-4 [box-shadow:none] max-[720px]:grid">
       <div aria-hidden="true">

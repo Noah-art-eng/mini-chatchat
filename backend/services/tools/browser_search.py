@@ -7,7 +7,7 @@ MAX_RESULTS = 5
 
 
 def normalize_max_results(value) -> int:
-    """负责 normalize_max_results 的函数职责。"""
+    """限制联网搜索返回数量，避免模型请求过大的外部结果集。"""
     try:
         max_results = int(value)
     except (TypeError, ValueError):
@@ -17,7 +17,7 @@ def normalize_max_results(value) -> int:
 
 
 def execute_browser_search(arguments: dict) -> ToolResult:
-    """负责 execute_browser_search 的函数职责。"""
+    """调用受控搜索适配器，并把不同字段整理成统一的标题、链接和摘要。"""
     query = arguments.get("query")
     max_results = normalize_max_results(arguments.get("max_results", 3))
 
@@ -59,7 +59,7 @@ def execute_browser_search(arguments: dict) -> ToolResult:
 
 
 def get_browser_search_tool() -> ToolSpec:
-    """负责 get_browser_search_tool 的函数职责。"""
+    """声明只做搜索、不读取网页或执行浏览器操作的联网搜索工具。"""
     return ToolSpec(
         name="browser_search",
         description=(

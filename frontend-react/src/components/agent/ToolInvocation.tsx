@@ -6,11 +6,9 @@ type ToolInvocationProps = {
   toolCall: AgentToolCall;
 };
 
-/** 用途：负责 ToolInvocation 的界面或数据处理职责。 */
 export function ToolInvocation({ toolCall }: ToolInvocationProps) {
   const { t } = useI18n();
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div data-testid="agent-step-tool">
       {toolCall.reason && <p>{toolCall.reason}</p>}

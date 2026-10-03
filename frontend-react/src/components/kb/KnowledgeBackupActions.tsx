@@ -14,7 +14,6 @@ type KnowledgeBackupActionsProps = {
   selectedImportFile: File | null;
 };
 
-/** 用途：负责 KnowledgeBackupActions 的界面或数据处理职责。 */
 export function KnowledgeBackupActions({
   importInputRef,
   isKbActionLoading,
@@ -26,7 +25,6 @@ export function KnowledgeBackupActions({
 }: KnowledgeBackupActionsProps) {
   const { t } = useI18n();
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div className="kb-action-panel grid min-w-0 gap-mc-2 rounded-[18px] border border-solid border-[rgba(23,23,23,.08)] bg-[rgba(255,255,255,.54)] p-mc-3 [box-shadow:var(--shadow-hairline)] [grid-area:actions]">
       <p className="section-kicker">{t("kb.backupAndMove")}</p>

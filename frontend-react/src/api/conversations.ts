@@ -1,12 +1,10 @@
 import { authFetch, requestJson } from "./client";
 import type { ChatMessage, Conversation } from "../types/conversation";
 
-/** 用途：负责 listConversations 的界面或数据处理职责。 */
 export async function listConversations() {
   return requestJson<{ conversations: Conversation[] }>("/conversations");
 }
 
-/** 用途：负责 getConversationMessages 的界面或数据处理职责。 */
 export async function getConversationMessages(conversationId: number) {
   return requestJson<{
     conversation_id: number;
@@ -14,7 +12,6 @@ export async function getConversationMessages(conversationId: number) {
   }>(`/conversations/${conversationId}/messages`);
 }
 
-/** 用途：负责 renameConversation 的界面或数据处理职责。 */
 export async function renameConversation(
   conversationId: number,
   title: string
@@ -30,7 +27,6 @@ export async function renameConversation(
   );
 }
 
-/** 用途：负责 deleteConversation 的界面或数据处理职责。 */
 export async function deleteConversation(conversationId: number) {
   return requestJson<{
     message: string;
@@ -40,7 +36,6 @@ export async function deleteConversation(conversationId: number) {
   });
 }
 
-/** 用途：负责 deleteConversations 的界面或数据处理职责。 */
 export async function deleteConversations(conversationIds: number[]) {
   const results: Array<{
     conversation_id: number;

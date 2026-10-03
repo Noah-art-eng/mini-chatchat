@@ -126,7 +126,7 @@ def auth_register(
     http_request: Request,
     response: Response,
 ):
-    """负责 auth_register 的函数职责。"""
+    """校验注册请求，创建邮箱用户和默认知识库，再建立登录 Session。"""
     verify_allowed_origin(http_request)
     email = validate_email_password(payload.email, payload.password)
     check_auth_rate_limit("register", http_request, email)
@@ -151,7 +151,7 @@ def auth_login(
     http_request: Request,
     response: Response,
 ):
-    """负责 auth_login 的函数职责。"""
+    """校验邮箱密码和限流状态，成功后进入统一 Session/token 创建流程。"""
     verify_allowed_origin(http_request)
     email = normalize_email(payload.email)
     check_auth_rate_limit("login", http_request, email)
@@ -172,7 +172,7 @@ def auth_login(
 
 @router.post("/auth/logout")
 def auth_logout(request: Request, response: Response):
-    """负责 auth_logout 的函数职责。"""
+    """撤销当前 refresh 会话并清除 Cookie。"""
     verify_allowed_origin(request)
     logout_refresh_session(request, response)
     return {"message": "logged out"}
@@ -184,7 +184,7 @@ def auth_logout_all(
     response: Response,
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    """负责 auth_logout_all 的函数职责。"""
+    """撤销当前用户所有设备会话并清除当前 Cookie。"""
     verify_allowed_origin(request)
     revoked = logout_all_sessions(int(current_user.id), response)
     return {"message": "logged out all sessions", "revoked_sessions": revoked}
@@ -192,7 +192,7 @@ def auth_logout_all(
 
 @router.post("/auth/refresh")
 def auth_refresh(request: Request, response: Response):
-    """负责 auth_refresh 的函数职责。"""
+    """读取 HttpOnly refresh cookie，完成 Session 校验、token 轮换和重新签发。"""
     verify_allowed_origin(request)
     check_auth_rate_limit("refresh", request, None)
     refresh_token = get_refresh_token_from_request(request)
@@ -214,7 +214,7 @@ def auth_refresh(request: Request, response: Response):
 
 @router.get("/auth/me")
 def auth_me(current_user: CurrentUser = Depends(get_current_user_optional)):
-    """负责 auth_me 的函数职责。"""
+    """返回认证依赖已经验证过的当前用户公开信息。"""
     return {
         "user": public_current_user(current_user),
         "authenticated": not current_user.is_guest,
@@ -223,7 +223,7 @@ def auth_me(current_user: CurrentUser = Depends(get_current_user_optional)):
 
 @router.get("/auth/preferences")
 def auth_preferences(current_user: CurrentUser = Depends(get_current_user)):
-    """负责 auth_preferences 的函数职责。"""
+    """返回当前用户偏好，访客使用默认值。"""
     return {"preferences": get_user_preferences(int(current_user.id))}
 
 
@@ -232,7 +232,7 @@ def auth_update_preferences(
     request: AuthPreferencesUpdateRequest,
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    """负责 auth_update_preferences 的函数职责。"""
+    """校验登录身份后更新用户偏好。"""
     current = get_user_preferences(int(current_user.id)) or {}
     preferences = upsert_user_preferences(
         int(current_user.id),
@@ -259,7 +259,7 @@ def auth_update_preferences(
 
 @router.get("/auth/account")
 def auth_account(current_user: CurrentUser = Depends(get_current_user)):
-    """负责 auth_account 的函数职责。"""
+    """返回账户页需要的用户资料和 OAuth 绑定。"""
     return {"user": public_current_user(current_user)}
 
 
@@ -268,7 +268,7 @@ def auth_update_account(
     request: AuthAccountUpdateRequest,
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    """负责 auth_update_account 的函数职责。"""
+    """更新当前用户显示名称并返回最新资料。"""
     display_name = validate_display_name(request.display_name)
     user = update_user_account(int(current_user.id), display_name)
     if not user:
@@ -278,7 +278,7 @@ def auth_update_account(
 
 @router.get("/auth/sessions")
 def auth_sessions(current_user: CurrentUser = Depends(get_current_user)):
-    """负责 auth_sessions 的函数职责。"""
+    """返回当前用户经过脱敏的登录设备会话。"""
     return {
         "sessions": list_public_user_sessions(
             int(current_user.id),
@@ -294,7 +294,7 @@ def auth_revoke_session(
     response: Response,
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    """负责 auth_revoke_session 的函数职责。"""
+    """撤销属于当前用户的指定会话，不能通过 ID 操作他人会话。"""
     verify_allowed_origin(request)
     revoked = revoke_user_session(int(current_user.id), session_id)
     if not revoked:
@@ -313,7 +313,7 @@ def auth_logout_others(
     request: Request,
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    """负责 auth_logout_others 的函数职责。"""
+    """保留当前会话并撤销同一用户的其他设备。"""
     verify_allowed_origin(request)
     session_id = current_session_id(current_user)
     if not session_id:
@@ -326,14 +326,14 @@ def auth_logout_others(
 def auth_oauth_providers(
     current_user: CurrentUser = Depends(get_current_user_optional),
 ):
-    """负责 auth_oauth_providers 的函数职责。"""
+    """返回前端可以展示的 OAuth Provider 配置状态。"""
     user_id = None if current_user.is_guest else int(current_user.id)
     return {"providers": public_provider_status(user_id)}
 
 
 @router.get("/auth/oauth/{provider}")
 def auth_oauth_start(provider: str):
-    """负责 auth_oauth_start 的函数职责。"""
+    """创建带 state 和 PKCE 的 OAuth 授权地址。"""
     authorization = create_oauth_authorization(provider, mode="login")
     return RedirectResponse(authorization["authorization_url"], status_code=302)
 
@@ -347,7 +347,7 @@ def auth_oauth_callback(
     state: str | None = None,
     error: str | None = None,
 ):
-    """负责 auth_oauth_callback 的函数职责。"""
+    """校验 state 并完成 OAuth 登录，然后跳回前端。"""
     if error:
         return RedirectResponse(
             oauth_error_redirect("oauth authorization was cancelled"), status_code=302
@@ -374,7 +374,7 @@ def auth_oauth_link(
     request: Request,
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    """负责 auth_oauth_link 的函数职责。"""
+    """为已登录用户创建 OAuth 绑定授权流程。"""
     verify_allowed_origin(request)
     authorization = create_oauth_authorization(
         provider, mode="link", user_id=int(current_user.id)
@@ -388,7 +388,7 @@ def auth_oauth_unlink(
     request: Request,
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    """负责 auth_oauth_unlink 的函数职责。"""
+    """确认仍有其他登录方式后解除 OAuth 绑定。"""
     verify_allowed_origin(request)
     unlinked = unlink_oauth_provider(int(current_user.id), provider)
     return {

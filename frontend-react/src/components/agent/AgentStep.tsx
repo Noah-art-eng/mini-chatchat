@@ -12,12 +12,10 @@ type AgentStepProps = {
   step: AgentStepType;
 };
 
-/** 用途：负责 AgentStep 的界面或数据处理职责。 */
 export function AgentStep({ step }: AgentStepProps) {
   const { t } = useI18n();
   const toolVisual = getToolVisualByName(step.tool_call.tool);
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <article
       className={cx(agentStyles.card, agentStyles.timelineStep)}

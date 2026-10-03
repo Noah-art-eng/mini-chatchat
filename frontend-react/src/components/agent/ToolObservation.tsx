@@ -10,7 +10,6 @@ type ToolObservationProps = {
   toolResult: AgentToolResult;
 };
 
-/** 用途：负责 ToolObservation 的界面或数据处理职责。 */
 export function ToolObservation({
   toolCall,
   toolResult
@@ -18,7 +17,6 @@ export function ToolObservation({
   const { t } = useI18n();
   const toolVisual = getToolVisualByName(toolCall?.tool || "");
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <article className={agentStyles.card} data-testid="agent-tool-result">
       <strong className={agentStyles.title}>

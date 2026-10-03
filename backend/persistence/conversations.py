@@ -5,7 +5,7 @@ from datetime import datetime
 
 
 def create_conversation(get_connection, resolve_user_id, title=None, user_id=None):
-    """负责 create_conversation 的函数职责。"""
+    """为目标用户创建会话，并返回后续消息写入使用的 conversation_id。"""
     resolved_user_id = resolve_user_id(user_id)
     conn = get_connection()
     cursor = conn.cursor()
@@ -37,7 +37,7 @@ def create_conversation(get_connection, resolve_user_id, title=None, user_id=Non
 
 
 def list_conversations(get_connection, resolve_user_id, user_id=None):
-    """负责 list_conversations 的函数职责。"""
+    """按最近更新时间列出当前用户的会话，供前端会话列表使用。"""
     resolved_user_id = resolve_user_id(user_id)
     conn = get_connection()
     cursor = conn.cursor()
@@ -66,7 +66,7 @@ def list_conversations(get_connection, resolve_user_id, user_id=None):
 
 
 def get_conversation(get_connection, resolve_user_id, conversation_id, user_id=None):
-    """负责 get_conversation 的函数职责。"""
+    """按 conversation_id 和 user_id 读取会话，避免跨用户访问。"""
     resolved_user_id = resolve_user_id(user_id)
     conn = get_connection()
     cursor = conn.cursor()
@@ -101,7 +101,7 @@ def update_conversation_title(
     title,
     user_id=None,
 ):
-    """负责 update_conversation_title 的函数职责。"""
+    """只修改属于当前用户的会话标题；不存在或越权时返回 None。"""
     resolved_user_id = resolve_user_id(user_id)
     conn = get_connection()
     cursor = conn.cursor()
@@ -135,7 +135,7 @@ def update_conversation_title(
 
 
 def delete_conversation(get_connection, resolve_user_id, conversation_id, user_id=None):
-    """负责 delete_conversation 的函数职责。"""
+    """删除当前用户的会话及其全部消息。"""
     resolved_user_id = resolve_user_id(user_id)
     conn = get_connection()
     cursor = conn.cursor()
@@ -176,7 +176,7 @@ def delete_conversation(get_connection, resolve_user_id, conversation_id, user_i
 
 
 def encode_metadata(metadata):
-    """负责 encode_metadata 的函数职责。"""
+    """把 Sources、Agent trace 等消息附加信息编码成 SQLite 可保存的 JSON。"""
     if metadata is None:
         return None
 
@@ -184,7 +184,7 @@ def encode_metadata(metadata):
 
 
 def decode_metadata(metadata_text):
-    """负责 decode_metadata 的函数职责。"""
+    """读取消息 metadata；旧数据为空或损坏时安全回退为空字典。"""
     if not metadata_text:
         return None
 
@@ -203,8 +203,11 @@ def save_message(
     metadata=None,
     user_id=None,
 ):
-    # 每次写消息同步更新时间；assistant 的 sources/agent trace 统一放 metadata 以便历史回放。
-    """负责 save_message 的函数职责。"""
+    """保存消息并更新会话时间。
+
+    助手消息的 Sources、Agent trace 等结构化信息写入 metadata，页面刷新后可以恢复
+    当时展示的回答上下文。
+    """
     resolved_user_id = resolve_user_id(user_id)
     conn = get_connection()
     cursor = conn.cursor()
@@ -268,7 +271,7 @@ def get_conversation_messages(
     user_id=None,
 ):
     # 读取历史时把持久化的 sources 恢复到顶层字段，保持前端消息结构不变。
-    """负责 get_conversation_messages 的函数职责。"""
+    """确认会话属于当前用户后按时间顺序返回消息和 metadata。"""
     resolved_user_id = resolve_user_id(user_id)
     conn = get_connection()
     cursor = conn.cursor()
@@ -323,7 +326,7 @@ def update_message_feedback(
     reason=None,
     user_id=None,
 ):
-    """负责 update_message_feedback 的函数职责。"""
+    """只更新当前用户助手消息的反馈，防止通过 message_id 跨用户修改。"""
     resolved_user_id = resolve_user_id(user_id)
     conn = get_connection()
     cursor = conn.cursor()

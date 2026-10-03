@@ -4,7 +4,7 @@ from .models import CurrentUser
 
 
 class Permission(str, Enum):
-    """负责 Permission 的类职责。"""
+    """路由和工具可以要求的能力；访客只获得其中的安全子集。"""
     CAN_USE_CHAT = "can_use_chat"
     CAN_USE_SEARCH = "can_use_search"
     CAN_USE_TEMP_FILE = "can_use_temp_file"
@@ -26,7 +26,7 @@ AUTHENTICATED_USER_PERMISSIONS = set(Permission)
 
 
 def get_permissions_for_user(user: CurrentUser) -> set[Permission]:
-    """负责 get_permissions_for_user 的函数职责。"""
+    """根据访客、普通用户和管理员身份生成后端权限集合。"""
     if user.is_guest:
         return set(GUEST_PERMISSIONS)
 
@@ -37,5 +37,5 @@ def get_permissions_for_user(user: CurrentUser) -> set[Permission]:
 
 
 def has_permission(user: CurrentUser, permission: Permission) -> bool:
-    """负责 has_permission 的函数职责。"""
+    """检查用户是否拥有路由要求的权限。"""
     return permission in get_permissions_for_user(user)

@@ -10,7 +10,11 @@ _ACTIVE_CONNECTIONS = ContextVar("active_db_connections", default=None)
 
 
 def connection_scope(func):
-    """确保一个 DB 方法创建的连接在返回或抛异常时都被关闭。"""
+    """为一次持久化操作集中管理它创建的 SQLite 连接。
+
+    正常返回时统一关闭；任意异常先回滚再关闭。业务函数不需要在每个分支重复清理，
+    也不会因为中途抛错泄漏连接。
+    """
     @wraps(func)
     def wrapped(*args, **kwargs):
         connections = []
@@ -36,7 +40,11 @@ def connection_scope(func):
 
 
 def open_connection(db_path):
-    """为指定 SQLite 文件创建启用外键约束且纳入统一清理的连接。"""
+    """创建启用外键约束的 SQLite 连接，并登记到当前 connection_scope。
+
+    SQLite 的 foreign_keys 设置按连接生效，所以每个新连接都必须执行 PRAGMA，
+    不能只在数据库初始化时设置一次。
+    """
     db_dir = os.path.dirname(db_path)
     if db_dir:
         os.makedirs(db_dir, exist_ok=True)

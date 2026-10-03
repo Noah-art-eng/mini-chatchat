@@ -14,7 +14,6 @@ type ChatMessageListProps = {
   streamingMessage: string;
 };
 
-/** 用途：负责 ChatMessageList 的界面或数据处理职责。 */
 export function ChatMessageList({
   messages,
   onOpenAssistantSources,
@@ -22,7 +21,6 @@ export function ChatMessageList({
   selectedAssistantMessageId,
   streamingMessage
 }: ChatMessageListProps) {
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div className={chatStyles.list} data-testid="message-list">
       {messages.map((message, index) => {
@@ -34,7 +32,6 @@ export function ChatMessageList({
           message.role === "assistant" && message.id === selectedAssistantMessageId;
         const fallbackSelectId = message.id || 0;
 
-        /** 用途：负责 return 的界面或数据处理职责。 */
         return (
           <AssistantMessage
             isSelected={isSelected}
@@ -47,7 +44,6 @@ export function ChatMessageList({
             }}
             onSelect={() => {
               if (fallbackSelectId) {
-                /** 用途：负责 onSelectAssistantMessage 的界面或数据处理职责。 */
                 onSelectAssistantMessage(fallbackSelectId);
               }
             }}

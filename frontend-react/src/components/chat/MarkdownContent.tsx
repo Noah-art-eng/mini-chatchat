@@ -2,9 +2,7 @@ type MarkdownContentProps = {
   content: string;
 };
 
-/** 用途：负责 isTableBlock 的界面或数据处理职责。 */
 function isTableBlock(lines: string[]) {
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     lines.length >= 2 &&
     lines[0].includes("|") &&
@@ -12,7 +10,6 @@ function isTableBlock(lines: string[]) {
   );
 }
 
-/** 用途：负责 renderInline 的界面或数据处理职责。 */
 function renderInline(text: string) {
   const parts = text.split(/(`[^`]+`)/g);
 
@@ -25,7 +22,6 @@ function renderInline(text: string) {
   });
 }
 
-/** 用途：负责 renderTable 的界面或数据处理职责。 */
 function renderTable(lines: string[], key: string) {
   const [headerLine, , ...bodyLines] = lines;
   const headers = headerLine
@@ -39,7 +35,6 @@ function renderTable(lines: string[], key: string) {
       .filter(Boolean)
   );
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div className="message-table-wrap" key={key}>
       <table className="message-table">
@@ -66,7 +61,6 @@ function renderTable(lines: string[], key: string) {
   );
 }
 
-/** 用途：负责 MarkdownContent 的界面或数据处理职责。 */
 export function MarkdownContent({ content }: MarkdownContentProps) {
   const blocks: string[][] = [];
   let currentBlock: string[] = [];
@@ -94,7 +88,6 @@ export function MarkdownContent({ content }: MarkdownContentProps) {
     blocks.push(currentBlock);
   }
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div className="message-markdown">
       {blocks.map((block, index) => {
@@ -109,7 +102,6 @@ export function MarkdownContent({ content }: MarkdownContentProps) {
           const language = block[0].trim().replace("```", "").trim();
           const code = block.slice(1, -1).join("\n");
 
-          /** 用途：负责 return 的界面或数据处理职责。 */
           return (
             <pre className="message-code-block" key={key}>
               {language && <span>{language}</span>}
@@ -123,7 +115,6 @@ export function MarkdownContent({ content }: MarkdownContentProps) {
         }
 
         if (block.every(line => /^[-*]\s+/.test(line.trim()))) {
-          /** 用途：负责 return 的界面或数据处理职责。 */
           return (
             <ul key={key}>
               {block.map((line, itemIndex) => (
@@ -136,7 +127,6 @@ export function MarkdownContent({ content }: MarkdownContentProps) {
         }
 
         if (block.every(line => /^\d+\.\s+/.test(line.trim()))) {
-          /** 用途：负责 return 的界面或数据处理职责。 */
           return (
             <ol key={key}>
               {block.map((line, itemIndex) => (
@@ -149,7 +139,6 @@ export function MarkdownContent({ content }: MarkdownContentProps) {
         }
 
         if (trimmed.startsWith(">")) {
-          /** 用途：负责 return 的界面或数据处理职责。 */
           return (
             <blockquote key={key}>
               {block.map(line => line.trim().replace(/^>\s?/, "")).join("\n")}
@@ -160,7 +149,6 @@ export function MarkdownContent({ content }: MarkdownContentProps) {
         if (/^#{1,3}\s+/.test(trimmed)) {
           const heading = trimmed.replace(/^#{1,3}\s+/, "");
 
-          /** 用途：负责 return 的界面或数据处理职责。 */
           return (
             <h3 className="message-subheading" key={key}>
               {renderInline(heading)}

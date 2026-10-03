@@ -9,7 +9,6 @@ type ToolRegistrySectionProps = {
   toolsError: string | null;
 };
 
-/** 用途：负责 ToolRegistrySection 的界面或数据处理职责。 */
 export function ToolRegistrySection({
   mcpTools = [],
   tools,
@@ -18,7 +17,6 @@ export function ToolRegistrySection({
   const { t } = useI18n();
   const totalTools = tools.length + mcpTools.length;
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <article className={`${systemCardClassName} system-wide-card tool-catalog col-span-full overflow-hidden`}>
       <div className="tool-catalog-header mb-mc-5 flex items-start justify-between gap-mc-4 [&_h2]:m-0 [&_p]:m-0 [&_p]:mt-mc-1 [&_p]:text-mc-body-small [&_p]:text-mc-secondary">

@@ -11,5 +11,4 @@ PROMPT_TEMPLATES = {
 
 
 def get_prompt_template(prompt_name):
-    """负责 get_prompt_template 的函数职责。"""
     return PROMPT_TEMPLATES.get(prompt_name, DEFAULT_PROMPT)

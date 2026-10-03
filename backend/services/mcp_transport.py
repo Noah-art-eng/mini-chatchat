@@ -79,7 +79,7 @@ FORBIDDEN_TEXT = (
 
 @dataclass(frozen=True)
 class StdioMCPServerConfig:
-    """负责 StdioMCPServerConfig 的类职责。"""
+    """描述一个允许启动的 stdio MCP 进程及其安全限制。"""
     server_name: str
     command: str
     args: list[str]
@@ -91,9 +91,9 @@ class StdioMCPServerConfig:
 
 
 class StdioMCPServer:
-    """负责 StdioMCPServer 的类职责。"""
+    """管理一个 stdio MCP 子进程的生命周期和 JSON-RPC 通信。"""
     def __init__(self, config: StdioMCPServerConfig):
-        """负责 __init__ 的函数职责。"""
+        """保存 stdio MCP 配置和并发状态；真正的子进程等到首次调用时再启动。"""
         self.config = config
         self.name = config.server_name
         self._process: subprocess.Popen | None = None
@@ -109,7 +109,7 @@ class StdioMCPServer:
         self._tool_cache: list[MCPToolSpec] | None = None
 
     def list_tools(self) -> list[MCPToolSpec]:
-        """负责 list_tools 的函数职责。"""
+        """确保服务已初始化，再返回经过规范化的工具清单。"""
         self._ensure_started()
         response = self._request("tools/list", {}, timeout=self.config.call_timeout)
         tools = response.get("tools")
@@ -126,7 +126,7 @@ class StdioMCPServer:
         return specs
 
     def call_tool(self, tool_name: str, arguments: dict) -> MCPToolResult:
-        """负责 call_tool 的函数职责。"""
+        """校验已发现工具及参数后发送 MCP tools/call 请求。"""
         self._ensure_started()
         spec = self._get_cached_tool(tool_name)
         if spec is None:
@@ -163,7 +163,7 @@ class StdioMCPServer:
         )
 
     def status(self) -> dict:
-        """负责 status 的函数职责。"""
+        """返回外部 MCP 进程、初始化状态和最近错误，供系统页诊断。"""
         with self._lock:
             running = self._process is not None and self._process.poll() is None
             initialized = self._initialized and running
@@ -184,7 +184,7 @@ class StdioMCPServer:
         return data
 
     def shutdown(self) -> dict:
-        """负责 shutdown 的函数职责。"""
+        """终止读写任务和子进程，避免应用关闭时等待卡住的 MCP 初始化。"""
         with self._lock:
             process = self._process
             self._process = None
@@ -209,7 +209,7 @@ class StdioMCPServer:
         return self.status()
 
     def _ensure_started(self):
-        """负责 _ensure_started 的函数职责。"""
+        """按需启动子进程并完成 initialize；并发调用共享同一次启动状态。"""
         with self._lock:
             if self._process is not None and self._process.poll() is None and self._initialized:
                 return
@@ -264,7 +264,7 @@ class StdioMCPServer:
             raise
 
     def _initialize(self):
-        """负责 _initialize 的函数职责。"""
+        """完成 MCP initialize 握手并发送 initialized 通知，成功后才允许发现工具。"""
         response = self._request(
             "initialize",
             {
@@ -285,7 +285,9 @@ class StdioMCPServer:
             self._initialized = True
 
     def _request(self, method: str, params: dict, timeout: float) -> dict:
-        """负责 _request 的函数职责。"""
+        """发送带 ID 的 JSON-RPC 请求，并在超时后移除对应等待队列。"""
+        # 每个请求 ID 对应一个独立队列。后台 stdout 线程收到响应后按 ID 投递，
+        # 因而多个并发 MCP 请求不会取走彼此的结果。
         with self._lock:
             request_id = self._next_id
             self._next_id += 1
@@ -304,6 +306,8 @@ class StdioMCPServer:
         }
         self._write_message(payload)
 
+        # 外部进程没有按时响应就快速失败。finally 无论成功或超时都移除队列，
+        # 避免迟到响应和长期运行的服务不断累积等待对象。
         try:
             message = response_queue.get(timeout=timeout)
         except queue.Empty as exc:
@@ -325,7 +329,7 @@ class StdioMCPServer:
         return result
 
     def _send_notification(self, method: str, params: dict):
-        """负责 _send_notification 的函数职责。"""
+        """发送不等待响应的 JSON-RPC 通知。"""
         self._write_message({
             "jsonrpc": JSONRPC_VERSION,
             "method": method,
@@ -333,7 +337,7 @@ class StdioMCPServer:
         })
 
     def _write_message(self, payload: dict):
-        """负责 _write_message 的函数职责。"""
+        """把一条 JSON-RPC 消息写入 stdio，并立即刷新到子进程。"""
         process = self._process
         if process is None or process.stdin is None:
             raise RuntimeError("MCP server process is not running")
@@ -343,7 +347,7 @@ class StdioMCPServer:
         process.stdin.flush()
 
     def _read_stdout_loop(self):
-        """负责 _read_stdout_loop 的函数职责。"""
+        """持续读取子进程响应，并按请求 ID 投递给对应等待队列。"""
         process = self._process
         if process is None or process.stdout is None:
             return
@@ -367,7 +371,7 @@ class StdioMCPServer:
                 self._notifications.put(message)
 
     def _read_message(self, stream) -> dict | None:
-        """负责 _read_message 的函数职责。"""
+        """从 stdout 读取一条 JSON 消息；损坏输出不会作为有效响应。"""
         body = stream.readline()
         if not body:
             return None
@@ -377,7 +381,7 @@ class StdioMCPServer:
             return None
 
     def _read_stderr_loop(self):
-        """负责 _read_stderr_loop 的函数职责。"""
+        """保留有限长度的 stderr 尾部，便于诊断又避免无限占用内存。"""
         process = self._process
         if process is None or process.stderr is None:
             return
@@ -391,7 +395,7 @@ class StdioMCPServer:
                 self._stderr_tail = (self._stderr_tail + text)[-MAX_STDERR_CHARS:]
 
     def _validate_config(self):
-        """负责 _validate_config 的函数职责。"""
+        """启动前检查命令、参数、工作目录和环境变量是否在允许范围。"""
         command = self.config.command
         if command not in ALLOWED_COMMANDS:
             raise ValueError("MCP server command is not allowed")
@@ -437,7 +441,7 @@ class StdioMCPServer:
                 raise ValueError("MCP server database path is not allowed")
 
     def _normalize_tool(self, tool: dict) -> MCPToolSpec | None:
-        """负责 _normalize_tool 的函数职责。"""
+        """把外部 MCP 工具描述转换成项目统一的 MCPToolSpec。"""
         name = tool.get("name")
         if not isinstance(name, str) or not name:
             return None
@@ -469,7 +473,7 @@ class StdioMCPServer:
         )
 
     def _validate_tool_arguments(self, tool_name: str, arguments: dict) -> str | None:
-        """负责 _validate_tool_arguments 的函数职责。"""
+        """按工具 schema 检查参数类型和多余字段，再交给外部进程。"""
         if self.name != "sqlite":
             return None
 
@@ -490,7 +494,7 @@ class StdioMCPServer:
         return None
 
     def _validate_sqlite_query(self, sql: str) -> str | None:
-        """负责 _validate_sqlite_query 的函数职责。"""
+        """对 SQLite MCP 再做只读 SQL 检查，禁止写操作和多语句。"""
         stripped = sql.strip()
         if not stripped:
             return "sql is required"
@@ -508,7 +512,7 @@ class StdioMCPServer:
         return None
 
     def _get_cached_tool(self, tool_name: str) -> MCPToolSpec | None:
-        """负责 _get_cached_tool 的函数职责。"""
+        """从已发现工具缓存中取规范定义，避免相信 Agent 自带 schema。"""
         specs = self._tool_cache
         if specs is None:
             specs = self.list_tools()
@@ -519,7 +523,7 @@ class StdioMCPServer:
         return None
 
     def _normalize_tool_result(self, response: dict) -> dict:
-        """负责 _normalize_tool_result 的函数职责。"""
+        """把外部 content 数组整理成项目统一的结果结构。"""
         content = response.get("content")
         texts = []
         structured = response.get("structuredContent")
@@ -545,7 +549,7 @@ class StdioMCPServer:
         return result
 
     def _metadata(self, tool_name: str) -> dict:
-        """负责 _metadata 的函数职责。"""
+        """生成不包含命令和环境变量的 MCP 结果来源信息。"""
         return {
             "server": self.name,
             "tool": tool_name,
@@ -558,7 +562,7 @@ class StdioMCPServer:
         }
 
     def _error(self, message: str, tool_name: str) -> MCPToolResult:
-        """负责 _error 的函数职责。"""
+        """返回经过清理的稳定 MCP 失败结果。"""
         return MCPToolResult(
             ok=False,
             error=self._sanitize_text(message),
@@ -566,7 +570,7 @@ class StdioMCPServer:
         )
 
     def _sanitize_text(self, text: str | None) -> str | None:
-        """负责 _sanitize_text 的函数职责。"""
+        """截断并清理外部进程文本，避免过大结果进入 Agent 上下文。"""
         if text is None:
             return None
 

@@ -51,7 +51,6 @@ const sizeClasses: Record<DialogSize, string> = {
   lg: "w-[min(100%,var(--dialog-width-lg))]",
 };
 
-/** 用途：负责 Dialog 的界面或数据处理职责。 */
 export function Dialog({
   actions = [],
   children,
@@ -70,7 +69,6 @@ export function Dialog({
   const dialogRef = useRef<HTMLElement | null>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
-  /** 用途：负责 useEffect 的界面或数据处理职责。 */
   useEffect(() => {
     if (!isOpen) return;
 
@@ -86,7 +84,6 @@ export function Dialog({
       (preferred || focusable[0] || dialog)?.focus();
     }, 0);
 
-    /** 用途：负责 return 的界面或数据处理职责。 */
     return () => {
       previousFocusRef.current?.focus?.();
     };
@@ -94,11 +91,9 @@ export function Dialog({
 
   if (!isOpen) return null;
 
-  /** 用途：负责 handleKeyDown 的界面或数据处理职责。 */
   function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (event.key === "Escape" && !preventClose) {
       event.preventDefault();
-      /** 用途：负责 onClose 的界面或数据处理职责。 */
       onClose();
       return;
     }
@@ -124,7 +119,6 @@ export function Dialog({
     }
   }
 
-  /** 用途：负责 handleBackdropClick 的界面或数据处理职责。 */
   function handleBackdropClick() {
     if (!preventClose) onClose();
   }
@@ -183,7 +177,6 @@ export function Dialog({
   );
 }
 
-/** 用途：负责 getFocusable 的界面或数据处理职责。 */
 function getFocusable(root: HTMLElement | null): HTMLElement[] {
   if (!root) return [];
   return Array.from(root.querySelectorAll<HTMLElement>(focusableSelector));

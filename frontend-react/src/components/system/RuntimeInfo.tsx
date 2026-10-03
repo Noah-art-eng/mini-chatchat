@@ -9,11 +9,9 @@ type RuntimeInfoProps = {
   models: ModelsResponse | null;
 };
 
-/** 用途：负责 RuntimeInfo 的界面或数据处理职责。 */
 export function RuntimeInfo({ health, models }: RuntimeInfoProps) {
   const { t } = useI18n();
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <article className={`${systemCardClassName} system-wide-card col-span-full`}>
       <span className={systemBadgeClassName}>{t("settings.readonly")}</span>

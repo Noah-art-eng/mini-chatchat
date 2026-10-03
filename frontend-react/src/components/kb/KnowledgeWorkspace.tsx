@@ -51,7 +51,6 @@ type KnowledgeWorkspaceProps = {
   uploadStatus: string | null;
 };
 
-/** 用途：负责 KnowledgeWorkspace 的界面或数据处理职责。 */
 export function KnowledgeWorkspace({
   activeDocumentAction,
   documentActionStatus,
@@ -105,41 +104,30 @@ export function KnowledgeWorkspace({
     0
   );
 
-  /** 用途：负责 toggleDeveloperMode 的界面或数据处理职责。 */
   function toggleDeveloperMode() {
     if (isDeveloperMode) {
-      /** 用途：负责 setIsDeveloperMode 的界面或数据处理职责。 */
       setIsDeveloperMode(false);
       if (activeContextTab === "debug") {
-        /** 用途：负责 setActiveContextTab 的界面或数据处理职责。 */
         setActiveContextTab("document");
-        /** 用途：负责 setIsContextOpen 的界面或数据处理职责。 */
         setIsContextOpen(false);
       }
       return;
     }
 
     if (isDeveloperModeIntroSeen()) {
-      /** 用途：负责 setIsDeveloperMode 的界面或数据处理职责。 */
       setIsDeveloperMode(true);
       return;
     }
 
-    /** 用途：负责 setIsDeveloperIntroOpen 的界面或数据处理职责。 */
     setIsDeveloperIntroOpen(true);
   }
 
-  /** 用途：负责 confirmDeveloperMode 的界面或数据处理职责。 */
   function confirmDeveloperMode() {
-    /** 用途：负责 setDeveloperModeIntroSeen 的界面或数据处理职责。 */
     setDeveloperModeIntroSeen(true);
-    /** 用途：负责 setIsDeveloperMode 的界面或数据处理职责。 */
     setIsDeveloperMode(true);
-    /** 用途：负责 setIsDeveloperIntroOpen 的界面或数据处理职责。 */
     setIsDeveloperIntroOpen(false);
   }
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <section className="page-surface knowledge-workspace" aria-label={t("kb.title")}>
       <KnowledgeHeader />
@@ -245,15 +233,11 @@ export function KnowledgeWorkspace({
               isDeveloperMode={isDeveloperMode}
               isLoading={isLoading}
               onOpenDebug={() => {
-                /** 用途：负责 setActiveContextTab 的界面或数据处理职责。 */
                 setActiveContextTab("debug");
-                /** 用途：负责 setIsContextOpen 的界面或数据处理职责。 */
                 setIsContextOpen(true);
               }}
               onOpenDetails={() => {
-                /** 用途：负责 setActiveContextTab 的界面或数据处理职责。 */
                 setActiveContextTab("document");
-                /** 用途：负责 setIsContextOpen 的界面或数据处理职责。 */
                 setIsContextOpen(true);
               }}
               onRefreshDocuments={onRefreshDocuments}
@@ -279,11 +263,8 @@ export function KnowledgeWorkspace({
               onDownload={onDownloadDocument}
               onReindex={onReindexDocument}
               onSelectDocument={file => {
-                /** 用途：负责 setSelectedDocument 的界面或数据处理职责。 */
                 setSelectedDocument(file);
-                /** 用途：负责 setActiveContextTab 的界面或数据处理职责。 */
                 setActiveContextTab("document");
-                /** 用途：负责 setIsContextOpen 的界面或数据处理职责。 */
                 setIsContextOpen(true);
               }}
               selectedDocument={selectedDocumentFromList}

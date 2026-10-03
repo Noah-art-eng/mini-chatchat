@@ -6,7 +6,6 @@ type AgentTraceListProps = {
   trace: AgentTraceEvent[];
 };
 
-/** 用途：负责 AgentTraceList 的界面或数据处理职责。 */
 export function AgentTraceList({ trace }: AgentTraceListProps) {
   const { t } = useI18n();
 
@@ -14,7 +13,6 @@ export function AgentTraceList({ trace }: AgentTraceListProps) {
     return null;
   }
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <details className={agentStyles.card} open={false}>
       <summary>{t("agent.trace")}</summary>

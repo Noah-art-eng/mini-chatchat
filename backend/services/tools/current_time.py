@@ -5,7 +5,7 @@ from .types import ToolResult, ToolSpec
 
 
 def format_utc_offset(dt: datetime) -> str:
-    """负责 format_utc_offset 的函数职责。"""
+    """把时区偏移整理成前端和模型容易使用的 `+12:00` 形式。"""
     offset = dt.utcoffset()
     if offset is None:
         return "+00:00"
@@ -20,7 +20,11 @@ def format_utc_offset(dt: datetime) -> str:
 
 
 def execute_current_time(arguments: dict) -> ToolResult:
-    """负责 execute_current_time 的函数职责。"""
+    """返回当前时间；指定 IANA 时区时同时换算该地区时间。
+
+    时间查询使用系统时钟，不让模型猜测当前日期。无参数时回退到服务器本地
+    时区，非法时区则返回明确工具错误。
+    """
     timezone_name = arguments.get("timezone")
     now_utc = datetime.now(timezone.utc)
     now_local = datetime.now().astimezone()
@@ -82,7 +86,7 @@ def execute_current_time(arguments: dict) -> ToolResult:
 
 
 def get_current_time_tool() -> ToolSpec:
-    """负责 get_current_time_tool 的函数职责。"""
+    """声明当前时间工具和可选时区参数。"""
     return ToolSpec(
         name="current_time",
         description="Return the current UTC time and local time.",

@@ -63,7 +63,6 @@ export type OAuthProviderStatus = {
   } | null;
 };
 
-/** 用途：负责 registerWithEmail 的界面或数据处理职责。 */
 export function registerWithEmail(payload: {
   display_name?: string;
   email: string;
@@ -75,7 +74,6 @@ export function registerWithEmail(payload: {
   });
 }
 
-/** 用途：负责 loginWithEmail 的界面或数据处理职责。 */
 export function loginWithEmail(payload: { email: string; password: string }) {
   return requestJson<AuthResponse>("/auth/login", {
     method: "POST",
@@ -83,19 +81,16 @@ export function loginWithEmail(payload: { email: string; password: string }) {
   });
 }
 
-/** 用途：负责 getAuthMe 的界面或数据处理职责。 */
 export function getAuthMe() {
   return requestJson<AuthMeResponse>("/auth/me");
 }
 
-/** 用途：负责 refreshAuthSession 的界面或数据处理职责。 */
 export function refreshAuthSession() {
   return requestJson<AuthResponse>("/auth/refresh", {
     method: "POST"
   });
 }
 
-/** 用途：负责 logoutRequest 的界面或数据处理职责。 */
 export async function logoutRequest() {
   const response = await authFetch("/auth/logout", {
     method: "POST"
@@ -108,12 +103,10 @@ export async function logoutRequest() {
   return response.json() as Promise<{ message: string }>;
 }
 
-/** 用途：负责 getAuthPreferences 的界面或数据处理职责。 */
 export function getAuthPreferences() {
   return requestJson<{ preferences: AuthPreferences }>("/auth/preferences");
 }
 
-/** 用途：负责 updateAuthPreferences 的界面或数据处理职责。 */
 export function updateAuthPreferences(payload: Partial<AuthPreferences>) {
   return requestJson<{ preferences: AuthPreferences }>("/auth/preferences", {
     method: "PATCH",
@@ -121,12 +114,10 @@ export function updateAuthPreferences(payload: Partial<AuthPreferences>) {
   });
 }
 
-/** 用途：负责 getAuthAccount 的界面或数据处理职责。 */
 export function getAuthAccount() {
   return requestJson<{ user: AuthUser }>("/auth/account");
 }
 
-/** 用途：负责 updateAuthAccount 的界面或数据处理职责。 */
 export function updateAuthAccount(payload: { display_name: string }) {
   return requestJson<{ user: AuthUser }>("/auth/account", {
     method: "PATCH",
@@ -134,12 +125,10 @@ export function updateAuthAccount(payload: { display_name: string }) {
   });
 }
 
-/** 用途：负责 listAuthSessions 的界面或数据处理职责。 */
 export function listAuthSessions() {
   return requestJson<{ sessions: AccountSession[] }>("/auth/sessions");
 }
 
-/** 用途：负责 revokeAuthSession 的界面或数据处理职责。 */
 export function revokeAuthSession(sessionId: string) {
   return requestJson<{
     message: string;
@@ -150,7 +139,6 @@ export function revokeAuthSession(sessionId: string) {
   });
 }
 
-/** 用途：负责 logoutOtherSessions 的界面或数据处理职责。 */
 export function logoutOtherSessions() {
   return requestJson<{
     message: string;
@@ -160,7 +148,6 @@ export function logoutOtherSessions() {
   });
 }
 
-/** 用途：负责 logoutAllSessions 的界面或数据处理职责。 */
 export function logoutAllSessions() {
   return requestJson<{
     message: string;
@@ -170,12 +157,10 @@ export function logoutAllSessions() {
   });
 }
 
-/** 用途：负责 listOAuthProviders 的界面或数据处理职责。 */
 export function listOAuthProviders() {
   return requestJson<{ providers: OAuthProviderStatus[] }>("/auth/oauth/providers");
 }
 
-/** 用途：负责 startOAuthLink 的界面或数据处理职责。 */
 export function startOAuthLink(provider: string) {
   return requestJson<{
     authorization_url: string;
@@ -185,7 +170,6 @@ export function startOAuthLink(provider: string) {
   });
 }
 
-/** 用途：负责 unlinkOAuthProvider 的界面或数据处理职责。 */
 export function unlinkOAuthProvider(provider: string) {
   return requestJson<{
     message: string;

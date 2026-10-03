@@ -15,23 +15,20 @@ from .config import (
 
 
 class JWTError(Exception):
-    """负责 JWTError 的类职责。"""
+    """表示 JWT 格式、签名、签发方、有效期或类型校验失败。"""
     pass
 
 
 def _base64url_encode(raw_bytes: bytes):
-    """负责 _base64url_encode 的函数职责。"""
     return base64.urlsafe_b64encode(raw_bytes).rstrip(b"=").decode("ascii")
 
 
 def _base64url_decode(value: str):
-    """负责 _base64url_decode 的函数职责。"""
     padding = "=" * (-len(value) % 4)
     return base64.urlsafe_b64decode(f"{value}{padding}".encode("ascii"))
 
 
 def _json_encode(payload: dict[str, Any]):
-    """负责 _json_encode 的函数职责。"""
     return json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
 
@@ -40,7 +37,7 @@ def create_access_token(
     claims: dict[str, Any] | None = None,
     expires_in_minutes: int | None = None,
 ):
-    """负责 create_access_token 的函数职责。"""
+    """签发短期 access token，前端随后把它放入 API Authorization 请求头。"""
     now = int(time.time())
     expire_minutes = expires_in_minutes or get_access_token_expire_minutes()
     payload = {
@@ -60,7 +57,7 @@ def create_refresh_token(
     claims: dict[str, Any] | None = None,
     expires_in_days: int | None = None,
 ):
-    """负责 create_refresh_token 的函数职责。"""
+    """签发带 session_id 和唯一 jti 的 refresh token，用于数据库会话轮换。"""
     now = int(time.time())
     expire_days = expires_in_days or get_refresh_token_expire_days()
     payload = {
@@ -77,7 +74,6 @@ def create_refresh_token(
 
 
 def _encode_jwt(payload: dict[str, Any]):
-    """负责 _encode_jwt 的函数职责。"""
     header = {
         "alg": "HS256",
         "typ": "JWT",
@@ -96,7 +92,9 @@ def _encode_jwt(payload: dict[str, Any]):
 
 
 def decode_token(token: str):
-    """负责 decode_token 的函数职责。"""
+    """验证 JWT 签名、算法、签发方和过期时间，返回可信 payload。"""
+    # 先验证原始签名，再解析并检查声明。任何一步失败都统一抛出 JWTError，
+    # 上层认证依赖会把它转换成稳定的 401 响应。
     try:
         header_text, payload_text, signature_text = token.split(".", 2)
     except ValueError as exc:
@@ -136,7 +134,7 @@ def decode_token(token: str):
 
 
 def decode_access_token(token: str):
-    """负责 decode_access_token 的函数职责。"""
+    """在通用 JWT 校验后确认这是 access token。"""
     payload = decode_token(token)
 
     if payload.get("token_type") != "access":
@@ -146,7 +144,7 @@ def decode_access_token(token: str):
 
 
 def decode_refresh_token(token: str):
-    """负责 decode_refresh_token 的函数职责。"""
+    """在通用 JWT 校验后确认这是 refresh token。"""
     payload = decode_token(token)
 
     if payload.get("token_type") != "refresh":

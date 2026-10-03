@@ -14,7 +14,7 @@ MAX_RERANK_TOP_N = 20
 
 
 class ChatRequest(BaseModel):
-    """负责 ChatRequest 的类职责。"""
+    """旧 `/chat` 接口的问答参数和模型生成选项。"""
 
     question: str
     conversation_id: int | None = None
@@ -29,19 +29,19 @@ class ChatRequest(BaseModel):
 
 
 class CreateKBRequest(BaseModel):
-    """负责 CreateKBRequest 的类职责。"""
+    """创建知识库时由客户端提交的名称。"""
 
     kb_name: str
 
 
 class SwitchKBRequest(BaseModel):
-    """负责 SwitchKBRequest 的类职责。"""
+    """切换当前用户后端 KB 状态时提交的目标名称。"""
 
     kb_name: str
 
 
 class SearchDocsRequest(BaseModel):
-    """负责 SearchDocsRequest 的类职责。"""
+    """直接查看知识库检索结果时使用的查询参数。"""
 
     query: str
     top_k: int = Field(default=3, ge=1, le=MAX_TOP_K)
@@ -49,14 +49,14 @@ class SearchDocsRequest(BaseModel):
 
 
 class ReindexFileRequest(BaseModel):
-    """负责 ReindexFileRequest 的类职责。"""
+    """重新索引文件时使用的文本块大小和重叠设置。"""
 
     chunk_size: int = Field(default=300, gt=0)
     chunk_overlap: int = Field(default=50, ge=0)
 
 
 class FileChatRequest(BaseModel):
-    """负责 FileChatRequest 的类职责。"""
+    """兼容旧临时文件问答接口的请求参数。"""
 
     query: str
     temp_kb_id: str
@@ -67,7 +67,7 @@ class FileChatRequest(BaseModel):
 
 
 class KBChatRequest(BaseModel):
-    """负责 KBChatRequest 的类职责。"""
+    """RAG 主入口参数，统一 local_kb、temp_kb 和 search_engine 三种模式。"""
 
     query: str
     mode: str = "local_kb"
@@ -90,7 +90,7 @@ class KBChatRequest(BaseModel):
 
 
 class OpenAIChatCompletionRequest(BaseModel):
-    """负责 OpenAIChatCompletionRequest 的类职责。"""
+    """OpenAI-compatible `/chat/completions` 接口接受的最小请求结构。"""
 
     model: str = get_default_chat_model()
     messages: list
@@ -101,7 +101,7 @@ class OpenAIChatCompletionRequest(BaseModel):
 
 
 class FeedbackRequest(BaseModel):
-    """负责 FeedbackRequest 的类职责。"""
+    """用户对一条助手消息提交的评分和可选原因。"""
 
     message_id: int
     score: int
@@ -109,19 +109,19 @@ class FeedbackRequest(BaseModel):
 
 
 class ConversationUpdateRequest(BaseModel):
-    """负责 ConversationUpdateRequest 的类职责。"""
+    """重命名会话时提交的新标题。"""
 
     title: str
 
 
 class ToolRunRequest(BaseModel):
-    """负责 ToolRunRequest 的类职责。"""
+    """直接调试一个已注册工具时传入的参数字典。"""
 
     arguments: dict = {}
 
 
 class AgentToolCallRequest(BaseModel):
-    """负责 AgentToolCallRequest 的类职责。"""
+    """Agent 单步、多步和 Planner 路由共用的执行请求。"""
 
     query: str
     kb_name: str | None = "default"
@@ -131,7 +131,7 @@ class AgentToolCallRequest(BaseModel):
 
 
 class AuthEmailPasswordRequest(BaseModel):
-    """负责 AuthEmailPasswordRequest 的类职责。"""
+    """邮箱注册和登录共用的凭据结构。"""
 
     email: str
     password: str
@@ -139,7 +139,7 @@ class AuthEmailPasswordRequest(BaseModel):
 
 
 class AuthPreferencesUpdateRequest(BaseModel):
-    """负责 AuthPreferencesUpdateRequest 的类职责。"""
+    """允许前端按字段更新当前用户偏好。"""
 
     language: str | None = None
     developer_mode: bool | None = None
@@ -149,11 +149,9 @@ class AuthPreferencesUpdateRequest(BaseModel):
 
 
 class AuthAccountUpdateRequest(BaseModel):
-    """负责 AuthAccountUpdateRequest 的类职责。"""
+    """当前账号允许修改的公开资料；额外字段会被拒绝。"""
 
     display_name: str | None = None
 
     class Config:
-        """负责 Config 的类职责。"""
-
         extra = "forbid"

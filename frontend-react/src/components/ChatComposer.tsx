@@ -13,7 +13,6 @@ type ChatComposerProps = {
   onSubmit: () => void;
 };
 
-/** 用途：负责 ChatComposer 的界面或数据处理职责。 */
 export function ChatComposer({
   disabledReason,
   input,
@@ -25,15 +24,12 @@ export function ChatComposer({
   const { t } = useI18n();
   const disabled = isSending || input.trim().length === 0 || Boolean(disabledReason);
 
-  /** 用途：负责 handleSubmit 的界面或数据处理职责。 */
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (disabled) return;
-    /** 用途：负责 onSubmit 的界面或数据处理职责。 */
     onSubmit();
   }
 
-  /** 用途：负责 handleKeyDown 的界面或数据处理职责。 */
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
@@ -41,7 +37,6 @@ export function ChatComposer({
     }
   }
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <form className={chatStyles.composer} onSubmit={handleSubmit}>
       {disabledReason && <p className={chatStyles.composerWarning}>{disabledReason}</p>}

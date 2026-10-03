@@ -14,7 +14,6 @@ type EmailPasswordFormProps = {
   }) => Promise<void>;
 };
 
-/** 用途：负责 EmailPasswordForm 的界面或数据处理职责。 */
 export function EmailPasswordForm({
   error,
   isLoading = false,
@@ -27,7 +26,6 @@ export function EmailPasswordForm({
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  /** 用途：负责 handleSubmit 的界面或数据处理职责。 */
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await onSubmit({
@@ -37,7 +35,6 @@ export function EmailPasswordForm({
     });
   }
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <form className="auth-form grid gap-mc-4" onSubmit={handleSubmit}>
       {mode === "register" && (

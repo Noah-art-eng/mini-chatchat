@@ -9,7 +9,6 @@ type KnowledgeBaseListProps = {
   onSelectKnowledgeBase: (kbName: string) => void;
 };
 
-/** 用途：负责 KnowledgeBaseList 的界面或数据处理职责。 */
 export function KnowledgeBaseList({
   currentKb,
   isLoading,
@@ -18,7 +17,6 @@ export function KnowledgeBaseList({
 }: KnowledgeBaseListProps) {
   const { t } = useI18n();
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <>
       <div className="kb-list flex max-h-[280px] min-w-0 flex-col gap-mc-2 overflow-y-auto [grid-area:list] max-[900px]:grid max-[900px]:grid-cols-[repeat(auto-fit,minmax(180px,1fr))]" data-testid="kb-list">

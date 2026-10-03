@@ -3,21 +3,15 @@ import { useI18n } from "../../i18n";
 import { Icon } from "../ui";
 import { agentStyles } from "./agentStyles";
 
-/** 用途：负责 EmptyAgentState 的界面或数据处理职责。 */
 export function EmptyAgentState() {
   const { t } = useI18n();
   const examples = [
-    /** 用途：负责 t 的界面或数据处理职责。 */
     t("onboarding.agentExampleTime"),
-    /** 用途：负责 t 的界面或数据处理职责。 */
     t("onboarding.agentExampleNews"),
-    /** 用途：负责 t 的界面或数据处理职责。 */
     t("onboarding.agentExampleReadme"),
-    /** 用途：负责 t 的界面或数据处理职责。 */
     t("onboarding.agentExampleKnowledge")
   ];
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <section className={agentStyles.empty}>
       <div className="empty-state-icon" aria-hidden="true">

@@ -12,7 +12,6 @@ type ChatHeaderProps = {
   tempFileName: string | null;
 };
 
-/** 用途：负责 ChatHeader 的界面或数据处理职责。 */
 export function ChatHeader({
   activeModeDescription,
   activeModeLabel,
@@ -24,7 +23,6 @@ export function ChatHeader({
 }: ChatHeaderProps) {
   const { t } = useI18n();
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <header className={chatStyles.header}>
       <div>

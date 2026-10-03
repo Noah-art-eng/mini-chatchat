@@ -10,7 +10,6 @@ type FeedbackControlsProps = {
   feedbackScore?: number | null;
 };
 
-/** 用途：负责 FeedbackControls 的界面或数据处理职责。 */
 export function FeedbackControls({
   messageId,
   feedbackScore
@@ -27,7 +26,6 @@ export function FeedbackControls({
         : null
   );
 
-  /** 用途：负责 submitFeedback 的界面或数据处理职责。 */
   async function submitFeedback(score: 1 | -1) {
     if (!messageId || isSaving) return;
 
@@ -36,32 +34,24 @@ export function FeedbackControls({
         ? window.prompt(t("feedback.reasonPrompt")) || null
         : null;
 
-    /** 用途：负责 setIsSaving 的界面或数据处理职责。 */
     setIsSaving(true);
     try {
       await sendMessageFeedback(messageId, score, reason);
-      /** 用途：负责 updateMessageFeedback 的界面或数据处理职责。 */
       updateMessageFeedback(messageId, score);
-      /** 用途：负责 setStatus 的界面或数据处理职责。 */
       setStatus(score === 1 ? t("feedback.liked") : t("feedback.disliked"));
-      /** 用途：负责 showToast 的界面或数据处理职责。 */
       showToast({
         message: score === 1 ? t("feedback.liked") : t("feedback.disliked"),
         variant: "success"
       });
     } catch (error) {
       console.error(error);
-      /** 用途：负责 setStatus 的界面或数据处理职责。 */
       setStatus(t("feedback.failed"));
-      /** 用途：负责 showToast 的界面或数据处理职责。 */
       showToast({ message: t("feedback.failed"), variant: "error" });
     } finally {
-      /** 用途：负责 setIsSaving 的界面或数据处理职责。 */
       setIsSaving(false);
     }
   }
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div className={chatStyles.feedback}>
       <button

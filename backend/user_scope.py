@@ -16,27 +16,27 @@ RESERVED_DATA_DIRS = {
 
 
 def get_user_slug(user_id=None):
-    """负责 get_user_slug 的函数职责。"""
+    """把数据库 user_id 转成稳定目录名；访客统一落到 demo 范围。"""
     return DEMO_USER_SLUG if user_id is None else f"user_{user_id}"
 
 
 def get_user_root(user_id=None):
-    """负责 get_user_root 的函数职责。"""
+    """返回当前用户全部运行数据的根目录。"""
     return os.path.join(USERS_ROOT, get_user_slug(user_id))
 
 
 def get_user_kb_root(user_id=None):
-    """负责 get_user_kb_root 的函数职责。"""
+    """返回当前用户的正式知识库目录，隔离不同用户的文件和索引。"""
     return os.path.join(get_user_root(user_id), "knowledge_bases")
 
 
 def get_user_temp_root(user_id=None):
-    """负责 get_user_temp_root 的函数职责。"""
+    """返回当前用户的临时知识库目录。"""
     return os.path.join(get_user_root(user_id), "temp")
 
 
 def ensure_user_directories(user_id=None):
-    """负责 ensure_user_directories 的函数职责。"""
+    """在第一次访问用户范围时补齐正式知识库和临时目录。"""
     for path in (
         get_user_root(user_id),
         get_user_kb_root(user_id),
@@ -46,7 +46,7 @@ def ensure_user_directories(user_id=None):
 
 
 def is_legacy_kb_directory(path, name):
-    """负责 is_legacy_kb_directory 的函数职责。"""
+    """识别旧版本直接放在 data 根目录下的知识库结构。"""
     if name in RESERVED_DATA_DIRS:
         return False
 
@@ -60,7 +60,7 @@ def is_legacy_kb_directory(path, name):
 
 
 def migrate_legacy_demo_files():
-    """负责 migrate_legacy_demo_files 的函数职责。"""
+    """把旧版 demo 数据复制到新的用户隔离目录，同时保留原文件作兼容。"""
     ensure_user_directories()
 
     if not os.path.isdir(DATA_ROOT):

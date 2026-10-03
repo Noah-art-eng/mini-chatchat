@@ -71,16 +71,15 @@ def get_embedding_model(model_name: str) -> SentenceTransformer:
 
 
 class MiniKBService:
-    """
-    Service layer that owns knowledge-base files, chunks, indexes, and search state.
+    """管理一个用户知识库的文件、文本块、检索索引和持久化状态。
 
-    Directory layout (ChatChat-style):
+    每个实例只处理一个 user + kb_name，并使用独立目录：
         data/users/{user}/knowledge_bases/{kb_name}/content/
         data/users/{user}/knowledge_bases/{kb_name}/uploads/
         data/users/{user}/knowledge_bases/{kb_name}/vector_store/
 
-    Route and import/export workflows also use the service's resolved directory
-    paths when moving uploaded files into the knowledge-base layout.
+    上传、重建和删除共用同一把进程内锁，避免同一知识库的文件、索引和数据库映射
+    在并发修改时互相覆盖。初始化时优先加载已有快照；快照不可信时再安全重建。
     """
 
     def __init__(
@@ -91,6 +90,7 @@ class MiniKBService:
         chunk_overlap: int = 50,
         user_id=None,
     ):
+        """创建只属于一个 user_id 和 kb_name 的知识库服务，并加载可用索引快照。"""
         migrate_legacy_demo_files()
         self.kb_name = kb_name
         self.user_id = user_id
@@ -127,6 +127,8 @@ class MiniKBService:
 
         chunks_exists = os.path.exists(self.chunks_file_path)
 
+        # 读取和重建都放在同一 KB 锁内。已有快照必须通过数量、结构和 digest 校验；
+        # 不能证明一致时宁可重新生成，也不让 chunks 与 FAISS 位置静默错配。
         with self.mutation_lock:
             if chunks_exists:
                 try:
@@ -145,10 +147,12 @@ class MiniKBService:
 
     @property
     def index_file_path(self) -> str:
+        """返回当前知识库正式 FAISS 索引文件路径。"""
         return os.path.join(self.vector_store_path, "index.faiss")
 
     @property
     def chunks_file_path(self) -> str:
+        """返回与 FAISS 位置一一对应的 chunks.json 路径。"""
         return os.path.join(self.vector_store_path, "chunks.json")
 
     @property
@@ -157,6 +161,7 @@ class MiniKBService:
         return os.path.join(self.vector_store_path, "metadata.json")
 
     def _get_file_chunks(self, filename: str) -> list:
+        """从当前内存文本块中筛出指定来源文件的内容。"""
         return [
             chunk
             for chunk in self.chunks
@@ -164,6 +169,7 @@ class MiniKBService:
         ]
     
     def get_chunk_by_id(self, chunk_id: int) -> dict:
+        """按一位起始编号读取文本块，并确认它属于指定文件。"""
         for chunk in self.chunks:
             if chunk.get("chunk_id") == chunk_id:
                 return {
@@ -185,6 +191,7 @@ class MiniKBService:
         content_path: str | None = None,
         upload_path: str | None = None,
     ) -> None:
+        """把文件大小、处理状态和 chunk_id 映射同步到当前用户的 SQLite 记录。"""
         file_chunks = self._get_file_chunks(filename)
 
         upsert_file_record(
@@ -212,6 +219,7 @@ class MiniKBService:
             )
 
     def sync_files_to_db(self):
+        """扫描 content 目录，把现有文件状态同步到数据库。"""
         self.rebuild_and_sync()
 
     # ------------------------------------------------------------------
@@ -219,10 +227,12 @@ class MiniKBService:
     # ------------------------------------------------------------------
 
     def load_documents(self) -> list:
+        """兼容旧调用：读取全部 content 文档；生产重建走分批文本块路径。"""
         self.documents = load_documents(self.content_path)
         return self.documents
 
     def split_documents(self) -> list:
+        """兼容旧调用：按当前 chunk_size 和 overlap 切分传入文档。"""
         self.chunks = split_documents(
             self.documents,
             chunk_size=self.chunk_size,
@@ -232,8 +242,14 @@ class MiniKBService:
         return self.chunks
 
     def save_vector_store(self) -> None:
+        """把 chunks、FAISS 和 metadata 依次写入正式快照文件。
+
+        每个文件先完整写到同目录 staging，再用 `os.replace()` 切换。metadata 最后
+        写入并记录正式文件 digest，下一次加载或增量复用时才能确认三者属于同一内容。
+        """
         os.makedirs(self.vector_store_path, exist_ok=True)
 
+        # chunks.json 只保存检索和来源展示需要的稳定字段，不写入临时运行状态。
         chunks_metadata = [
             {
                 "text": chunk.get("text", ""),
@@ -243,6 +259,7 @@ class MiniKBService:
             for chunk in self.chunks
         ]
 
+        # 先完整写 staging 并刷到磁盘，再替换正式 chunks.json。写入失败时旧文件仍在。
         chunks_staging = None
         try:
             with tempfile.NamedTemporaryFile(
@@ -262,12 +279,14 @@ class MiniKBService:
             _remove_staging_file(chunks_staging)
             raise
 
+        # 空知识库没有 FAISS 索引；清掉旧 index 后仍写 metadata 描述这个空快照。
         if self.index is None:
             if os.path.exists(self.index_file_path):
                 os.remove(self.index_file_path)
             self._save_vector_metadata()
             return
 
+        # FAISS 同样写入同目录 staging，完整成功后才替换正式 index.faiss。
         index_staging = None
         try:
             with tempfile.NamedTemporaryFile(
@@ -399,9 +418,12 @@ class MiniKBService:
             return False
 
     def load_vector_store(self) -> None:
+        """加载磁盘快照，并在投入检索前验证 chunks、FAISS 和 metadata 一致。"""
+        # chunks 是取回原文和来源的基准，后面的 FAISS position 必须与其下标一致。
         with open(self.chunks_file_path, "r", encoding="utf-8") as file:
             self.chunks = json.load(file)
 
+        # 空快照允许没有 index，但如果旧 index 仍含向量就说明持久化状态不一致。
         if not self.chunks:
             if os.path.exists(self.index_file_path):
                 loaded_index = faiss.read_index(self.index_file_path)
@@ -424,6 +446,7 @@ class MiniKBService:
             self._build_bm25_index()
             return
 
+        # 非空 chunks 必须同时有等量 FAISS 向量，否则不能冒险投入检索。
         if not os.path.exists(self.index_file_path):
             raise ValueError("FAISS index is missing for non-empty chunks")
 
@@ -432,6 +455,7 @@ class MiniKBService:
         if self.index.ntotal != len(self.chunks):
             raise ValueError("FAISS index and chunks count mismatch")
 
+        # metadata 存在时继续校验字段和 SHA-256，防止同数量的不同代文件静默配对。
         self.documents = []
         self.vector_metadata = self._load_vector_metadata()
         if os.path.exists(self.metadata_file_path):
@@ -447,6 +471,11 @@ class MiniKBService:
         self._build_bm25_index()
 
     def build_index(self) -> None:
+        """从 content 文本重新生成文本块、BM25 状态和 FAISS 向量索引。
+
+        文件按稳定顺序切块，embedding 按批次写入 IndexFlatL2。完成后只更新内存状态；
+        调用方随后进入 `save_vector_store()` 落盘，并在需要时同步数据库文件映射。
+        """
         try:
             all_files = os.listdir(self.content_path)
         except FileNotFoundError:
@@ -454,8 +483,8 @@ class MiniKBService:
 
         txt_files = [f for f in all_files if f.endswith(".txt")]
 
-        # rebuild 直接从 content 文件生成最终 chunks，避免同时保留完整
-        # documents 正文集合和 chunks 两份大文本。
+        # rebuild 从 content 文件滑动读取并直接生成最终文本块，避免同时持有完整正文
+        # 和完整文本块两份大数据。接下来先建立 BM25，再分批写入 FAISS。
         self.documents = []
         self.chunks = load_and_split_documents(
             self.content_path,
@@ -465,6 +494,8 @@ class MiniKBService:
         self._build_bm25_index()
 
         if self.chunks:
+            # build_faiss_index() 会按批次计算 embedding，并依次加入 IndexFlatL2；
+            # 文本块顺序与 FAISS 位置保持一致，检索结果才能按下标取回原文。
             self.index, self.vectors = build_faiss_index(
                 self.chunks, self.model
             )
@@ -529,6 +560,8 @@ class MiniKBService:
 
     def _load_reusable_snapshot(self):
         """从磁盘读取并严格校验旧 Chunk、向量和 metadata。"""
+        # 增量重建只有在模型、维度、分块参数和文件摘要全部兼容时才复用旧向量。
+        # 任一字段无法确认就返回 None，让上层退回全量重建。
         metadata = self._load_vector_metadata()
         if metadata is None or not self._metadata_schema_is_valid(metadata):
             return None
@@ -622,6 +655,8 @@ class MiniKBService:
 
     def _build_incremental_index(self) -> bool:
         """复用未变化 source 的旧向量，并只为变化 source 调用模型。"""
+        # 先加载通过摘要和结构校验的旧快照。旧格式、损坏文件或配置变化都会返回
+        # False，由 rebuild_index() 改走完整 build_index()，不会冒险复用未知向量。
         snapshot = self._load_reusable_snapshot()
         if snapshot is None:
             return False
@@ -630,6 +665,8 @@ class MiniKBService:
         new_chunks = []
         new_index = None
 
+        # 按稳定文件顺序重新组装索引。未变化文件直接重建旧向量，变化或新增文件才
+        # 重新切块和计算 embedding；已经删除的文件不会出现在新循环中。
         for source in self._content_sources():
             source_hash = self._source_sha256(source)
             source_metadata = metadata["sources"].get(source)
@@ -662,6 +699,8 @@ class MiniKBService:
                 ):
                     new_index = self._add_vectors(new_index, vectors)
 
+            # 无论向量来自复用还是重算，chunk_id 都按当前最终顺序重新编号，保证
+            # chunks.json、FAISS 位置和数据库 file_doc 映射继续一一对应。
             for chunk in source_chunks:
                 chunk["chunk_id"] = len(new_chunks) + 1
                 new_chunks.append(chunk)
@@ -669,6 +708,8 @@ class MiniKBService:
         if new_index is not None and new_index.ntotal != len(new_chunks):
             return False
 
+        # 新索引数量必须与文本块数量一致。确认后再替换内存状态并重建 BM25；
+        # rebuild_index() 随后才把完整快照写入磁盘。
         self.documents = []
         self.chunks = new_chunks
         self.index = new_index
@@ -678,9 +719,15 @@ class MiniKBService:
         return True
 
     def _tokenize_for_bm25(self, text: str) -> list[str]:
+        """把文本转成小写词元，供当前轻量 BM25 统计使用。"""
         return TOKEN_PATTERN.findall((text or "").lower())
 
     def _build_bm25_index(self) -> None:
+        """根据全部文本块重建 BM25 的词频、IDF 和平均长度。
+
+        BM25 需要看到整个文本块集合才能计算文档频率，因此索引重建时仍集中构造
+        这部分统计。完成后 search_docs() 才能走关键词候选路线。
+        """
         self._bm25_docs = []
         self._bm25_doc_freqs = Counter()
         self._bm25_idf = {}
@@ -691,6 +738,7 @@ class MiniKBService:
 
         total_length = 0
 
+        # 第一遍记录每个文本块的词频，同时统计一个词出现于多少个文本块。
         for chunk in self.chunks:
             tokens = self._tokenize_for_bm25(chunk.get("text", ""))
             token_counts = Counter(tokens)
@@ -707,12 +755,14 @@ class MiniKBService:
         doc_count = len(self._bm25_docs)
         self._bm25_avgdl = total_length / doc_count if doc_count else 0.0
 
+        # 文档频率转换成 IDF；越少见的词在关键词检索中权重越高。
         for token, doc_freq in self._bm25_doc_freqs.items():
             self._bm25_idf[token] = math.log(
                 1 + (doc_count - doc_freq + 0.5) / (doc_freq + 0.5)
             )
 
     def _bm25_score(self, query_tokens: list[str], chunk_index: int) -> float:
+        """计算一个文本块对查询词的 BM25 分数；分数越高表示关键词越相关。"""
         if not query_tokens or not self._bm25_docs:
             return 0.0
 
@@ -742,6 +792,7 @@ class MiniKBService:
         return score
 
     def _metadata_matches(self, chunk: dict, metadata_filter: dict | None) -> bool:
+        """检查文本块是否满足本次来源文件过滤条件。"""
         if not metadata_filter:
             return True
 
@@ -757,6 +808,7 @@ class MiniKBService:
         return True
 
     def _filtered_chunk_indexes(self, metadata_filter: dict | None) -> list[int]:
+        """返回本次 metadata_filter 允许参与检索的文本块编号。"""
         return [
             index
             for index, chunk in enumerate(self.chunks)
@@ -769,6 +821,7 @@ class MiniKBService:
         candidate_k: int,
         allowed_indexes: set[int],
     ) -> dict[int, float]:
+        """只在允许范围内计算 BM25，并保留得分最高的 candidate_k 个候选。"""
         query_tokens = self._tokenize_for_bm25(query)
 
         if not query_tokens:
@@ -793,15 +846,31 @@ class MiniKBService:
         allowed_indexes: set[int],
         metadata_filter: dict | None = None,
     ) -> dict[int, float]:
+        """执行 Hybrid Search 中的 FAISS 向量召回。
+
+        `search_docs()` 把 query 和候选范围交给这里。本函数把问题转换成向量，使用
+        IndexFlatL2 找出相近的文本块，再把 vector_candidates 返回给 `search_docs()`。
+        """
         if self.index is None or not self.chunks:
             return {}
 
+        # 第一步把用户问题 query 交给 embedding 模型，得到可供 FAISS 搜索的向量。
         query_vector = self.model.encode([query])
         query_vector = np.array(query_vector).astype("float32")
+
+        # search_k 是本次实际让 FAISS 搜多少个。没有 metadata_filter 时，只需搜索
+        # candidate_k 个；有过滤条件时，当前索引不能直接按 allowed_indexes 搜索，
+        # 所以先扩大到全部文本块，再在下面过滤，避免漏掉指定文件中的相关内容。
         search_k = len(self.chunks) if metadata_filter else candidate_k
+
+        # 接下来进入 FAISS IndexFlatL2。indexes 是命中的文本块编号，distances 是
+        # 相同位置对应的 L2 距离；L2 距离越小，表示向量越相似。
         distances, indexes = self.index.search(query_vector, search_k)
         candidates = {}
 
+        # 下面依次清理 FAISS 返回值：-1 表示没有有效结果；不在 allowed_indexes 中的
+        # 文本块不属于本次检索范围；超过 score_threshold 的结果距离太远。这里的
+        # score_threshold 实际是 L2 距离阈值，因此数值越小越严格。
         for i, raw_index in enumerate(indexes[0]):
             chunk_index = int(raw_index)
 
@@ -827,6 +896,7 @@ class MiniKBService:
         bm25_score: float,
         hybrid_score: float,
     ) -> dict:
+        """把文本块、两路分数和综合分整理成对外检索结果。"""
         chunk = self.chunks[chunk_index]
 
         return {
@@ -840,6 +910,7 @@ class MiniKBService:
         }
 
     def _dedup_key(self, result: dict) -> tuple:
+        """优先用来源与 chunk_id 标识结果；旧数据缺少编号时回退到文本摘要。"""
         source = result.get("source") or ""
         chunk_id = result.get("chunk_id")
 
@@ -854,6 +925,7 @@ class MiniKBService:
 
     def _deduplicate_results(self, results: list[dict]) -> list[dict]:
         # 混合检索候选可能指向同一 source/chunk，只保留综合分最高的一项。
+        """合并两路召回中的同一文本块，保留综合分最高项并重新编号。"""
         deduped_by_key = {}
 
         for result in results:
@@ -884,8 +956,10 @@ class MiniKBService:
     def rebuild_index(self) -> None:
         """优先复用兼容旧向量，无法证明兼容时执行保守的全量 rebuild。"""
         with self.mutation_lock:
+            # 增量路径只有在旧快照可证明兼容时返回 True，否则完整重算全部文本块。
             if not self._build_incremental_index():
                 self.build_index()
+            # 内存中的 chunks、FAISS、BM25 全部完成后再写正式快照。
             self.save_vector_store()
 
     def _sync_current_mappings(self, file_overrides=None) -> None:
@@ -914,6 +988,8 @@ class MiniKBService:
     def rebuild_and_sync(self, file_overrides=None) -> None:
         """在同一 KB 锁内完成全量 rebuild、落盘和数据库映射同步。"""
         with self.mutation_lock:
+            # 文件快照成功落盘后才同步 SQLite 映射，锁覆盖两步，避免同一进程中的
+            # 上传、删除和重建交错。它不提供跨进程或跨 SQLite/文件系统的事务。
             self.rebuild_index()
             self._sync_current_mappings(file_overrides=file_overrides)
 
@@ -924,22 +1000,31 @@ class MiniKBService:
         score_threshold: float = 0.8,
         metadata_filter: dict | None = None,
     ) -> list:
-        """
-        Hybrid-search the knowledge base with FAISS + lightweight BM25.
-        Returns an empty list when the KB has no documents yet.
+        """知识库 Hybrid Search 的入口，最终返回最多 top_k 个结果。
+
+        `run_kb_chat()` 把用户问题交给这里。本函数先确定允许检索的文本块范围，
+        再依次取得 FAISS 和 BM25 候选。两路召回完成后，程序回到这里继续处理结果。
         """
         if self.index is None or not self.chunks:
             return []
 
+        # allowed_indexes 是本次允许参与检索的文本块编号。默认包含整个知识库；
+        # metadata_filter 存在时，只保留指定范围。后面的两路召回都使用这个范围。
         allowed_indexes = set(self._filtered_chunk_indexes(metadata_filter))
 
         if not allowed_indexes:
             return []
 
+        # top_k 是最终希望返回多少条。candidate_k 是 FAISS 和 BM25 各自先找多少个
+        # 候选。这里先扩大候选池，但不超过本次实际允许检索的文本块数量。
         candidate_k = min(
             len(allowed_indexes),
             max(top_k * 4, 10),
         )
+
+        # 程序先进入 _vector_candidates() 做 FAISS 向量召回。返回的
+        # vector_candidates 是“文本块编号 -> L2 距离”。回到这里后，再进入
+        # _bm25_candidates() 做 BM25 关键词召回。
         vector_candidates = self._vector_candidates(
             query,
             candidate_k,
@@ -1009,6 +1094,7 @@ class MiniKBService:
         }
 
     def list_documents(self) -> list:
+        """合并数据库文件状态与磁盘现状，返回知识库页面需要的文件列表。"""
         return list_file_records(self.kb_name, user_id=self.user_id)
 
     def delete_document(self, filename: str) -> dict:
@@ -1039,6 +1125,7 @@ class MiniKBService:
         content_path=None,
         upload_path=None,
     ):
+        """保存单个文件的状态和 chunk 映射，供兼容上传流程使用。"""
         self._persist_file_to_db(
             filename,
             file_size,

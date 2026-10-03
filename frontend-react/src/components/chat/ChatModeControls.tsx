@@ -29,7 +29,6 @@ const modeTones = {
   temp_kb: "file"
 } as const;
 
-/** 用途：负责 ChatModeControls 的界面或数据处理职责。 */
 export function ChatModeControls({
   chatMode,
   kbName,
@@ -41,7 +40,6 @@ export function ChatModeControls({
 }: ChatModeControlsProps) {
   const { t } = useI18n();
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div className={chatStyles.controls} aria-label={t("app.currentMode")}>
       <div className={chatStyles.controlRow}>

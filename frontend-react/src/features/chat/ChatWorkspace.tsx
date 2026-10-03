@@ -76,7 +76,10 @@ type ChatWorkspaceProps = {
   visibleAgentResult: AgentRunResponse | null;
 };
 
-/** 用途：负责 ChatWorkspace 的界面或数据处理职责。 */
+/**
+ * 渲染聊天主区域、Composer 和右侧详情面板。
+ * 组件只组织界面状态；发送请求和持久化仍由上层 ChatArea 与 Hook 负责。
+ */
 export function ChatWorkspace({
   activeModeDescription,
   activeModeLabel,
@@ -126,19 +129,15 @@ export function ChatWorkspace({
   const [isDeveloperMode, setIsDeveloperMode] = useState(false);
   const [isDeveloperIntroOpen, setIsDeveloperIntroOpen] = useState(false);
 
-  /** 用途：负责 useEffect 的界面或数据处理职责。 */
   useEffect(() => {
     if (!isDeveloperMode && detailsTab === "debug") {
-      /** 用途：负责 onChangeDetailsTab 的界面或数据处理职责。 */
       onChangeDetailsTab("sources");
-      /** 用途：负责 setIsContextOpen 的界面或数据处理职责。 */
       setIsContextOpen(false);
     }
   }, [detailsTab, isDeveloperMode, onChangeDetailsTab]);
 
-  /** 用途：负责 useEffect 的界面或数据处理职责。 */
   useEffect(() => {
-    /** 用途：负责 handleShortcut 的界面或数据处理职责。 */
+    // Escape 关闭详情面板；“/”或 Cmd/Ctrl+L 把焦点交回 Composer，输入控件内不会抢快捷键。
     function handleShortcut(event: KeyboardEvent) {
       const target = event.target;
       const isTyping =
@@ -149,7 +148,6 @@ export function ChatWorkspace({
 
       if (event.key === "Escape" && isContextOpen) {
         event.preventDefault();
-        /** 用途：负责 setIsContextOpen 的界面或数据处理职责。 */
         setIsContextOpen(false);
         return;
       }
@@ -172,53 +170,39 @@ export function ChatWorkspace({
     }
 
     window.addEventListener("keydown", handleShortcut);
-    /** 用途：负责 return 的界面或数据处理职责。 */
     return () => window.removeEventListener("keydown", handleShortcut);
   }, [isContextOpen]);
 
-  /** 用途：负责 openDetails 的界面或数据处理职责。 */
   function openDetails(tab: DetailsTab) {
-    /** 用途：负责 onChangeDetailsTab 的界面或数据处理职责。 */
     onChangeDetailsTab(tab);
-    /** 用途：负责 setIsContextOpen 的界面或数据处理职责。 */
     setIsContextOpen(true);
   }
 
-  /** 用途：负责 toggleDeveloperMode 的界面或数据处理职责。 */
+  /** Developer Mode 首次开启前展示说明，关闭时同时收起只对开发者开放的检索调试页。 */
   function toggleDeveloperMode() {
     if (isDeveloperMode) {
-      /** 用途：负责 setIsDeveloperMode 的界面或数据处理职责。 */
       setIsDeveloperMode(false);
       if (detailsTab === "debug") {
-        /** 用途：负责 onChangeDetailsTab 的界面或数据处理职责。 */
         onChangeDetailsTab("sources");
-        /** 用途：负责 setIsContextOpen 的界面或数据处理职责。 */
         setIsContextOpen(false);
       }
       return;
     }
 
     if (isDeveloperModeIntroSeen()) {
-      /** 用途：负责 setIsDeveloperMode 的界面或数据处理职责。 */
       setIsDeveloperMode(true);
       return;
     }
 
-    /** 用途：负责 setIsDeveloperIntroOpen 的界面或数据处理职责。 */
     setIsDeveloperIntroOpen(true);
   }
 
-  /** 用途：负责 confirmDeveloperMode 的界面或数据处理职责。 */
   function confirmDeveloperMode() {
-    /** 用途：负责 setDeveloperModeIntroSeen 的界面或数据处理职责。 */
     setDeveloperModeIntroSeen(true);
-    /** 用途：负责 setIsDeveloperMode 的界面或数据处理职责。 */
     setIsDeveloperMode(true);
-    /** 用途：负责 setIsDeveloperIntroOpen 的界面或数据处理职责。 */
     setIsDeveloperIntroOpen(false);
   }
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <section className={chatStyles.area} aria-label={t("chat.title")}>
       <ChatHeader
@@ -333,9 +317,7 @@ export function ChatWorkspace({
               <ChatMessageList
                 messages={messages}
                 onOpenAssistantSources={messageId => {
-                  /** 用途：负责 onOpenAssistantSources 的界面或数据处理职责。 */
                   onOpenAssistantSources(messageId);
-                  /** 用途：负责 setIsContextOpen 的界面或数据处理职责。 */
                   setIsContextOpen(true);
                 }}
                 onSelectAssistantMessage={onSelectAssistantMessage}

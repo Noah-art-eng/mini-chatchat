@@ -18,9 +18,7 @@ type ToolResultProps = {
   toolName: string;
 };
 
-/** 用途：负责 renderCalculatorResult 的界面或数据处理职责。 */
 function renderCalculatorResult(result: Record<string, unknown>, t: Translate) {
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div className={agentStyles.fields}>
       <div className={agentStyles.field}>
@@ -35,25 +33,19 @@ function renderCalculatorResult(result: Record<string, unknown>, t: Translate) {
   );
 }
 
-/** 用途：负责 renderKbSearchResult 的界面或数据处理职责。 */
 function renderKbSearchResult(result: Record<string, unknown>, t: Translate) {
   const sources = Array.isArray(result.sources) ? result.sources : [];
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div className={agentStyles.observationList}>
       {sources.length === 0 && <p className="muted">{t("agent.noSources")}</p>}
       {sources.slice(0, 5).map((source, index) => {
         const item = isRecord(source) ? source : {};
         const score =
-          /** 用途：负责 asNumber 的界面或数据处理职责。 */
           asNumber(item.hybrid_score) ??
-          /** 用途：负责 asNumber 的界面或数据处理职责。 */
           asNumber(item.score) ??
-          /** 用途：负责 asNumber 的界面或数据处理职责。 */
           asNumber(item.distance);
 
-        /** 用途：负责 return 的界面或数据处理职责。 */
         return (
           <article className={agentStyles.observationItem} key={index}>
             <strong>
@@ -71,12 +63,10 @@ function renderKbSearchResult(result: Record<string, unknown>, t: Translate) {
   );
 }
 
-/** 用途：负责 renderSqliteResult 的界面或数据处理职责。 */
 function renderSqliteResult(result: Record<string, unknown>, t: Translate) {
   const columns = Array.isArray(result.columns) ? result.columns : [];
   const rows = Array.isArray(result.rows) ? result.rows : [];
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div className="agent-sqlite-result">
       <div className={agentStyles.fields}>
@@ -98,9 +88,7 @@ function renderSqliteResult(result: Record<string, unknown>, t: Translate) {
   );
 }
 
-/** 用途：负责 renderFilesystemResult 的界面或数据处理职责。 */
 function renderFilesystemResult(result: Record<string, unknown>, t: Translate) {
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div className="agent-filesystem-result">
       <div className={agentStyles.fields}>
@@ -122,9 +110,7 @@ function renderFilesystemResult(result: Record<string, unknown>, t: Translate) {
   );
 }
 
-/** 用途：负责 renderBrowserReadResult 的界面或数据处理职责。 */
 function renderBrowserReadResult(result: Record<string, unknown>, t: Translate) {
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div className="agent-browser-read-result">
       <div className={agentStyles.fields}>
@@ -150,11 +136,9 @@ function renderBrowserReadResult(result: Record<string, unknown>, t: Translate) 
   );
 }
 
-/** 用途：负责 renderBrowserSearchResult 的界面或数据处理职责。 */
 function renderBrowserSearchResult(result: Record<string, unknown>, t: Translate) {
   const results = Array.isArray(result.results) ? result.results : [];
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div className={agentStyles.observationList}>
       {results.length === 0 && <p className="muted">{t("agent.noSearchResults")}</p>}
@@ -162,7 +146,6 @@ function renderBrowserSearchResult(result: Record<string, unknown>, t: Translate
         const record = isRecord(item) ? item : {};
         const url = asText(record.url);
 
-        /** 用途：负责 return 的界面或数据处理职责。 */
         return (
           <article className={agentStyles.observationItem} key={`${url}-${index}`}>
             <strong>{asText(record.title) || t("sources.source", { index: index + 1 })}</strong>
@@ -179,7 +162,6 @@ function renderBrowserSearchResult(result: Record<string, unknown>, t: Translate
   );
 }
 
-/** 用途：负责 renderToolResultByName 的界面或数据处理职责。 */
 function renderToolResultByName(
   toolName: string,
   value: unknown,
@@ -199,12 +181,10 @@ function renderToolResultByName(
   return <pre>{formatJson(value)}</pre>;
 }
 
-/** 用途：负责 ToolResult 的界面或数据处理职责。 */
 export function ToolResult({ result, toolName }: ToolResultProps) {
   const { t } = useI18n();
   const toolVisual = getToolVisualByName(toolName);
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div data-testid="agent-step-result">
       <strong className={agentStyles.title}>

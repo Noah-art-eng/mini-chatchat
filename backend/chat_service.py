@@ -53,7 +53,7 @@ def get_metadata_filter(request):
 
 
 def is_safe_temp_kb_id(temp_kb_id: str) -> bool:
-    """负责 is_safe_temp_kb_id 的函数职责。"""
+    """拒绝能逃出临时知识库目录的编号，只允许单段安全名称。"""
     return (
         bool(temp_kb_id)
         and ".." not in temp_kb_id
@@ -63,12 +63,12 @@ def is_safe_temp_kb_id(temp_kb_id: str) -> bool:
 
 
 def get_temp_root_path(user_id=None):
-    """负责 get_temp_root_path 的函数职责。"""
+    """返回当前用户独立的临时知识库根目录。"""
     return get_user_temp_root(user_id)
 
 
 def get_temp_kb_service(temp_kb_id: str, user_id=None):
-    """负责 get_temp_kb_service 的函数职责。"""
+    """取得当前用户临时知识库的 MiniKBService，不允许跨用户复用缓存对象。"""
     migrate_legacy_demo_files()
 
     if not is_safe_temp_kb_id(temp_kb_id):
@@ -105,12 +105,17 @@ def build_streaming_response(
     save_assistant=None,
     source_type="local_kb",
 ):
-    """负责 build_streaming_response 的函数职责。"""
+    """把 RAG 回答转换成前端消费的 sources/token/error/done SSE 事件。
+
+    函数先确定真正进入 Prompt 的 context_results，并把同一批结果作为 Sources。
+    流结束后才持久化助手消息；中途失败时也保存已经生成的部分回答，使刷新前后
+    看到的内容一致。
+    """
     def event_stream():
-        # SSE Sources 与真正进入 Prompt 的 Context chunk 保持一致。
-        """负责 event_stream 的函数职责。"""
+        """执行模型流并按固定顺序发送 RAG SSE 事件。"""
         answer_parts = []
         stream_failed = False
+        # build_context() 同时返回最终文本和实际采用的文本块，避免 Sources 引用被预算截掉的结果。
         context, context_results = build_context(results, return_results=True)
         sources_event = {
             "type": "sources",
@@ -199,7 +204,9 @@ def get_context_and_sources(results):
 
 
 def run_local_kb_chat(request, kb_service, client, user_id=None):
-    """负责 run_local_kb_chat 的函数职责。"""
+    """兼容旧 /chat：检索当前 MiniKBService，生成回答并保存会话消息。"""
+    # 先建立或校验当前用户的会话，再执行知识库检索。旧接口与 /kb_chat 一样保持
+    # conversation ownership，不能通过会话编号读取或追加其他用户的数据。
     conversation_id = request.conversation_id
 
     if conversation_id is None:
@@ -218,6 +225,7 @@ def run_local_kb_chat(request, kb_service, client, user_id=None):
     save_message(conversation_id, "user", request.question, user_id=user_id)
     history = get_conversation_messages(conversation_id, user_id=user_id)
 
+    # 直接返回模式到检索结果为止，不进入 Context 和 LLM。
     if request.return_direct:
         return {
             "conversation_id": conversation_id,
@@ -227,6 +235,7 @@ def run_local_kb_chat(request, kb_service, client, user_id=None):
             "return_direct": True
         }
 
+    # 流式模式把后续 Context、SSE 和助手消息保存交给统一构造函数。
     if request.stream:
         return build_streaming_response(
             request.question,
@@ -252,6 +261,7 @@ def run_local_kb_chat(request, kb_service, client, user_id=None):
             source_type="local_kb",
         )
 
+    # 非流式模式只用预算内的 context_results 生成答案和 Sources。
     context, context_results = get_context_and_sources(results)
 
     try:
@@ -292,7 +302,8 @@ def run_local_kb_chat(request, kb_service, client, user_id=None):
 
 
 def run_temp_kb_chat(request, client, user_id=None):
-    """负责 run_temp_kb_chat 的函数职责。"""
+    """兼容旧 /file_chat：按 temp_kb_id 检索隔离索引并生成回答。"""
+    # temp_kb_id 会和 user_id 一起查找服务，避免不同用户猜到编号后共享临时文件。
     temp_service = get_temp_kb_service(request.temp_kb_id, user_id=user_id)
 
     if temp_service is None:
@@ -310,6 +321,7 @@ def run_temp_kb_chat(request, client, user_id=None):
     save_message(conversation_id, "user", request.query, user_id=user_id)
     history = get_conversation_messages(conversation_id, user_id=user_id)
 
+    # 临时知识库与正式知识库从这里汇入相同 SSE 构造流程，只改变来源语义。
     if request.stream:
         return build_streaming_response(
             request.query,
@@ -333,6 +345,7 @@ def run_temp_kb_chat(request, client, user_id=None):
             source_type="temp_kb",
         )
 
+    # 非流式回答仍然以实际进入 Context 的结果作为最终 Sources。
     context, context_results = get_context_and_sources(results)
 
     try:
@@ -400,27 +413,22 @@ def get_rerank_model(service):
 
 
 def get_rerank_candidate_count(top_k, rerank_top_n):
-    """计算送入 Rerank 的初检索候选数量。
+    """计算开启 Rerank 时，粗检索阶段需要先找多少条结果。
 
-    top_k 是不开启 Rerank 时希望检索返回的数量，rerank_top_n 是精排后最终
-    保留的数量。开启 Rerank 时先召回两者较大值的 4 倍，让精排能从更多文本块
-    中挑选。返回的 retrieval_top_k 只是粗检索候选数量，不是最终回答使用的数量，
-    也不参与 FAISS/BM25 的相关性分数计算。
+    top_k 是普通检索希望返回的数量，rerank_top_n 是 Rerank 后希望保留的数量。
+    这里取两者较大值的 4 倍，让后面的 Rerank 有更大的候选池可供重新排序。
     """
     return max(int(top_k), int(rerank_top_n)) * 4
 
 def run_kb_chat(request, client, user_id=None):
-    """编排 RAG 问答：选择数据源、维护对话记录、检索并生成回答。
+    """编排一轮 RAG 问答。
 
-    conversation_id 指向数据库中保存连续消息的对话记录；service 是当前知识库的
-    MiniKBService；results 是检索得到、随后可供 Rerank 和 Prompt 使用的文本块。
-    `local_kb`、`temp_kb` 和 `search_engine` 的数据源不同，因此先分流，得到统一
-    结构的 results 后再汇合到回答/SSE 流程。user_id 始终参与知识库归属、对话
-    校验和消息读写，避免不同用户之间共享状态。
+    `kb_chat()` 把前端请求交给这里。程序依次选择数据源、准备会话、执行检索和
+    可选 Rerank，然后继续生成回答。普通响应和 SSE 响应也从这里返回给路由层。
     """
     if request.mode == "local_kb":
-        # local_kb 使用用户长期保存的知识库。这里先确认知识库归属并取得
-        # MiniKBService；会话准备完成后，再用这个服务对象进入 search_docs()。
+        # local_kb 使用用户长期保存的知识库。这里先检查知识库是否属于当前用户，
+        # 再取得负责该知识库检索的 MiniKBService。验证完成后继续准备会话。
         service = get_local_kb_service(request.kb_name, user_id=user_id)
 
         if service is None:
@@ -430,8 +438,8 @@ def run_kb_chat(request, client, user_id=None):
 
         mode_meta = {"kb_name": request.kb_name}
     elif request.mode == "temp_kb":
-        # temp_kb 来自临时文件问答。这里先验证临时 ID，再按 user_id 取得对应的
-        # MiniKBService；后续与正式知识库一样进入 search_docs()，但不会混用目录。
+        # temp_kb 使用临时文件生成的知识库。这里先检查临时知识库 ID，再取得属于
+        # 当前用户的 MiniKBService。验证完成后继续准备会话。
         if not request.temp_kb_id:
             return {
                 "error": "temp_kb_id is required for temp_kb mode"
@@ -446,8 +454,8 @@ def run_kb_chat(request, client, user_id=None):
 
         mode_meta = {"temp_kb_id": request.temp_kb_id}
     elif request.mode == "search_engine":
-        # search_engine 不读取本地知识库，因此不创建 MiniKBService；会话准备完成后，
-        # 程序会进入 search_web() 获取联网搜索结果，并整理成统一的 results。
+        # search_engine 不读取知识库，因此不需要 MiniKBService。这里完成模式准备后，
+        # 先与其他模式汇合处理会话，稍后再进入 search_web()。
         service = None
         mode_meta = {}
     else:
@@ -455,9 +463,8 @@ def run_kb_chat(request, client, user_id=None):
             "error": "invalid mode"
         }
 
-    # 三种合法模式在上面只完成各自的数据源校验和服务对象准备；确认数据源可用后才统一
-    # 确定消息写入哪个对话。没有 conversation_id 就创建新对话，复用已有对话时则校验
-    # 用户归属，防止读取或追加其他用户的消息。
+    # 三种模式的数据源已经准备完成，现在汇合处理会话。没有 conversation_id 就创建
+    # 新会话；已有 ID 必须属于当前用户。验证通过后，本轮问题才能写入这段会话。
     conversation_id = request.conversation_id
 
     if conversation_id is None:
@@ -467,22 +474,20 @@ def run_kb_chat(request, client, user_id=None):
             "error": "conversation not found"
         }
 
-    # 用户归属确认后，先保存本轮问题，再读取完整历史消息；这些消息会在检索完成后
-    # 与知识库上下文一起交给 LLM，因此当前问题也必须包含在历史中。
+    # 先保存用户本轮问题，再读取这段会话的历史消息。检索完成后，回答流程会继续
+    # 使用这些历史消息。
     save_message(conversation_id, "user", request.query, user_id=user_id)
     history = get_conversation_messages(conversation_id, user_id=user_id)
 
-    # response_meta 记录本次回答属于哪个对话、模式和数据源；流式响应时会随 SSE 的
-    # sources 事件发给前端，避免 Sources 被关联到错误的会话或知识库。
+    # 记录本轮使用的会话、模式和数据源。后面的响应流程会用这些信息关联前端状态。
     response_meta = {
         "conversation_id": conversation_id,
         "mode": request.mode,
         **mode_meta,
     }
 
-    # 三种模式从这里重新汇合。top_k 是普通检索希望返回的数量；开启 Rerank 后，
-    # retrieval_top_k 会扩大为粗检索候选池，让后面的精排有足够结果可选。它不是
-    # 最终回答数量，真正保留多少条由后面的 rerank_top_n 决定。
+    # top_k 是普通检索希望返回多少条。开启 Rerank 时，retrieval_top_k 表示粗检索
+    # 先多找多少条候选；它不是最终结果数量，后面的 Rerank 会再缩小结果集。
     retrieval_top_k = (
         get_rerank_candidate_count(request.top_k, request.rerank_top_n)
         if request.rerank
@@ -490,15 +495,15 @@ def run_kb_chat(request, client, user_id=None):
     )
 
     if request.mode == "search_engine":
-        # 搜索引擎模式进入 search_web() 执行联网搜索，返回统一结构的候选 results；
-        # 调用结束后回到这里，与两种知识库模式共同进入可选的 Rerank。
+        # 联网模式从这里进入 search_web()。它返回搜索结果后，程序回到这里，继续
+        # 执行与知识库模式相同的可选 Rerank。
         results = search_web(
             request.query,
             top_k=retrieval_top_k
         )
     else:
-        # local_kb 和 temp_kb 在这里进入 MiniKBService.search_docs()，由它执行
-        # FAISS + BM25 混合检索并返回候选文本块；调用结束后回到这里继续 Rerank。
+        # 知识库模式从这里进入 MiniKBService.search_docs()。search_docs() 会先走
+        # FAISS 和 BM25 两路召回；执行完成后回到这里，继续处理可选的 Rerank。
         results = service.search_docs(
             request.query,
             top_k=retrieval_top_k,
@@ -508,9 +513,8 @@ def run_kb_chat(request, client, user_id=None):
         )
 
     if request.rerank:
-        # 前面的混合检索或联网搜索只负责找出一批候选结果。开启 Rerank 后，这里
-        # 根据用户问题与候选文本块的余弦相似度重新排序，只保留 rerank_top_n 条；
-        # 随后这些结果会继续用于构建最终上下文并生成回答。
+        # 前一步只得到粗检索候选。开启 Rerank 后，这里重新计算用户问题与候选文本块
+        # 的相关性并排序，只保留 rerank_top_n 条。完成后继续进入回答生成流程。
         rerank_model = get_rerank_model(service)
 
         if rerank_model is not None:
@@ -522,6 +526,8 @@ def run_kb_chat(request, client, user_id=None):
             )
 
     if request.return_direct:
+        # return_direct 只把召回结果交给调用方，不构建 Prompt，也不调用 LLM。
+        # 这个分支用于直接检查检索结果，因此 Sources 保留当前 results。
         response = {
             "question": request.query,
             "answer": "",
@@ -541,6 +547,8 @@ def run_kb_chat(request, client, user_id=None):
         return response
 
     if request.stream:
+        # 流式模式从这里进入 build_streaming_response()。后者会构建 Context，调用
+        # LLM 流式接口，发送 Sources/token/error/done，并在结束时保存助手消息。
         save_assistant = None
 
         if conversation_id is not None:
@@ -568,9 +576,13 @@ def run_kb_chat(request, client, user_id=None):
             source_type=request.mode,
         )
 
+    # 非流式模式先确定真正送入 Prompt 的 Context。context_results 只包含预算内实际
+    # 采用的文本块，后面的 Sources 和数据库 metadata 都使用同一份结果。
     context, context_results = get_context_and_sources(results)
 
     try:
+        # 这里进入 rag.generate_answer() 构造 Prompt 并调用 LLM。调用失败时只使用
+        # 已进入 Context 的第一段内容回退，不把未采用的召回结果冒充回答依据。
         answer = generate_answer(
             request.query,
             results,
@@ -586,6 +598,7 @@ def run_kb_chat(request, client, user_id=None):
     except Exception:
         answer = get_fallback_answer(context_results)
 
+    # 回答生成完成后组装对外响应。Sources 与上面的 context_results 保持一致。
     response = {
         "question": request.query,
         "answer": answer,
@@ -594,6 +607,7 @@ def run_kb_chat(request, client, user_id=None):
     }
 
     if conversation_id is not None:
+        # 助手回答和 Sources 一起保存。页面刷新后，历史消息可以恢复当时展示的来源。
         assistant_message_id = save_message(
             conversation_id,
             "assistant",
@@ -625,7 +639,11 @@ def create_temp_kb_from_upload(
     chunk_overlap=50,
     user_id=None,
 ):
-    """从已完成大小校验的 staging 文件创建临时知识库。"""
+    """从已完成大小校验的 staging 文件创建一次会话使用的临时知识库。
+
+    临时文件仍走“安装原文件 → 解析标准文本 → 创建 MiniKBService”的主流程，
+    但目录和服务对象按 user_id + temp_kb_id 隔离，不写入正式知识库列表。
+    """
     filename = validate_filename(filename or "uploaded.txt")
     migrate_legacy_demo_files()
 
@@ -643,6 +661,7 @@ def create_temp_kb_from_upload(
     content_path = os.path.join(temp_kb_path, "content")
     vector_store_path = os.path.join(temp_kb_path, "vector_store")
 
+    # 先准备该临时知识库自己的 uploads、content 和 vector_store 目录。
     try:
         for path in (
             upload_path,
@@ -651,6 +670,7 @@ def create_temp_kb_from_upload(
         ):
             os.makedirs(path, exist_ok=True)
 
+        # staging 完整安装后再解析，避免一次性把上传内容重新读回内存。
         original_path = safe_join(upload_path, filename, field_name="filename")
         install_staged_file(staged_path, original_path)
 
@@ -658,6 +678,7 @@ def create_temp_kb_from_upload(
         txt_path = safe_join(content_path, txt_filename, field_name="filename")
         parse_file_to_text_file(original_path, txt_path)
 
+        # 服务对象按用户和临时编号保存。后续 temp_kb 问答只能取得自己的实例。
         temp_kb_services[(user_id, temp_kb_id)] = MiniKBService(
             temp_kb_id,
             root_path=temp_root_path,
@@ -666,6 +687,7 @@ def create_temp_kb_from_upload(
             user_id=user_id,
         )
     except Exception:
+        # 任一阶段失败都撤掉服务注册和半成品目录，不让失败上传留下可访问状态。
         temp_kb_services.pop((user_id, temp_kb_id), None)
         shutil.rmtree(temp_kb_path, ignore_errors=True)
         raise

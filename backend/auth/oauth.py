@@ -33,7 +33,11 @@ _oauth_states: dict[str, dict] = {}
 
 @dataclass(frozen=True)
 class OAuthProfile:
-    """负责 OAuthProfile 的类职责。"""
+    """统一表示第三方登录平台返回的用户身份。
+
+    Google 和 GitHub 的字段名称不同。后续账号查找、绑定和创建用户只依赖
+    这个统一结构，不需要重复判断平台响应格式。
+    """
     provider: str
     provider_user_id: str
     email: str
@@ -42,7 +46,7 @@ class OAuthProfile:
 
 
 def cleanup_oauth_states():
-    """负责 cleanup_oauth_states 的函数职责。"""
+    """清理已经过期的一次性 OAuth state，避免旧授权请求长期留在内存。"""
     now = time.time()
     expired = [
         state
@@ -54,19 +58,18 @@ def cleanup_oauth_states():
 
 
 def base64_urlsafe_digest(value: bytes):
-    """负责 base64_urlsafe_digest 的函数职责。"""
     return base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
 
 
 def create_pkce_pair():
-    """负责 create_pkce_pair 的函数职责。"""
+    """生成 OAuth PKCE 校验值，防止授权码被其他客户端截获后直接使用。"""
     verifier = secrets.token_urlsafe(64)
     challenge = base64_urlsafe_digest(hashlib.sha256(verifier.encode("ascii")).digest())
     return verifier, challenge
 
 
 def get_provider_metadata(provider: str):
-    """负责 get_provider_metadata 的函数职责。"""
+    """返回 Google 或 GitHub 的固定 OAuth 端点和授权范围。"""
     if provider == "google":
         return {
             "name": "google",
@@ -94,13 +97,12 @@ def get_provider_metadata(provider: str):
 
 
 def is_localhost_url(url: str):
-    """负责 is_localhost_url 的函数职责。"""
     parsed = urllib.parse.urlparse(url)
     return parsed.hostname in {"127.0.0.1", "localhost"}
 
 
 def validate_redirect_uri(url: str):
-    """负责 validate_redirect_uri 的函数职责。"""
+    """限制 OAuth 回调使用 HTTPS；本地开发地址允许使用 HTTP。"""
     parsed = urllib.parse.urlparse(url)
     if parsed.scheme == "https":
         return
@@ -112,7 +114,7 @@ def validate_redirect_uri(url: str):
 
 
 def get_oauth_provider(provider: str):
-    """负责 get_oauth_provider 的函数职责。"""
+    """合并平台固定信息和环境配置，并标出该平台当前是否可用。"""
     if provider not in OAUTH_PROVIDERS:
         raise HTTPException(status_code=404, detail="oauth provider not found")
 
@@ -129,7 +131,7 @@ def get_oauth_provider(provider: str):
 
 
 def public_provider_status(user_id: int | None = None):
-    """负责 public_provider_status 的函数职责。"""
+    """生成前端可见的平台状态，同时隐藏 client secret 等敏感配置。"""
     providers = []
     for provider_name in sorted(OAUTH_PROVIDERS):
         provider = get_oauth_provider(provider_name)
@@ -149,7 +151,11 @@ def public_provider_status(user_id: int | None = None):
 
 
 def create_oauth_authorization(provider_name: str, mode="login", user_id=None):
-    """负责 create_oauth_authorization 的函数职责。"""
+    """创建登录或绑定账号所需的授权地址。
+
+    state 把本次请求的模式、用户和 PKCE verifier 暂存在服务端。回调时只有
+    state 能匹配的请求才会继续，避免回调被伪造或串到另一个用户。
+    """
     provider = get_oauth_provider(provider_name)
     if not provider["configured"]:
         raise HTTPException(status_code=503, detail="oauth provider is not configured")
@@ -193,7 +199,7 @@ def create_oauth_authorization(provider_name: str, mode="login", user_id=None):
 
 
 def pop_oauth_state(state: str | None, provider_name: str):
-    """负责 pop_oauth_state 的函数职责。"""
+    """取出并立即消费一次性 state，重复回调不能再次使用同一授权请求。"""
     cleanup_oauth_states()
     if not state:
         raise HTTPException(status_code=400, detail="oauth state missing")
@@ -206,7 +212,11 @@ def pop_oauth_state(state: str | None, provider_name: str):
 
 
 def request_json(url: str, data=None, headers=None, method=None):
-    """负责 request_json 的函数职责。"""
+    """请求 OAuth 平台并把响应统一转成字典。
+
+    平台不可用和异常响应在这里转换成稳定的网关错误，路由层不会把底层网络
+    异常直接返回给客户端。GitHub 可能返回表单格式，因此保留兼容解析。
+    """
     body = None
     request_headers = headers or {}
     if data is not None:
@@ -245,7 +255,7 @@ def request_json(url: str, data=None, headers=None, method=None):
 
 
 def exchange_code_for_token(provider_name: str, code: str, code_verifier: str):
-    """负责 exchange_code_for_token 的函数职责。"""
+    """用授权码和本次 PKCE verifier 换取平台 access token。"""
     provider = get_oauth_provider(provider_name)
     payload = {
         "client_id": provider["client_id"],
@@ -263,7 +273,7 @@ def exchange_code_for_token(provider_name: str, code: str, code_verifier: str):
 
 
 def get_google_profile(access_token: str):
-    """负责 get_google_profile 的函数职责。"""
+    """读取 Google 用户资料，并转换成统一的 OAuthProfile。"""
     data = request_json(
         get_provider_metadata("google")["userinfo_url"],
         headers={"Authorization": f"Bearer {access_token}"},
@@ -282,7 +292,7 @@ def get_google_profile(access_token: str):
 
 
 def get_github_primary_email(access_token: str):
-    """负责 get_github_primary_email 的函数职责。"""
+    """在 GitHub 邮箱列表中优先选择已验证的主邮箱。"""
     provider = get_provider_metadata("github")
     emails = request_json(
         provider["emails_url"],
@@ -305,7 +315,7 @@ def get_github_primary_email(access_token: str):
 
 
 def get_github_profile(access_token: str):
-    """负责 get_github_profile 的函数职责。"""
+    """读取 GitHub 用户资料；公开资料没有邮箱时再查询邮箱接口。"""
     data = request_json(
         get_provider_metadata("github")["userinfo_url"],
         headers={
@@ -327,7 +337,7 @@ def get_github_profile(access_token: str):
 
 
 def get_provider_profile(provider_name: str, token_response: dict):
-    """负责 get_provider_profile 的函数职责。"""
+    """根据平台选择资料接口，返回后续账号流程使用的统一身份。"""
     access_token = token_response.get("access_token")
     if not access_token:
         raise HTTPException(status_code=502, detail="oauth provider token missing")
@@ -341,7 +351,7 @@ def get_provider_profile(provider_name: str, token_response: dict):
 
 
 def ensure_provider_profile(profile: OAuthProfile):
-    """负责 ensure_provider_profile 的函数职责。"""
+    """确认第三方身份包含稳定用户编号和邮箱，缺失时停止账号绑定。"""
     if not profile.provider_user_id or profile.provider_user_id == "None":
         raise HTTPException(status_code=400, detail="oauth provider user id missing")
     if not profile.email:
@@ -349,7 +359,12 @@ def ensure_provider_profile(profile: OAuthProfile):
 
 
 def resolve_or_create_oauth_user(profile: OAuthProfile):
-    """负责 resolve_or_create_oauth_user 的函数职责。"""
+    """把第三方身份解析为 Mini ChatChat 用户。
+
+    先按第三方账号查找，其次按邮箱合并已有用户，最后才创建新用户。这个顺序
+    可以避免同一身份生成重复账号，同时拒绝把一个平台账号覆盖到错误用户上。
+    """
+    # 已绑定的平台账号直接登录，并刷新平台侧可能变化的头像和显示名称。
     ensure_provider_profile(profile)
     existing_oauth = get_oauth_account(profile.provider, profile.provider_user_id)
     if existing_oauth:
@@ -366,6 +381,7 @@ def resolve_or_create_oauth_user(profile: OAuthProfile):
         )
         return get_user_by_id(user["id"])
 
+    # 首次使用该平台时，优先复用相同邮箱的本地账号。
     existing_user = get_user_by_email(profile.email)
     if existing_user:
         if not existing_user.get("is_active"):
@@ -383,6 +399,7 @@ def resolve_or_create_oauth_user(profile: OAuthProfile):
         )
         return get_user_by_id(existing_user["id"])
 
+    # 两种查找都没有命中才创建用户，并同时准备用户自己的 default 知识库。
     user = create_user(
         email=profile.email,
         display_name=profile.display_name or profile.email,
@@ -405,7 +422,7 @@ def resolve_or_create_oauth_user(profile: OAuthProfile):
 
 
 def link_oauth_profile(user_id: int, profile: OAuthProfile):
-    """负责 link_oauth_profile 的函数职责。"""
+    """把第三方身份绑定到当前用户，并阻止跨用户抢占已有绑定。"""
     ensure_provider_profile(profile)
     existing_oauth = get_oauth_account(profile.provider, profile.provider_user_id)
     if existing_oauth and int(existing_oauth["user_id"]) != int(user_id):
@@ -436,7 +453,7 @@ def link_oauth_profile(user_id: int, profile: OAuthProfile):
 
 
 def unlink_oauth_provider(user_id: int, provider_name: str):
-    """负责 unlink_oauth_provider 的函数职责。"""
+    """解除一个第三方登录方式，但不允许删除用户最后一种登录方式。"""
     if provider_name not in OAUTH_PROVIDERS:
         raise HTTPException(status_code=404, detail="oauth provider not found")
 
@@ -456,7 +473,12 @@ def complete_oauth_callback(
     request: Request,
     response: Response,
 ):
-    """负责 complete_oauth_callback 的函数职责。"""
+    """完成 OAuth 回调中的校验、换 token、取资料和登录或绑定。
+
+    前面的授权入口保存了 state 和 PKCE verifier。这里消费它们后进入平台接口，
+    最后只有登录模式会创建本站 session；绑定模式只更新当前用户的登录方式。
+    """
+    # 先验证回调确实对应本站发起且尚未消费的授权请求。
     state_record = pop_oauth_state(state, provider_name)
     token_response = exchange_code_for_token(
         provider_name,
@@ -465,6 +487,7 @@ def complete_oauth_callback(
     )
     profile = get_provider_profile(provider_name, token_response)
 
+    # 绑定模式不创建新登录会话，只把平台身份接到 state 中记录的当前用户。
     if state_record["mode"] == "link":
         account = link_oauth_profile(int(state_record["user_id"]), profile)
         return {
@@ -473,6 +496,7 @@ def complete_oauth_callback(
             "user": get_user_by_id(int(state_record["user_id"])),
         }
 
+    # 登录模式解析或创建用户，然后进入统一 session 创建流程。
     user = resolve_or_create_oauth_user(profile)
     access_token, expires_in, session_id = create_login_session(user, request, response)
     return {
@@ -485,7 +509,6 @@ def complete_oauth_callback(
 
 
 def oauth_success_redirect(mode: str):
-    """负责 oauth_success_redirect 的函数职责。"""
     target = "/account" if mode == "link" else "/chat"
     query = urllib.parse.urlencode({
         "oauth": "success",
@@ -495,7 +518,6 @@ def oauth_success_redirect(mode: str):
 
 
 def oauth_error_redirect(message: str):
-    """负责 oauth_error_redirect 的函数职责。"""
     query = urllib.parse.urlencode({
         "oauth_error": message,
     })

@@ -6,7 +6,6 @@ import { useAuth } from "./AuthContext";
 import { Link, useNavigate } from "../router";
 import { useI18n } from "../i18n";
 
-/** 用途：负责 RegisterPage 的界面或数据处理职责。 */
 export function RegisterPage() {
   const auth = useAuth();
   const { t } = useI18n();
@@ -14,31 +13,24 @@ export function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  /** 用途：负责 handleSubmit 的界面或数据处理职责。 */
   async function handleSubmit(payload: {
     displayName?: string;
     email: string;
     password: string;
   }) {
-    /** 用途：负责 setIsSubmitting 的界面或数据处理职责。 */
     setIsSubmitting(true);
-    /** 用途：负责 setError 的界面或数据处理职责。 */
     setError(null);
 
     try {
       await auth.register(payload);
-      /** 用途：负责 navigate 的界面或数据处理职责。 */
       navigate("/chat", { replace: true });
     } catch {
-      /** 用途：负责 setError 的界面或数据处理职责。 */
       setError(t("auth.registerFailed"));
     } finally {
-      /** 用途：负责 setIsSubmitting 的界面或数据处理职责。 */
       setIsSubmitting(false);
     }
   }
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <main className="auth-page flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,rgba(86,140,112,0.12),transparent_34%),var(--color-bg-app)] p-mc-8">
       <section className="auth-card grid w-full max-w-[440px] gap-mc-5 rounded-mc-xl border border-solid border-mc-border-subtle bg-mc-surface p-mc-8 shadow-mc-md">

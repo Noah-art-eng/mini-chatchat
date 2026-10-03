@@ -5,7 +5,7 @@ import type {
   AgentStreamEvent
 } from "../types/agent";
 
-/** 用途：负责 runAgent 的界面或数据处理职责。 */
+/** 调用单步 Agent，等待完整 JSON 结果。 */
 export function runAgent(request: AgentRunRequest) {
   return requestJson<AgentRunResponse>("/agent/run", {
     method: "POST",
@@ -13,7 +13,7 @@ export function runAgent(request: AgentRunRequest) {
   });
 }
 
-/** 用途：负责 runAgentMulti 的界面或数据处理职责。 */
+/** 调用多步 Agent，等待完整 JSON 结果。 */
 export function runAgentMulti(request: AgentRunRequest) {
   return requestJson<AgentRunResponse>("/agent/run_multi", {
     method: "POST",
@@ -21,7 +21,7 @@ export function runAgentMulti(request: AgentRunRequest) {
   });
 }
 
-/** 用途：负责 runAgentPlan 的界面或数据处理职责。 */
+/** 调用带计划的 Agent，等待完整 JSON 结果。 */
 export function runAgentPlan(request: AgentRunRequest) {
   return requestJson<AgentRunResponse>("/agent/plan_run", {
     method: "POST",
@@ -29,7 +29,10 @@ export function runAgentPlan(request: AgentRunRequest) {
   });
 }
 
-/** 用途：负责 runAgentPlanStream 的界面或数据处理职责。 */
+/**
+ * 调用 planner Agent 的 SSE 接口，把规划、工具执行、回答和完成事件交回 useAgentRun。
+ * AbortSignal 用于 Stop 和会话切换，取消后不再继续读取旧任务事件。
+ */
 export async function runAgentPlanStream(
   request: AgentRunRequest,
   onEvent: (event: AgentStreamEvent) => void,
@@ -77,7 +80,6 @@ export async function runAgentPlanStream(
         if (!dataLine) continue;
 
         const payload = dataLine.replace(/^data:\s*/, "");
-        /** 用途：负责 onEvent 的界面或数据处理职责。 */
         onEvent(JSON.parse(payload) as AgentStreamEvent);
       }
     }

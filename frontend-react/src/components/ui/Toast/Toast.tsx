@@ -48,7 +48,6 @@ const variantClasses: Record<ToastVariant, string> = {
   error: "border-mc-danger-soft",
 };
 
-/** 用途：负责 ToastProvider 的界面或数据处理职责。 */
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const timersRef = useRef<Map<string, number>>(new Map());
@@ -57,7 +56,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     const timer = timersRef.current.get(id);
     if (timer) window.clearTimeout(timer);
     timersRef.current.delete(id);
-    /** 用途：负责 setToasts 的界面或数据处理职责。 */
     setToasts(current => current.filter(toast => toast.id !== id));
   }, []);
 
@@ -78,14 +76,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         `${toast.variant}-${toast.message}-${Date.now().toString(36)}`;
       const nextToast = { ...toast, id };
 
-      /** 用途：负责 setToasts 的界面或数据处理职责。 */
       setToasts(current => {
         const deduped = current.filter(
           item => item.message !== toast.message || item.variant !== toast.variant
         );
         return [nextToast, ...deduped].slice(0, MAX_TOASTS);
       });
-      /** 用途：负责 scheduleDismiss 的界面或数据处理职责。 */
       scheduleDismiss(nextToast);
       return id;
     },
@@ -97,7 +93,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     [dismissToast, showToast]
   );
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <ToastContext.Provider value={value}>
       {children}
@@ -146,7 +141,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/** 用途：负责 useToast 的界面或数据处理职责。 */
 export function useToast() {
   const context = useContext(ToastContext);
   if (!context) {
@@ -155,7 +149,6 @@ export function useToast() {
   return context;
 }
 
-/** 用途：负责 pauseToast 的界面或数据处理职责。 */
 function pauseToast(id: string, timers: Map<string, number>) {
   const timer = timers.get(id);
   if (!timer) return;

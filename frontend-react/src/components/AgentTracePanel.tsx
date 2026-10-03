@@ -10,7 +10,6 @@ type AgentTracePanelProps = {
   streamTokenText?: string;
 };
 
-/** 用途：负责 AgentTracePanel 的界面或数据处理职责。 */
 export function AgentTracePanel(props: AgentTracePanelProps) {
   return <AgentWorkspace {...props} />;
 }

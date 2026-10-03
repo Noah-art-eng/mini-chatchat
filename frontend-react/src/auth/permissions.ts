@@ -18,7 +18,6 @@ export const authenticatedPermissions = new Set<Permission>([
   "can_enable_developer_mode"
 ]);
 
-/** 用途：负责 getPermissionsForSession 的界面或数据处理职责。 */
 export function getPermissionsForSession(session: AuthSession) {
   if (session.isGuest || !session.isActive) {
     return guestPermissions;
@@ -27,7 +26,6 @@ export function getPermissionsForSession(session: AuthSession) {
   return authenticatedPermissions;
 }
 
-/** 用途：负责 can 的界面或数据处理职责。 */
 export function can(session: AuthSession, permission: Permission) {
   return getPermissionsForSession(session).has(permission);
 }

@@ -1,7 +1,7 @@
 import { authFetch, requestJson } from "./client";
 import type { KnowledgeBase, KnowledgeFile } from "../types/kb";
 
-/** 用途：负责 listKnowledgeBases 的界面或数据处理职责。 */
+/** 读取当前用户拥有的知识库列表。 */
 export async function listKnowledgeBases() {
   return requestJson<{ knowledge_bases: KnowledgeBase[] }>("/knowledge_bases");
 }
@@ -20,7 +20,7 @@ export async function deleteKnowledgeBase(kbName: string) {
   );
 }
 
-/** 用途：负责 switchKnowledgeBase 的界面或数据处理职责。 */
+/** 更新后端当前知识库选择，供仍按会话选择工作的旧接口使用。 */
 export async function switchKnowledgeBase(kbName: string) {
   return requestJson<{ current_kb: string }>("/switch_kb", {
     method: "POST",
@@ -30,12 +30,15 @@ export async function switchKnowledgeBase(kbName: string) {
   });
 }
 
-/** 用途：负责 listDocuments 的界面或数据处理职责。 */
+/** 读取后端当前选中知识库的文件列表。 */
 export async function listDocuments() {
   return requestJson<{ files: KnowledgeFile[] }>("/documents");
 }
 
-/** 用途：负责 uploadDocument 的界面或数据处理职责。 */
+/**
+ * 把文件和明确的 kb_name 一起上传到 /upload。
+ * 后端按请求中的知识库完成校验、解析和索引，不依赖可能仍在切换中的全局选择状态。
+ */
 export async function uploadDocument(file: File, kbName: string) {
   const formData = new FormData();
   formData.append("file", file);
@@ -59,7 +62,6 @@ export async function uploadDocument(file: File, kbName: string) {
   }>;
 }
 
-/** 用途：负责 downloadDocument 的界面或数据处理职责。 */
 export async function downloadDocument(filename: string) {
   const response = await authFetch(
     `/documents/${encodeURIComponent(filename)}/download`
@@ -87,7 +89,7 @@ export async function downloadDocument(filename: string) {
   URL.revokeObjectURL(url);
 }
 
-/** 用途：负责 reindexDocument 的界面或数据处理职责。 */
+/** 让后端重新解析指定文件并重建当前知识库索引。 */
 export async function reindexDocument(
   filename: string,
   chunkSize = 300,
@@ -106,7 +108,6 @@ export async function reindexDocument(
   });
 }
 
-/** 用途：负责 deleteDocument 的界面或数据处理职责。 */
 export async function deleteDocument(filename: string) {
   return requestJson<{
     message?: string;
@@ -116,7 +117,7 @@ export async function deleteDocument(filename: string) {
   });
 }
 
-/** 用途：负责 exportKnowledgeBase 的界面或数据处理职责。 */
+/** 下载当前用户指定知识库的 ZIP 快照。 */
 export async function exportKnowledgeBase(kbName: string) {
   const response = await authFetch(
     `/knowledge_bases/${encodeURIComponent(kbName)}/export`
@@ -144,7 +145,7 @@ export async function exportKnowledgeBase(kbName: string) {
   URL.revokeObjectURL(url);
 }
 
-/** 用途：负责 importKnowledgeBase 的界面或数据处理职责。 */
+/** 上传知识库 ZIP；后端完成资源、路径和归属校验后再导入。 */
 export async function importKnowledgeBase(file: File) {
   const formData = new FormData();
   formData.append("file", file);

@@ -6,7 +6,6 @@ type GuestRouteProps = {
   fallback?: ReactNode;
 };
 
-/** 用途：负责 GuestRoute 的界面或数据处理职责。 */
 export function GuestRoute({ children, fallback = null }: GuestRouteProps) {
   const auth = useAuth();
 

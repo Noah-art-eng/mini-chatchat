@@ -89,7 +89,11 @@ def init_db():
 
 @connection_scope
 def get_demo_user_id():
-    """负责 get_demo_user_id 的函数职责。"""
+    """取得兼容访客模式使用的演示用户编号。
+
+    访客请求没有真实 user_id，但持久化表仍要求用户范围。这里查找或创建固定演示
+    用户并缓存编号，让旧接口也能复用同一套用户隔离 SQL。
+    """
     global _DEMO_USER_ID_CACHE
 
     if _DEMO_USER_ID_CACHE is not None:
@@ -99,6 +103,7 @@ def get_demo_user_id():
     cursor = conn.cursor()
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+    # INSERT OR IGNORE 让干净数据库完成首次创建，已有数据库继续复用同一用户。
     cursor.execute("""
         INSERT OR IGNORE INTO users (
             email,
@@ -136,12 +141,12 @@ def get_demo_user_id():
     conn.commit()
     conn.close()
 
+    # 缓存编号后，后续访客请求不需要重复查询用户表。
     _DEMO_USER_ID_CACHE = row[0]
     return _DEMO_USER_ID_CACHE
 
 
 def resolve_user_id(user_id=None):
-    """负责 resolve_user_id 的函数职责。"""
     return user_id if user_id is not None else get_demo_user_id()
 
 

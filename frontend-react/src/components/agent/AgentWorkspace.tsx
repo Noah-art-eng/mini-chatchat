@@ -22,7 +22,6 @@ type AgentWorkspaceProps = {
   streamTokenText?: string;
 };
 
-/** 用途：负责 AgentWorkspace 的界面或数据处理职责。 */
 export function AgentWorkspace({
   error,
   isRunning,
@@ -38,7 +37,6 @@ export function AgentWorkspace({
     return <EmptyAgentState />;
   }
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <section
       aria-label="Agent trace"

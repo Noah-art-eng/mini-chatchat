@@ -11,9 +11,7 @@ type OAuthButtonsProps = {
   mode: "login" | "register";
 };
 
-/** 用途：负责 providerIcon 的界面或数据处理职责。 */
 function providerIcon(provider: string) {
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <span
       className="oauth-provider-mark inline-grid h-[18px] w-[18px] place-items-center rounded-mc-circle bg-mc-selected text-mc-caption font-mc-bold text-mc-brand"
@@ -24,16 +22,13 @@ function providerIcon(provider: string) {
   );
 }
 
-/** 用途：负责 OAuthButtons 的界面或数据处理职责。 */
 export function OAuthButtons({ mode }: OAuthButtonsProps) {
   const { t } = useI18n();
   const [providers, setProviders] = useState<OAuthProviderStatus[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  /** 用途：负责 useEffect 的界面或数据处理职责。 */
   useEffect(() => {
     let ignore = false;
-    /** 用途：负责 listOAuthProviders 的界面或数据处理职责。 */
     listOAuthProviders()
       .then(response => {
         if (!ignore) setProviders(response.providers);
@@ -44,13 +39,11 @@ export function OAuthButtons({ mode }: OAuthButtonsProps) {
       .finally(() => {
         if (!ignore) setIsLoading(false);
       });
-    /** 用途：负责 return 的界面或数据处理职责。 */
     return () => {
       ignore = true;
     };
   }, []);
 
-  /** 用途：负责 startOAuth 的界面或数据处理职责。 */
   function startOAuth(provider: string) {
     window.location.assign(`${API_BASE}/auth/oauth/${provider}`);
   }
@@ -67,7 +60,6 @@ export function OAuthButtons({ mode }: OAuthButtonsProps) {
     return null;
   }
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div className="oauth-auth-section grid gap-mc-3" data-testid="oauth-auth-section">
       <div className="oauth-divider flex items-center gap-mc-3 text-mc-caption text-mc-muted before:h-px before:flex-1 before:bg-mc-border-subtle before:content-[''] after:h-px after:flex-1 after:bg-mc-border-subtle after:content-['']">

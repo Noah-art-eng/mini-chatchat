@@ -20,7 +20,7 @@ MAX_ABSOLUTE_VALUE = 10 ** 12
 
 
 def evaluate_node(node):
-    """负责 evaluate_node 的函数职责。"""
+    """只计算数字和白名单运算符组成的语法树，不执行任意 Python 表达式。"""
     if isinstance(node, ast.Expression):
         return evaluate_node(node.body)
 
@@ -43,13 +43,13 @@ def evaluate_node(node):
 
 
 def validate_result_size(value):
-    """负责 validate_result_size 的函数职责。"""
+    """阻止极端计算结果继续消耗资源或污染工具上下文。"""
     if abs(value) > MAX_ABSOLUTE_VALUE:
         raise ValueError("result is too large")
 
 
 def execute_calculator(arguments: dict) -> ToolResult:
-    """负责 execute_calculator 的函数职责。"""
+    """解析并计算受限数学表达式，所有失败都转换成统一 ToolResult。"""
     expression = arguments.get("expression")
 
     if not isinstance(expression, str) or not expression.strip():
@@ -82,7 +82,7 @@ def execute_calculator(arguments: dict) -> ToolResult:
 
 
 def get_calculator_tool() -> ToolSpec:
-    """负责 get_calculator_tool 的函数职责。"""
+    """声明基础计算器工具及模型可以传入的表达式格式。"""
     return ToolSpec(
         name="calculator",
         description="Safely evaluate a basic math expression.",

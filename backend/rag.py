@@ -68,7 +68,7 @@ SOURCE_SEMANTICS = {
 
 
 def get_source_semantics(source_type="local_kb"):
-    """负责 get_source_semantics 的函数职责。"""
+    """取得当前数据源对应的 Prompt 说明，避免模型误解资料来源。"""
     return SOURCE_SEMANTICS.get(source_type, SOURCE_SEMANTICS["local_kb"])
 
 
@@ -91,7 +91,7 @@ def estimate_tokens(text):
 
 
 def load_documents(folder_path):
-    """负责 load_documents 的函数职责。"""
+    """兼容旧调用：按文件名顺序读取 content 目录中的完整文本。"""
     documents = []
 
     for filename in sorted(os.listdir(folder_path)):
@@ -114,7 +114,7 @@ def load_documents(folder_path):
 
 
 def load_pdf(file_path):
-    """负责 load_pdf 的函数职责。"""
+    """兼容旧调用：逐页提取 PDF 文本，并保持原有换行语义。"""
     reader = PdfReader(file_path)
     text = ""
 
@@ -127,7 +127,7 @@ def load_pdf(file_path):
 
 
 def split_documents(documents, chunk_size=300, overlap=50):
-    """负责 split_documents 的函数职责。"""
+    """兼容旧调用：把完整文档按固定窗口切成带重叠的文本块。"""
     if chunk_size <= 0:
         raise ValueError("chunk_size must be greater than 0")
     if overlap < 0 or overlap >= chunk_size:
@@ -272,11 +272,17 @@ def search(
     top_k=3,
     score_threshold=1.5
 ): # 把用户的查询转成向量, 在faiss索引中搜索最相似的文本块
-    """负责 search 的函数职责。"""
+    """兼容旧调用：把问题转成向量，再用 FAISS 返回满足距离阈值的文本块。
+
+    正式知识库检索现在由 MiniKBService.search_docs() 处理 FAISS + BM25；这里仍供
+    旧调用使用，因此保持原来的结果结构和 L2 距离语义。
+    """
+    # embedding 把问题转换成与索引相同维度的 float32 向量。
     query_vector = model.encode([query])
 
     query_vector = np.array(query_vector).astype("float32")
 
+    # IndexFlatL2 返回匹配位置和 L2 距离；距离越小表示越相似。
     distances, indexes = index.search(query_vector, top_k)
 
     results = []
@@ -303,12 +309,12 @@ def search(
 
 
 def _normalize_context_text(text):
-    """负责 _normalize_context_text 的函数职责。"""
+    """统一空白和大小写，供 Context 阶段判断文本是否重复。"""
     return " ".join((text or "").split()).casefold()
 
 
 def _shared_suffix_prefix_length(left, right):
-    """负责 _shared_suffix_prefix_length 的函数职责。"""
+    """计算前一文本结尾与后一文本开头的重叠长度。"""
     max_length = min(len(left), len(right))
     for length in range(max_length, 0, -1):
         if left[-length:] == right[:length]:
@@ -348,7 +354,12 @@ def build_context(
     context_token_budget=DEFAULT_CONTEXT_TOKEN_BUDGET,
     return_results=False,
 ):
-    """构造预算受限 Context，可选返回真正进入 Prompt 的来源列表。"""
+    """把检索结果整理成真正送进 Prompt 的 Context。
+
+    结果按检索顺序处理：先去掉保守判定的重复文本，再按字符启发式 token 预算
+    截断。`context_results` 只保留实际进入 Context 的文本块，后面的 Sources 也必须
+    使用这份列表，避免向用户展示模型没有看过的来源。
+    """
     if not results:
         return ("", []) if return_results else ""
 
@@ -357,6 +368,8 @@ def build_context(
     used_tokens = 0
     accepted_by_source = {}
 
+    # 按检索排序逐条尝试加入 Context。去重只发生在这里，不改变原始检索结果，
+    # 因而被跳过的重复文本会释放预算，让后面的有效文本块继续参与回答。
     for result in results:
         is_duplicate, normalized = _is_near_duplicate_context(
             result,
@@ -372,6 +385,7 @@ def build_context(
             context_token_budget is not None
             and used_tokens + part_tokens > context_token_budget
         ):
+            # 检索结果按相关性排列；遇到第一个放不下的文本块就停止，避免截断块内容。
             break
 
         context_parts.append(context_part)
@@ -382,12 +396,14 @@ def build_context(
             result.get("chunk_id"),
         )
 
+    # context 进入 Prompt，context_results 进入 Sources；两者在同一循环中产生，
+    # 因此模型看到的文本和用户看到的来源不会分叉。
     context = "\n\n".join(context_parts)
     return (context, context_results) if return_results else context
 
 
 def build_history(history):
-    """负责 build_history 的函数职责。"""
+    """把数据库消息整理成 Prompt 中使用的对话历史文本。"""
     if not history:
         return ""
 
@@ -407,8 +423,11 @@ def build_prompt(
     source_type="local_kb",
     context=None,
 ):
-    # RAG 主链路：检索结果 → 去重后的受预算 Context → Prompt → LLM。
-    """负责 build_prompt 的函数职责。"""
+    """把问题、会话历史和检索 Context 填入当前 Prompt 模板。
+
+    `run_kb_chat()` 在完成检索和 Rerank 后进入这里。没有可用 Context 时切换到
+    empty 模板，明确要求模型不要假装找到资料；构造完成后交给 LLM 调用。
+    """
     context = build_context(results) if context is None else context
     history_text = build_history(history)
     source_semantics = get_source_semantics(source_type)
@@ -437,7 +456,12 @@ def generate_answer(
     source_type="local_kb",
     context=None,
 ):  # 使用当前 provider/model 配置生成答案，并将检索结果作为上下文。
-    """负责 generate_answer 的函数职责。"""
+    """构造 RAG Prompt，并通过当前 LLM provider 一次性生成完整回答。
+
+    上层已经确定实际 Context 和 Sources。这里把问题、历史和 Context 交给
+    build_prompt()，再使用当前模型配置调用 LLM，返回后由 chat_service 保存消息。
+    """
+    # 这里进入 build_prompt() 组装最终输入；返回后不再修改检索结果。
     prompt = build_prompt(
         query,
         results,
@@ -467,6 +491,7 @@ def generate_answer(
     elif get_default_max_tokens() is not None:
         completion_args["max_tokens"] = get_default_max_tokens()
 
+    # 非流式调用等待完整模型响应，上层随后一次性返回 JSON。
     response = client.chat.completions.create(**completion_args)
 
     return response.choices[0].message.content
@@ -484,7 +509,11 @@ def stream_answer(
     source_type="local_kb",
     context=None,
 ):
-    """负责 stream_answer 的函数职责。"""
+    """构造相同的 RAG Prompt，并把 LLM 原生流式 token 逐个交给 SSE 层。
+
+    Prompt 与非流式路径一致，区别只是请求带 stream=True。这里产出的文本片段会
+    回到 build_streaming_response()，由它包装成 token/error/done 事件并最终保存。
+    """
     prompt = build_prompt(
         query,
         results,
@@ -528,14 +557,18 @@ def stream_answer(
             yield token
 
 def main():
-    """负责 main 的函数职责。"""
-    documents = load_documents("documents") # 读取知识库文件
+    """命令行演示入口：在内存中走完加载、切块、检索和回答。
+
+    Web 生产链路不从这里进入，而是使用 MiniKBService 的持久化索引。这个入口只供
+    手动验证最小 RAG 流程，因此一次性读取示例 documents 目录。
+    """
+    documents = load_documents("documents")  # 只用于命令行示例目录。
 
     load_dotenv()
     client = get_openai_client()
 
     chunks = split_documents(documents)
-    model = SentenceTransformer(get_embedding_model_name()) # 使用更小的模型, 把文字转成向量
+    model = SentenceTransformer(get_embedding_model_name())  # 加载配置的 embedding 模型。
 
     index, _ = build_faiss_index(chunks, model)
 

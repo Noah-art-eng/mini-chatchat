@@ -14,7 +14,6 @@ type DocumentActionsProps = {
   onReindex: (file: KnowledgeFile) => void;
 };
 
-/** 用途：负责 DocumentActions 的界面或数据处理职责。 */
 export function DocumentActions({
   activeDocumentAction,
   file,
@@ -28,7 +27,6 @@ export function DocumentActions({
   const isReindexing = activeDocumentAction === `reindex:${file.filename}`;
   const isDeleting = activeDocumentAction === `delete:${file.filename}`;
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div className="document-actions mt-mc-3 flex flex-wrap gap-mc-2 max-[720px]:grid max-[720px]:grid-cols-1">
       <button
@@ -37,7 +35,6 @@ export function DocumentActions({
         disabled={Boolean(activeDocumentAction)}
         onClick={event => {
           event.stopPropagation();
-          /** 用途：负责 onDownload 的界面或数据处理职责。 */
           onDownload(file.filename);
         }}
         type="button"
@@ -51,7 +48,6 @@ export function DocumentActions({
         disabled={Boolean(activeDocumentAction)}
         onClick={event => {
           event.stopPropagation();
-          /** 用途：负责 onReindex 的界面或数据处理职责。 */
           onReindex(file);
         }}
         type="button"
@@ -65,7 +61,6 @@ export function DocumentActions({
         disabled={Boolean(activeDocumentAction)}
         onClick={event => {
           event.stopPropagation();
-          /** 用途：负责 onDelete 的界面或数据处理职责。 */
           onDelete(file.filename);
         }}
         type="button"

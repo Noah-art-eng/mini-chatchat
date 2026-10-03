@@ -33,7 +33,6 @@ const variantClasses: Record<ButtonVariant, string> = {
     "bg-mc-danger text-mc-inverse enabled:hover:bg-mc-danger enabled:hover:brightness-[.96]",
 };
 
-/** 用途：负责 Button 的界面或数据处理职责。 */
 export function Button({
   children,
   className,
@@ -48,7 +47,6 @@ export function Button({
 }: ButtonProps) {
   const isDisabled = disabled || loading;
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <button
       className={cx(

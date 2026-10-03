@@ -8,7 +8,11 @@ logger = logging.getLogger("mini-chatchat")
 
 
 def search_web(query, top_k=3):
-    """负责 search_web 的函数职责。"""
+    """执行联网搜索并转换成与知识库文本块相近的结果结构。
+
+    chat_service 和 Agent 可以因此复用后续结果处理。外部服务失败时返回空列表，
+    让上层按“没有搜索结果”继续，而不是泄露搜索库异常。
+    """
     results = []
 
     try:

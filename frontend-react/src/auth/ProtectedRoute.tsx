@@ -8,7 +8,6 @@ type ProtectedRouteProps = {
   permission?: Permission;
 };
 
-/** 用途：负责 ProtectedRoute 的界面或数据处理职责。 */
 export function ProtectedRoute({
   children,
   fallback = null,

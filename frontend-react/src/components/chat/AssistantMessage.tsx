@@ -15,12 +15,10 @@ type AssistantMessageProps = {
   onSelect: () => void;
 };
 
-/** 用途：负责 getMessageSources 的界面或数据处理职责。 */
 function getMessageSources(message: ChatMessage): Source[] {
   return message.sources || message.metadata?.sources || [];
 }
 
-/** 用途：负责 AssistantMessage 的界面或数据处理职责。 */
 export function AssistantMessage({
   isSelected,
   message,
@@ -30,7 +28,6 @@ export function AssistantMessage({
   const { t } = useI18n();
   const sources = getMessageSources(message);
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <article
       className={cx("group", chatStyles.message, chatStyles.assistantMessage, isSelected && chatStyles.selectedMessage, message.metadata?.agent && "agent-message")}

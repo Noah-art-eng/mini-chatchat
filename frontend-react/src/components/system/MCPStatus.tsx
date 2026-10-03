@@ -7,7 +7,6 @@ type MCPStatusProps = {
   toolsCount: number;
 };
 
-/** 用途：负责 MCPStatus 的界面或数据处理职责。 */
 export function MCPStatus({
   enabled,
   mcpError,
@@ -16,7 +15,6 @@ export function MCPStatus({
 }: MCPStatusProps) {
   const { t } = useI18n();
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div className="system-summary-strip flex flex-wrap gap-mc-2 [&>span]:rounded-mc-pill [&>span]:border [&>span]:border-solid [&>span]:border-mc-border-subtle [&>span]:bg-mc-subtle [&>span]:px-mc-2 [&>span]:py-mc-1 [&>span]:text-mc-caption [&>span]:font-mc-semibold [&>span]:text-mc-secondary">
       <span>{t("settings.mcpStatus")}: {enabled === false ? "disabled" : "enabled"}</span>

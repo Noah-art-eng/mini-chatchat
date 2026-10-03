@@ -7,7 +7,6 @@ type FinalAnswerProps = {
   answer: string;
 };
 
-/** 用途：负责 FinalAnswer 的界面或数据处理职责。 */
 export function FinalAnswer({ answer }: FinalAnswerProps) {
   const { t } = useI18n();
 
@@ -15,7 +14,6 @@ export function FinalAnswer({ answer }: FinalAnswerProps) {
     return null;
   }
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <article
       className={cx(agentStyles.card, agentStyles.final)}

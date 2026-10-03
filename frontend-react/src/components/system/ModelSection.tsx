@@ -9,9 +9,7 @@ type ModelSectionProps = {
   models: ModelsResponse | null;
 };
 
-/** 用途：负责 ModelSection 的界面或数据处理职责。 */
 export function ModelSection({ chatMode, kbName, models }: ModelSectionProps) {
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <>
       <ModelCard chatMode={chatMode} models={models} />

@@ -25,7 +25,6 @@ const variantClasses: Record<IconButtonVariant, string> = {
     "bg-mc-danger-soft text-mc-danger enabled:hover:bg-mc-danger enabled:hover:text-mc-inverse",
 };
 
-/** 用途：负责 IconButton 的界面或数据处理职责。 */
 export function IconButton({
   children,
   className,
@@ -36,7 +35,6 @@ export function IconButton({
   variant = "ghost",
   ...props
 }: IconButtonProps) {
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <button
       className={cx(

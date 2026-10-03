@@ -13,7 +13,6 @@ type TempFilePanelProps = {
   tempKbId: string | null;
 };
 
-/** 用途：负责 TempFilePanel 的界面或数据处理职责。 */
 export function TempFilePanel({
   inputRef,
   isUploading,
@@ -26,7 +25,6 @@ export function TempFilePanel({
 }: TempFilePanelProps) {
   const { t } = useI18n();
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <section className={chatStyles.tempPanel} data-testid="temp-file-mode-status">
       <div>
@@ -43,7 +41,6 @@ export function TempFilePanel({
           data-testid="temp-file-input"
           name="temp-file"
           onChange={event => {
-            /** 用途：负责 onChangeFile 的界面或数据处理职责。 */
             onChangeFile(event.target.files?.[0] || null);
           }}
           ref={inputRef}

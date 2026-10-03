@@ -13,7 +13,6 @@ type UploadPanelProps = {
   uploadStatus: string | null;
 };
 
-/** 用途：负责 UploadPanel 的界面或数据处理职责。 */
 export function UploadPanel({
   fileInputRef,
   isUploading,
@@ -25,7 +24,6 @@ export function UploadPanel({
 }: UploadPanelProps) {
   const { t } = useI18n();
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div
       className={cx(
@@ -37,7 +35,6 @@ export function UploadPanel({
       }}
       onDrop={event => {
         event.preventDefault();
-        /** 用途：负责 onChangeFile 的界面或数据处理职责。 */
         onChangeFile(event.dataTransfer.files?.[0] || null);
       }}
     >

@@ -6,7 +6,6 @@ type AgentRunToolbarProps = {
   result: AgentRunResponse | null;
 };
 
-/** 用途：负责 AgentRunToolbar 的界面或数据处理职责。 */
 export function AgentRunToolbar({ result }: AgentRunToolbarProps) {
   const { t } = useI18n();
 
@@ -14,7 +13,6 @@ export function AgentRunToolbar({ result }: AgentRunToolbarProps) {
     return null;
   }
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div className={agentStyles.toolbar}>
       <span className={agentStyles.toolbarItem}>{t("agent.steps")}: {result.steps?.length || 0}</span>

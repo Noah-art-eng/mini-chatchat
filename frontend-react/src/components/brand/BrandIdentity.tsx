@@ -10,7 +10,6 @@ type BrandIdentityProps = {
   onGoHome?: () => void;
 };
 
-/** 用途：负责 BrandIdentity 的界面或数据处理职责。 */
 export function BrandIdentity({
   mode = "expanded",
   onGoHome
@@ -19,7 +18,6 @@ export function BrandIdentity({
   const isIconOnly = mode === "iconOnly" || mode === "compact";
 
   if (onGoHome) {
-    /** 用途：负责 return 的界面或数据处理职责。 */
     return (
       <button
         aria-label={t("app.goToChat")}
@@ -38,7 +36,6 @@ export function BrandIdentity({
     );
   }
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div className={cx(baseClass, `brand-identity--${mode}`)}>
       <BrandLogo size={40} title={t("app.name")} />

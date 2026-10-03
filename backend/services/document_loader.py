@@ -119,11 +119,13 @@ def parse_file_to_text_file(
 
 
 def load_text(file_path):
+    """兼容旧调用：一次性读取 TXT/MD；生产上传使用 path-to-path 分块解析。"""
     with open(file_path, "r", encoding="utf-8") as file:
         return file.read()
 
 
 def load_docx(file_path):
+    """兼容旧调用：提取非空段落并按换行拼接，保持历史输出格式。"""
     document = Document(file_path)
     paragraphs = [
         paragraph.text
@@ -134,6 +136,7 @@ def load_docx(file_path):
 
 
 def load_csv(file_path):
+    """兼容旧调用：按 csv.reader 解析并用竖线连接每行字段。"""
     rows = []
 
     with open(file_path, "r", encoding="utf-8", newline="") as file:
@@ -146,6 +149,7 @@ def load_csv(file_path):
 
 
 def load_file(file_path):
+    """兼容旧入口：按扩展名选择解析器并返回完整文本；生产流程不再使用它。"""
     ext = os.path.splitext(file_path)[1].lower()
 
     if ext in [".txt", ".md"]:

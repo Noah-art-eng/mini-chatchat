@@ -12,7 +12,6 @@ type ConfirmDialogProps = {
   title: string;
 };
 
-/** 用途：负责 ConfirmDialog 的界面或数据处理职责。 */
 export function ConfirmDialog({
   cancelLabel,
   confirmLabel,
@@ -27,7 +26,6 @@ export function ConfirmDialog({
 
   if (!isOpen) return null;
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <UiConfirmDialog
       cancelLabel={cancelLabel || t("common.cancel")}

@@ -18,7 +18,7 @@ type ChatAreaProps = {
 
 const chatModes: ChatMode[] = ["local_kb", "search_engine", "temp_kb", "agent"];
 
-/** 用途：负责 buildPersistedAgentResult 的界面或数据处理职责。 */
+/** 从历史消息 metadata 恢复 Agent 步骤和 trace，使刷新后的详情面板仍能展示上次执行过程。 */
 function buildPersistedAgentResult(
   message: ChatMessage | undefined
 ): AgentRunResponse | null {
@@ -40,7 +40,10 @@ function buildPersistedAgentResult(
   };
 }
 
-/** 用途：负责 ChatArea 的界面或数据处理职责。 */
+/**
+ * 连接聊天页面、共享会话状态和两种流式 Hook。
+ * 普通模式进入 useChatStream，Agent 模式进入 useAgentRun，最后把统一状态交给 ChatWorkspace 渲染。
+ */
 export function ChatArea({
   onOpenModeGuide = () => undefined,
   preferredMode = "chat"
@@ -82,13 +85,11 @@ export function ChatArea({
   const tempFileInputRef = useRef<HTMLInputElement | null>(null);
   const appliedPreferredModeRef = useRef<"chat" | "agent" | null>(null);
 
-  /** 用途：负责 useEffect 的界面或数据处理职责。 */
   useEffect(() => {
     if (appliedPreferredModeRef.current === preferredMode) return;
     appliedPreferredModeRef.current = preferredMode;
 
     if (preferredMode === "agent" && chatMode !== "agent") {
-      /** 用途：负责 setChatMode 的界面或数据处理职责。 */
       setChatMode("agent");
     } else if (preferredMode === "chat" && chatMode === "agent") {
       setChatMode("local_kb");
@@ -111,15 +112,12 @@ export function ChatArea({
     setKbName(result.current_kb);
   }
 
-  /** 用途：负责 useEffect 的界面或数据处理职责。 */
   useEffect(() => {
     if (chatMode !== "agent" && detailsTab === "trace") {
-      /** 用途：负责 setDetailsTab 的界面或数据处理职责。 */
       setDetailsTab("sources");
     }
 
     if (chatMode === "agent" && detailsTab !== "trace") {
-      /** 用途：负责 setDetailsTab 的界面或数据处理职责。 */
       setDetailsTab("trace");
     }
   }, [chatMode, detailsTab]);
@@ -153,17 +151,14 @@ export function ChatArea({
           ? t("chat.tempModeDescription")
           : t("chat.localModeDescription");
 
-  /** 用途：负责 handleTempFileUpload 的界面或数据处理职责。 */
+  /** 上传临时文件并保存后端返回的 temp_kb_id，随后 temp_kb 问答会携带该编号。 */
   async function handleTempFileUpload() {
     if (!selectedTempFile) {
-      /** 用途：负责 setTempFileStatus 的界面或数据处理职责。 */
       setTempFileStatus(t("chat.chooseTempFile"));
       return;
     }
 
-    /** 用途：负责 setIsUploadingTempFile 的界面或数据处理职责。 */
     setIsUploadingTempFile(true);
-    /** 用途：负责 setTempFileStatus 的界面或数据处理职责。 */
     setTempFileStatus(t("chat.uploadingTemp", { name: selectedTempFile.name }));
 
     try {
@@ -172,78 +167,62 @@ export function ChatArea({
         response.temp_kb_id || response.temp_id || response.kb_name || null;
 
       if (response.error || !nextTempKbId) {
-        /** 用途：负责 setTempFileStatus 的界面或数据处理职责。 */
         setTempFileStatus(response.error || t("chat.tempUploadMissing"));
         return;
       }
 
-      /** 用途：负责 setTempKbId 的界面或数据处理职责。 */
       setTempKbId(nextTempKbId);
-      /** 用途：负责 setTempFileName 的界面或数据处理职责。 */
       setTempFileName(selectedTempFile.name);
-      /** 用途：负责 setTempFileStatus 的界面或数据处理职责。 */
       setTempFileStatus(
-        /** 用途：负责 t 的界面或数据处理职责。 */
         t("chat.tempUploaded", {
           name: selectedTempFile.name,
           id: nextTempKbId
         })
       );
-      /** 用途：负责 setSelectedTempFile 的界面或数据处理职责。 */
       setSelectedTempFile(null);
       if (tempFileInputRef.current) {
         tempFileInputRef.current.value = "";
       }
     } catch (uploadError) {
-      /** 用途：负责 setTempFileStatus 的界面或数据处理职责。 */
       setTempFileStatus(
         uploadError instanceof Error ? uploadError.message : t("chat.tempUploadFailed")
       );
     } finally {
-      /** 用途：负责 setIsUploadingTempFile 的界面或数据处理职责。 */
       setIsUploadingTempFile(false);
     }
   }
 
-  /** 用途：负责 submitInput 的界面或数据处理职责。 */
+  /** 根据当前模式把输入交给 RAG 或 Agent 流式 Hook。 */
   async function submitInput() {
     const value = input;
-    /** 用途：负责 setInput 的界面或数据处理职责。 */
     setInput("");
 
     if (chatMode === "agent") {
-      /** 用途：负责 setDetailsTab 的界面或数据处理职责。 */
       setDetailsTab("trace");
       await sendAgentMessage(value);
       return;
     }
 
     await sendMessage(value);
-    /** 用途：负责 setDetailsTab 的界面或数据处理职责。 */
     setDetailsTab("sources");
   }
 
-  /** 用途：负责 focusComposer 的界面或数据处理职责。 */
   function focusComposer() {
     window.setTimeout(() => {
       document.querySelector<HTMLTextAreaElement>(".chat-composer textarea")?.focus();
     }, 0);
   }
 
-  /** 用途：负责 handleStartEmptyMode 的界面或数据处理职责。 */
   function handleStartEmptyMode(nextMode: ChatMode) {
-    /** 用途：负责 setChatMode 的界面或数据处理职责。 */
     setChatMode(nextMode);
     if (nextMode === "temp_kb") {
       window.setTimeout(() => tempFileInputRef.current?.focus(), 0);
       return;
     }
 
-    /** 用途：负责 focusComposer 的界面或数据处理职责。 */
     focusComposer();
   }
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <ChatWorkspace
       activeModeDescription={activeModeDescription}
@@ -273,9 +252,7 @@ export function ChatArea({
       onChangeMode={changeMode}
       onChangeSelectedTempFile={setSelectedTempFile}
       onOpenAssistantSources={messageId => {
-        /** 用途：负责 setSelectedAssistantMessageId 的界面或数据处理职责。 */
         setSelectedAssistantMessageId(messageId);
-        /** 用途：负责 setDetailsTab 的界面或数据处理职责。 */
         setDetailsTab("sources");
       }}
       onOpenModeGuide={onOpenModeGuide}

@@ -25,7 +25,6 @@ type DocumentRowProps = {
   onSelect: (file: KnowledgeFile) => void;
 };
 
-/** 用途：负责 getFileIcon 的界面或数据处理职责。 */
 function getFileIcon(filename: string): LucideIcon {
   const extension = filename.split(".").pop()?.toLowerCase() || "";
 
@@ -37,7 +36,6 @@ function getFileIcon(filename: string): LucideIcon {
   return FileText;
 }
 
-/** 用途：负责 DocumentRow 的界面或数据处理职责。 */
 export function DocumentRow({
   activeDocumentAction,
   file,
@@ -53,7 +51,6 @@ export function DocumentRow({
   const StatusIcon = isIndexed ? CircleCheck : CircleAlert;
   const FileIcon = getFileIcon(file.filename);
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <article
       className={cx(
@@ -67,7 +64,6 @@ export function DocumentRow({
       onKeyDown={event => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          /** 用途：负责 onSelect 的界面或数据处理职责。 */
           onSelect(file);
         }
       }}

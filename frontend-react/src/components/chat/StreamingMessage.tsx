@@ -8,11 +8,9 @@ type StreamingMessageProps = {
   content: string;
 };
 
-/** 用途：负责 StreamingMessage 的界面或数据处理职责。 */
 export function StreamingMessage({ content }: StreamingMessageProps) {
   const { t } = useI18n();
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <article className={`${chatStyles.message} ${chatStyles.assistantMessage} streaming`}>
       <div className={chatStyles.avatar} aria-hidden="true">

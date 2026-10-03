@@ -15,7 +15,6 @@ type MCPSectionProps = {
   mcpTools: McpToolsResponse | null;
 };
 
-/** 用途：负责 MCPSection 的界面或数据处理职责。 */
 export function MCPSection({
   mcpError,
   mcpServers,
@@ -25,7 +24,6 @@ export function MCPSection({
   const servers = mcpServers?.servers || [];
   const tools = mcpTools?.tools || [];
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <article className={`${systemCardClassName} system-wide-card col-span-full`}>
       <span className={`${systemBadgeClassName} status-${mcpError ? "degraded" : "ok"}`}>

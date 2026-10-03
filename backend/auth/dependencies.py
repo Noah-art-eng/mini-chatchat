@@ -14,7 +14,11 @@ bearer_scheme = HTTPBearer(auto_error=False)
 def get_current_user_optional(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
 ) -> CurrentUser:
-    """负责 get_current_user_optional 的函数职责。"""
+    """把 Bearer access token 解析成当前用户；无 token 时返回访客身份。
+
+    token 只证明签名和声明有效，仍需检查数据库用户与 Session 是否启用、未撤销且
+    未过期。路由拿到 CurrentUser 后，再用其中的 user_id 隔离知识库和会话数据。
+    """
     if credentials is None:
         return guest_user()
 
@@ -68,7 +72,7 @@ def get_current_user_optional(
 def get_current_user(
     current_user: CurrentUser = Depends(get_current_user_optional),
 ) -> CurrentUser:
-    """负责 get_current_user 的函数职责。"""
+    """在可选认证基础上拒绝访客，用于必须登录的路由。"""
     if current_user.is_guest:
         raise HTTPException(status_code=401, detail="authentication required")
 
@@ -76,7 +80,7 @@ def get_current_user(
 
 
 def get_request_user_id(current_user: CurrentUser) -> int | None:
-    """负责 get_request_user_id 的函数职责。"""
+    """把 CurrentUser 转成业务层 user_id；访客继续使用 demo 数据范围。"""
     if current_user.is_guest:
         return None
 
@@ -84,6 +88,6 @@ def get_request_user_id(current_user: CurrentUser) -> int | None:
 
 
 def require_permission(user: CurrentUser, permission: Permission):
-    """负责 require_permission 的函数职责。"""
+    """在 Agent、MCP 等敏感入口执行明确权限检查。"""
     if not has_permission(user, permission):
         raise HTTPException(status_code=403, detail="permission denied")

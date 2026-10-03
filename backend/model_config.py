@@ -18,7 +18,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), ".env"), override=False)
 
 
 def get_llm_provider():
-    """负责 get_llm_provider 的函数职责。"""
+    """根据环境变量选择当前聊天与 Agent 共用的 LLM Provider。"""
     if os.getenv("DEEPSEEK_API_KEY"):
         return "deepseek"
 
@@ -26,27 +26,23 @@ def get_llm_provider():
 
 
 def get_openai_api_key():
-    """负责 get_openai_api_key 的函数职责。"""
     return os.getenv("OPENAI_API_KEY")
 
 
 def get_openai_base_url():
-    """负责 get_openai_base_url 的函数职责。"""
     return os.getenv("OPENAI_BASE_URL")
 
 
 def get_deepseek_api_key():
-    """负责 get_deepseek_api_key 的函数职责。"""
     return os.getenv("DEEPSEEK_API_KEY")
 
 
 def get_deepseek_base_url():
-    """负责 get_deepseek_base_url 的函数职责。"""
     return os.getenv("DEEPSEEK_BASE_URL", DEFAULT_DEEPSEEK_BASE_URL)
 
 
 def get_llm_api_key():
-    """负责 get_llm_api_key 的函数职责。"""
+    """返回当前 Provider 对应的 API Key。"""
     if get_llm_provider() == "deepseek":
         return get_deepseek_api_key()
 
@@ -54,7 +50,7 @@ def get_llm_api_key():
 
 
 def get_llm_base_url():
-    """负责 get_llm_base_url 的函数职责。"""
+    """返回当前 Provider 的 OpenAI-compatible API 地址。"""
     if get_llm_provider() == "deepseek":
         return get_deepseek_base_url()
 
@@ -62,7 +58,7 @@ def get_llm_base_url():
 
 
 def get_default_chat_model():
-    """负责 get_default_chat_model 的函数职责。"""
+    """返回当前 Provider 默认使用的聊天模型名。"""
     if get_llm_provider() == "deepseek":
         return os.getenv("DEEPSEEK_MODEL", DEFAULT_DEEPSEEK_MODEL)
 
@@ -74,7 +70,6 @@ def get_default_chat_model():
 
 
 def get_default_temperature():
-    """负责 get_default_temperature 的函数职责。"""
     value = os.getenv("DEFAULT_TEMPERATURE")
 
     if value is None:
@@ -87,7 +82,6 @@ def get_default_temperature():
 
 
 def get_default_max_tokens():
-    """负责 get_default_max_tokens 的函数职责。"""
     value = os.getenv("DEFAULT_MAX_TOKENS")
 
     if value in (None, ""):
@@ -100,7 +94,6 @@ def get_default_max_tokens():
 
 
 def get_embedding_model_name():
-    """负责 get_embedding_model_name 的函数职责。"""
     return (
         os.getenv("EMBEDDING_MODEL_NAME")
         or os.getenv("EMBEDDING_MODEL")
@@ -109,7 +102,6 @@ def get_embedding_model_name():
 
 
 def get_llm_timeout_seconds():
-    """负责 get_llm_timeout_seconds 的函数职责。"""
     try:
         timeout = float(os.getenv("LLM_TIMEOUT_SECONDS", DEFAULT_LLM_TIMEOUT_SECONDS))
     except ValueError:
@@ -119,7 +111,7 @@ def get_llm_timeout_seconds():
 
 
 def get_openai_client():
-    """负责 get_openai_client 的函数职责。"""
+    """按当前 Provider、超时和重试策略创建 OpenAI-compatible 客户端。"""
     client_kwargs = {
         "api_key": get_llm_api_key(),
         # OpenAI-compatible client applies this to Agent and chat model requests.
@@ -136,7 +128,11 @@ def get_openai_client():
 
 
 class LazyOpenAIClient:
-    """将共享 LLM client 延迟到第一次真正调用模型时再创建。"""
+    """将共享 LLM client 延迟到第一次真正调用模型时再创建。
+
+    这样没有 Provider Key 的干净环境仍能启动 Auth、KB 和前端；只有真正进入
+    RAG 回答或 Agent 模型调用时，才要求完整的模型配置。
+    """
 
     def __init__(self):
         self._client = None

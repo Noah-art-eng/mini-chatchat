@@ -15,11 +15,9 @@ const capabilities = [
   { icon: Bot, key: "agent", tone: "mcp" }
 ] as const;
 
-/** 用途：负责 WelcomeDialog 的界面或数据处理职责。 */
 export function WelcomeDialog({ isOpen, onComplete }: WelcomeDialogProps) {
   const { t } = useI18n();
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <Dialog
       actions={[

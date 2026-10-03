@@ -7,11 +7,9 @@ type ToolCallSummaryProps = {
   toolCall: AgentToolCall;
 };
 
-/** 用途：负责 ToolCallSummary 的界面或数据处理职责。 */
 export function ToolCallSummary({ toolCall }: ToolCallSummaryProps) {
   const { t } = useI18n();
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <article className={agentStyles.card} data-testid="agent-tool-call">
       <span className={agentStyles.label}>{t("agent.selectedTool")}</span>

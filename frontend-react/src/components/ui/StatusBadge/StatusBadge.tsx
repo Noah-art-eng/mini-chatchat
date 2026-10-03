@@ -69,7 +69,6 @@ const statusClasses: Record<StatusBadgeStatus, string> = {
   error: "bg-mc-danger-soft text-mc-danger",
 };
 
-/** 用途：负责 StatusBadge 的界面或数据处理职责。 */
 export function StatusBadge({
   className,
   label,
@@ -80,7 +79,6 @@ export function StatusBadge({
 }: StatusBadgeProps) {
   const badgeLabel = label || defaultLabels[status];
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <span
       className={cx(

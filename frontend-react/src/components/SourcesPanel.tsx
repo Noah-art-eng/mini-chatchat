@@ -4,11 +4,9 @@ import { useConversationStore } from "../stores/conversationStore";
 import { Icon } from "./ui";
 import { contextStyles } from "./ContextPanel/contextStyles";
 
-/** 用途：负责 SourcesPanel 的界面或数据处理职责。 */
 export function SourcesPanel() {
   const { t } = useI18n();
   const { messages, selectedAssistantMessageId, sources } =
-    /** 用途：负责 useConversationStore 的界面或数据处理职责。 */
     useConversationStore();
   const selectedMessage = messages.find(
     message =>
@@ -20,7 +18,6 @@ export function SourcesPanel() {
   const showHistoricalMissing =
     selectedMessage && selectedMessageSources.length === 0;
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <section
       aria-label="Sources"
@@ -49,13 +46,11 @@ export function SourcesPanel() {
             source.file_name ||
             source.url ||
             source.source ||
-            /** 用途：负责 t 的界面或数据处理职责。 */
             t("sources.source", { index: index + 1 });
           const sourceUrl = source.url || source.source || "";
           const isUrl = /^https?:\/\//.test(sourceUrl);
           const preview = source.chunk || source.content || t("sources.noPreview");
 
-          /** 用途：负责 return 的界面或数据处理职责。 */
           return (
             <article className={contextStyles.card} key={`${label}-${index}`}>
               <span className={contextStyles.sourceIndex}>

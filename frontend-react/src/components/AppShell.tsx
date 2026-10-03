@@ -19,7 +19,6 @@ type AppShellProps = {
   onToggleConversationSidebar: () => void;
 };
 
-/** 用途：负责 AppShell 的界面或数据处理职责。 */
 export function AppShell({
   activePage,
   children,
@@ -31,7 +30,6 @@ export function AppShell({
 }: AppShellProps) {
   const { t } = useI18n();
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div className={shellStyles.shell}>
       <div className={shellStyles.ambient} aria-hidden="true" />

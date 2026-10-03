@@ -41,7 +41,6 @@ type InlineProps<T extends ElementType> = {
   wrap?: boolean;
 } & Omit<ComponentPropsWithoutRef<T>, "as" | "children" | "className">;
 
-/** 用途：负责 Inline 的界面或数据处理职责。 */
 export function Inline<T extends ElementType = "div">({
   align = "center",
   as,
@@ -54,7 +53,6 @@ export function Inline<T extends ElementType = "div">({
 }: InlineProps<T>) {
   const Component = as || "div";
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <Component
       className={cx(

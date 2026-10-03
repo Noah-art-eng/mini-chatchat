@@ -18,14 +18,12 @@ const categoryClasses: Record<ToolCatalogItem["category"], string> = {
   system: "[--tool-card-tint:var(--color-brand-soft)] [--tool-icon-color:var(--icon-tone-system)]"
 };
 
-/** 用途：负责 ToolCard 的界面或数据处理职责。 */
 export function ToolCard({
   isSelected,
   onSelect,
   showDeveloperDetails,
   tool
 }: ToolCardProps) {
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <button
       aria-pressed={isSelected}

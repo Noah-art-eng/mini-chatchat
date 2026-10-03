@@ -49,13 +49,13 @@ TIMEZONE_MAPPINGS = [
 
 
 def query_contains_any(query, terms):
-    """负责 query_contains_any 的函数职责。"""
+    """用稳定关键词判断用户请求是否命中某类工具意图。"""
     normalized = query.lower()
     return any(term in normalized for term in terms)
 
 
 def infer_timezone_from_query(query):
-    """负责 infer_timezone_from_query 的函数职责。"""
+    """从时间问题中提取项目支持的时区名称，供 current_time 补默认参数。"""
     normalized = query.lower()
 
     for aliases, timezone_name in TIMEZONE_MAPPINGS:
@@ -66,7 +66,7 @@ def infer_timezone_from_query(query):
 
 
 def is_time_query(query):
-    """负责 is_time_query 的函数职责。"""
+    """判断请求是否应优先交给时间工具。"""
     normalized = query.lower()
     return (
         query_contains_any(query, TIME_QUERY_TERMS)
@@ -78,17 +78,21 @@ def is_time_query(query):
 
 
 def is_web_search_query(query):
-    """负责 is_web_search_query 的函数职责。"""
+    """判断请求是否明确需要联网搜索。"""
     return query_contains_any(query, WEB_SEARCH_TERMS)
 
 
 def is_kb_query(query):
-    """负责 is_kb_query 的函数职责。"""
+    """判断请求是否明确要求查询当前知识库。"""
     return query_contains_any(query, KB_SEARCH_TERMS)
 
 
 def choose_tool_without_llm(query, available_tools):
-    """负责 choose_tool_without_llm 的函数职责。"""
+    """在 LLM 决策不可用时，用确定性规则选择单步工具。
+
+    规则只会选择本次允许的工具，并返回与模型解析结果相同的结构，使 Agent 后续
+    执行流程无需区分结果来自 LLM 还是回退逻辑。
+    """
     tool_names = {
         tool["name"]
         for tool in available_tools
@@ -257,7 +261,7 @@ def choose_tool_without_llm(query, available_tools):
 
 
 def choose_multi_step_action_without_llm(query, available_tools, steps):
-    """负责 choose_multi_step_action_without_llm 的函数职责。"""
+    """根据已完成步骤确定下一次工具调用；没有待办工具时结束多步流程。"""
     used_tools = {
         (step.get("tool_call") or {}).get("tool")
         for step in steps
@@ -307,7 +311,7 @@ def choose_multi_step_action_without_llm(query, available_tools, steps):
 
 
 def generate_plan_without_llm(query):
-    """负责 generate_plan_without_llm 的函数职责。"""
+    """在 Planner 模型失败时，根据可识别意图生成最小可执行计划。"""
     normalized = query.lower()
 
     if re.search(r"\d+\s*[\+\-\*/%]\s*\d+", query):

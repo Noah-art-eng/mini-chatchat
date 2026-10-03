@@ -12,7 +12,6 @@ export type AgentToolVisual = {
   tone: ToolVisualTone;
 };
 
-/** 用途：负责 getToolVisualByName 的界面或数据处理职责。 */
 export function getToolVisualByName(toolName: string): AgentToolVisual {
   const spec = {
     name: normalizeToolVisualName(toolName),

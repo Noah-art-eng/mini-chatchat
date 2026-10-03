@@ -50,7 +50,6 @@ const toneClasses: Record<IconTone, string> = {
   system: "text-mc-warning",
 };
 
-/** 用途：负责 Icon 的界面或数据处理职责。 */
 export function Icon({
   ariaLabel,
   children,
@@ -66,7 +65,6 @@ export function Icon({
     ? { "aria-hidden": true }
     : { "aria-label": ariaLabel || label, role: "img" };
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <span
       className={cx(

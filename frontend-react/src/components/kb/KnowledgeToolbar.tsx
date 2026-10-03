@@ -11,7 +11,6 @@ type KnowledgeToolbarProps = {
   onToggleDeveloperMode: () => void;
 };
 
-/** 用途：负责 KnowledgeToolbar 的界面或数据处理职责。 */
 export function KnowledgeToolbar({
   isDeveloperMode,
   isLoading,
@@ -22,7 +21,6 @@ export function KnowledgeToolbar({
 }: KnowledgeToolbarProps) {
   const { t } = useI18n();
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div className="knowledge-toolbar flex items-center justify-end gap-mc-2 [grid-area:toolbar]">
       <button className={kbPlainControlClassName} onClick={onOpenDetails} type="button">

@@ -80,11 +80,11 @@ BLOCKED_PATH_NAMES = {
 
 
 class DemoMCPServer:
-    """负责 DemoMCPServer 的类职责。"""
+    """进程内演示 MCP 服务，用于验证工具发现和调用链而不依赖外部进程。"""
     name = "demo"
 
     def list_tools(self) -> list[MCPToolSpec]:
-        """负责 list_tools 的函数职责。"""
+        """返回当前 MCP 服务允许公开的工具描述。"""
         return [
             MCPToolSpec(
                 server_name=self.name,
@@ -127,7 +127,7 @@ class DemoMCPServer:
         ]
 
     def call_tool(self, tool_name: str, arguments: dict) -> MCPToolResult:
-        """负责 call_tool 的函数职责。"""
+        """校验工具参数和只读边界后执行 MCP 工具，并返回统一结果。"""
         if tool_name == "echo":
             message = arguments.get("message")
             if not isinstance(message, str) or not message.strip():
@@ -168,7 +168,7 @@ class DemoMCPServer:
         )
 
     def _metadata(self, tool_name: str) -> dict:
-        """负责 _metadata 的函数职责。"""
+        """为工具结果补充 Provider、只读级别和服务来源。"""
         return {
             "server": self.name,
             "tool": tool_name,
@@ -179,11 +179,11 @@ class DemoMCPServer:
 
 
 class FilesystemMCPServer:
-    """负责 FilesystemMCPServer 的类职责。"""
+    """只读文件 MCP 服务，只允许访问项目根目录内的安全文本文件。"""
     name = "filesystem"
 
     def list_tools(self) -> list[MCPToolSpec]:
-        """负责 list_tools 的函数职责。"""
+        """返回当前 MCP 服务允许公开的工具描述。"""
         return [
             MCPToolSpec(
                 server_name=self.name,
@@ -239,7 +239,7 @@ class FilesystemMCPServer:
         ]
 
     def call_tool(self, tool_name: str, arguments: dict) -> MCPToolResult:
-        """负责 call_tool 的函数职责。"""
+        """校验工具参数和只读边界后执行 MCP 工具，并返回统一结果。"""
         if tool_name == "read_file":
             return self._read_file(arguments)
 
@@ -253,7 +253,7 @@ class FilesystemMCPServer:
         )
 
     def _read_file(self, arguments: dict) -> MCPToolResult:
-        """负责 _read_file 的函数职责。"""
+        """在允许的项目目录内读取文件，并限制返回大小。"""
         path = arguments.get("path")
         if not isinstance(path, str):
             return self._error("path must be a string", "read_file")
@@ -294,7 +294,7 @@ class FilesystemMCPServer:
         )
 
     def _list_dir(self, arguments: dict) -> MCPToolResult:
-        """负责 _list_dir 的函数职责。"""
+        """在允许目录内列出文件，避免 MCP 浏览任意系统路径。"""
         path = arguments.get("path")
         if not isinstance(path, str):
             return self._error("path must be a string", "list_dir")
@@ -334,7 +334,7 @@ class FilesystemMCPServer:
         )
 
     def _validate_file_path(self, path: str) -> str | None:
-        """负责 _validate_file_path 的函数职责。"""
+        """确认目标是允许根目录内可读取的普通文件。"""
         common_error = self._validate_common_path(path)
         if common_error:
             return common_error
@@ -354,7 +354,7 @@ class FilesystemMCPServer:
         return None
 
     def _validate_dir_path(self, path: str) -> str | None:
-        """负责 _validate_dir_path 的函数职责。"""
+        """确认目标是允许根目录内的目录。"""
         common_error = self._validate_common_path(path)
         if common_error:
             return common_error
@@ -370,7 +370,7 @@ class FilesystemMCPServer:
         return None
 
     def _validate_common_path(self, path: str) -> str | None:
-        """负责 _validate_common_path 的函数职责。"""
+        """使用真实路径检查目标没有通过 .. 或符号链接逃出允许目录。"""
         if not path.strip():
             return "path is required"
 
@@ -389,18 +389,18 @@ class FilesystemMCPServer:
         return None
 
     def _normalize_path(self, path: str) -> str:
-        """负责 _normalize_path 的函数职责。"""
+        """把 Agent 提供的相对路径统一成服务内部格式。"""
         normalized = path.replace("\\", "/").strip()
         if normalized in {"", "."}:
             return "."
         return normalized.strip("/")
 
     def _resolve_path(self, path: str) -> str:
-        """负责 _resolve_path 的函数职责。"""
+        """把已校验的相对路径转换成实际项目路径。"""
         return os.path.abspath(os.path.join(PROJECT_ROOT, self._normalize_path(path)))
 
     def _error(self, message: str, tool_name: str) -> MCPToolResult:
-        """负责 _error 的函数职责。"""
+        """构造不泄露内部异常的 MCPToolResult 失败结果。"""
         return MCPToolResult(
             ok=False,
             error=message,
@@ -408,7 +408,7 @@ class FilesystemMCPServer:
         )
 
     def _metadata(self, tool_name: str) -> dict:
-        """负责 _metadata 的函数职责。"""
+        """为工具结果补充 Provider、只读级别和服务来源。"""
         return {
             "server": self.name,
             "tool": tool_name,
@@ -419,9 +419,13 @@ class FilesystemMCPServer:
 
 
 class MCPClient:
-    """负责 MCPClient 的类职责。"""
+    """统一管理进程内与 stdio MCP 服务的发现、调用、超时和结果清理。
+
+    MCP 是可选集成。外部服务启动失败或超时时只跳过该服务，本地工具仍可工作；
+    工具暴露前还要经过 allowlist，返回内容也会移除敏感字段。
+    """
     def __init__(self, servers: dict[str, object] | None = None):
-        """负责 __init__ 的函数职责。"""
+        """注册内置与外部 MCP 服务；外部服务保持可选，失败不阻止应用启动。"""
         self.servers = servers or {
             "demo": DemoMCPServer(),
             "filesystem": FilesystemMCPServer(),
@@ -486,7 +490,7 @@ class MCPClient:
         }
 
     def list_servers(self) -> list[dict]:
-        """负责 list_servers 的函数职责。"""
+        """返回 MCP 服务运行状态；探测失败会记录为 unavailable 而不是抛给普通 API。"""
         servers = []
         for server_name in sorted(self.servers):
             server = self.servers[server_name]
@@ -505,7 +509,7 @@ class MCPClient:
         return servers
 
     def discover_tools(self, server_name: str | None = None) -> list[MCPToolSpec]:
-        """负责 discover_tools 的函数职责。"""
+        """从可用服务收集 allowlist 内的工具；单个服务失败时保留其他工具。"""
         server_names = [server_name] if server_name else sorted(self.servers)
         tools: list[MCPToolSpec] = []
         stdio_servers = []
@@ -550,7 +554,9 @@ class MCPClient:
         return tools
 
     def call_tool(self, qualified_name: str, arguments: dict | None = None) -> MCPToolResult:
-        """负责 call_tool 的函数职责。"""
+        """校验 MCP 工具名和安全属性，执行后清理返回内容。"""
+        # 名称先拆成 server/tool，再同时检查服务允许列表、工具允许列表和发现结果。
+        # 不能只相信 Agent 给出的工具名，也不能只相信外部服务自报的工具属性。
         parsed = self._parse_qualified_name(qualified_name)
         if parsed is None:
             return self._error(f"MCP tool not allowed or not found: {qualified_name}")
@@ -570,6 +576,8 @@ class MCPClient:
         if server is None:
             return self._error(f"MCP server not allowed or not found: {server_name}")
 
+        # stdio 服务内部有 JSON-RPC 超时；进程内演示服务也放入有限等待线程。
+        # MCP 是可选能力，超时或异常只返回失败结果，不拖住普通 Agent 工具。
         try:
             if isinstance(server, StdioMCPServer):
                 result = server.call_tool(tool_name, arguments or {})
@@ -582,10 +590,12 @@ class MCPClient:
         except Exception:
             return self._error(f"MCP tool failed: {qualified_name}")
 
+        # 工具输出进入 Agent observation 前统一清理命令、环境和错误细节，避免把
+        # 外部进程内部信息原样带进模型上下文或 API 响应。
         return self._sanitize_result(result, server_name, tool_name)
 
     def get_tool(self, qualified_name: str) -> MCPToolSpec | None:
-        """负责 get_tool 的函数职责。"""
+        """从允许公开的发现结果中按完整名称取得工具。"""
         parsed = self._parse_qualified_name(qualified_name)
         if parsed is None:
             return None
@@ -598,7 +608,7 @@ class MCPClient:
         return None
 
     def shutdown_server(self, server_name: str) -> dict:
-        """负责 shutdown_server 的函数职责。"""
+        """停止指定外部 MCP 服务；未启用的服务返回明确状态。"""
         if server_name not in ALLOWED_MCP_SERVERS:
             return {
                 "server": server_name,
@@ -635,14 +645,14 @@ class MCPClient:
         }
 
     def _safe_tool_count(self, server_name: str) -> int:
-        """负责 _safe_tool_count 的函数职责。"""
+        """统计可用工具数量；可选服务失败时回退为 0。"""
         try:
             return len(self.discover_tools(server_name))
         except Exception:
             return 0
 
     def _with_timeout(self, func: Callable):
-        """负责 _with_timeout 的函数职责。"""
+        """限制进程内 MCP 操作的等待时间，避免可选集成长期阻塞请求。"""
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         future = executor.submit(func)
         try:
@@ -651,7 +661,7 @@ class MCPClient:
             executor.shutdown(wait=False, cancel_futures=True)
 
     def _parse_qualified_name(self, qualified_name: str) -> tuple[str, str] | None:
-        """负责 _parse_qualified_name 的函数职责。"""
+        """把 mcp.server.tool 名称拆成服务名和工具名，拒绝其他结构。"""
         parts = qualified_name.split(".")
         if len(parts) == 3 and parts[0] == "mcp":
             return parts[1], parts[2]
@@ -662,14 +672,14 @@ class MCPClient:
         return None
 
     def _is_allowed(self, server_name: str, tool_name: str) -> bool:
-        """负责 _is_allowed 的函数职责。"""
+        """同时检查服务和工具允许列表。"""
         return (
             server_name in ALLOWED_MCP_SERVERS
             and tool_name in ALLOWED_MCP_TOOLS.get(server_name, set())
         )
 
     def _is_allowed_spec(self, tool: MCPToolSpec) -> bool:
-        """负责 _is_allowed_spec 的函数职责。"""
+        """确认发现到的工具名称、来源和只读风险都符合安全策略。"""
         return (
             self._is_allowed(tool.server_name, tool.tool_name)
             and tool.provider == "mcp"
@@ -684,7 +694,7 @@ class MCPClient:
         server_name: str,
         tool_name: str,
     ) -> MCPToolResult:
-        """负责 _sanitize_result 的函数职责。"""
+        """把工具结果限制为安全、可序列化且适合进入 Agent observation 的数据。"""
         error = self._sanitize_text(result.error)
         metadata = {
             "server": server_name,
@@ -705,7 +715,7 @@ class MCPClient:
         )
 
     def _sanitize_data(self, value):
-        """负责 _sanitize_data 的函数职责。"""
+        """递归清理工具返回的字符串、列表和对象。"""
         if isinstance(value, str):
             return self._sanitize_text(value)
 
@@ -724,7 +734,7 @@ class MCPClient:
         return value
 
     def _sanitize_metadata(self, metadata: dict) -> dict:
-        """负责 _sanitize_metadata 的函数职责。"""
+        """移除命令、环境变量和标准输出等内部运行信息。"""
         blocked = {
             "command",
             "cmd",
@@ -741,7 +751,7 @@ class MCPClient:
         }
 
     def _sanitize_text(self, text: str | None) -> str | None:
-        """负责 _sanitize_text 的函数职责。"""
+        """遮盖工具错误文本中不应进入 Agent 上下文的敏感片段."""
         if text is None:
             return None
 
@@ -751,7 +761,7 @@ class MCPClient:
         return sanitized
 
     def _error(self, message: str) -> MCPToolResult:
-        """负责 _error 的函数职责。"""
+        """构造不泄露内部异常的 MCPToolResult 失败结果。"""
         return MCPToolResult(
             ok=False,
             error=self._sanitize_text(message),

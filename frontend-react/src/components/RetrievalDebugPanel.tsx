@@ -6,9 +6,7 @@ import type { KBChatRequest } from "../types/chat";
 import type { Source } from "../types/conversation";
 import { contextStyles } from "./ContextPanel/contextStyles";
 
-/** 用途：负责 getSourceLabel 的界面或数据处理职责。 */
 function getSourceLabel(source: Source, index: number) {
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     source.title ||
     source.file_name ||
@@ -18,18 +16,15 @@ function getSourceLabel(source: Source, index: number) {
   );
 }
 
-/** 用途：负责 getSourceHref 的界面或数据处理职责。 */
 function getSourceHref(source: Source) {
   const value = source.url || source.source || "";
   return /^https?:\/\//.test(value) ? value : null;
 }
 
-/** 用途：负责 getPreview 的界面或数据处理职责。 */
 function getPreview(source: Source) {
   return source.chunk || source.content || "";
 }
 
-/** 用途：负责 getScores 的界面或数据处理职责。 */
 function getScores(source: Source) {
   return [
     typeof source.score === "number" ? `score ${source.score.toFixed(2)}` : null,
@@ -42,7 +37,6 @@ function getScores(source: Source) {
   ].filter(Boolean);
 }
 
-/** 用途：负责 RetrievalDebugPanel 的界面或数据处理职责。 */
 export function RetrievalDebugPanel() {
   const { t } = useI18n();
   const { chatMode, kbName, tempKbId } = useConversationStore();
@@ -95,63 +89,46 @@ export function RetrievalDebugPanel() {
     topK
   ]);
 
-  /** 用途：负责 runDebugSearch 的界面或数据处理职责。 */
   async function runDebugSearch() {
     if (!debugPayload.query) {
-      /** 用途：负责 setStatus 的界面或数据处理职责。 */
       setStatus("error");
-      /** 用途：负责 setError 的界面或数据处理职责。 */
       setError(t("debug.enterQuery"));
-      /** 用途：负责 setResults 的界面或数据处理职责。 */
       setResults([]);
       return;
     }
 
     if (chatMode === "temp_kb" && !tempKbId) {
-      /** 用途：负责 setStatus 的界面或数据处理职责。 */
       setStatus("error");
-      /** 用途：负责 setError 的界面或数据处理职责。 */
       setError(t("debug.uploadTempFirst"));
-      /** 用途：负责 setResults 的界面或数据处理职责。 */
       setResults([]);
       return;
     }
 
-    /** 用途：负责 setStatus 的界面或数据处理职责。 */
     setStatus("loading");
-    /** 用途：负责 setError 的界面或数据处理职责。 */
     setError(null);
-    /** 用途：负责 setResults 的界面或数据处理职责。 */
     setResults([]);
 
     try {
       const response = await debugKbChat(debugPayload);
 
       if (response.error) {
-        /** 用途：负责 setStatus 的界面或数据处理职责。 */
         setStatus("error");
-        /** 用途：负责 setError 的界面或数据处理职责。 */
         setError(response.error);
         return;
       }
 
       const nextResults =
         response.sources || response.results || response.docs || [];
-      /** 用途：负责 setResults 的界面或数据处理职责。 */
       setResults(nextResults);
-      /** 用途：负责 setStatus 的界面或数据处理职责。 */
       setStatus(nextResults.length > 0 ? "success" : "empty");
     } catch (debugError) {
-      /** 用途：负责 setStatus 的界面或数据处理职责。 */
       setStatus("error");
-      /** 用途：负责 setError 的界面或数据处理职责。 */
       setError(
         debugError instanceof Error ? debugError.message : t("debug.failed")
       );
     }
   }
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <section
       aria-label={t("debug.title")}
@@ -191,7 +168,6 @@ export function RetrievalDebugPanel() {
           <input
             data-testid="debug-score-threshold-input"
             onChange={event =>
-              /** 用途：负责 setScoreThreshold 的界面或数据处理职责。 */
               setScoreThreshold(Number(event.target.value) || 0)
             }
             step={0.01}
@@ -269,7 +245,6 @@ export function RetrievalDebugPanel() {
           const href = getSourceHref(source);
           const scores = getScores(source);
 
-          /** 用途：负责 return 的界面或数据处理职责。 */
           return (
             <article className={contextStyles.debugCard} key={`${label}-${index}`}>
               <div className={contextStyles.sourceMeta}>

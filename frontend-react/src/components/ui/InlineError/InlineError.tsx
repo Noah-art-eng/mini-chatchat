@@ -21,7 +21,6 @@ const toneClasses: Record<InlineErrorTone, string> = {
   warning: "border-mc-warning-soft bg-mc-warning-soft",
 };
 
-/** 用途：负责 InlineError 的界面或数据处理职责。 */
 export function InlineError({
   actionLabel,
   className,
@@ -31,7 +30,6 @@ export function InlineError({
   tone = "danger",
   urgent = false
 }: InlineErrorProps) {
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div
       aria-live={urgent ? undefined : "polite"}

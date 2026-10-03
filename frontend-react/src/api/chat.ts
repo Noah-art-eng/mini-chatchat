@@ -2,7 +2,7 @@ import { authFetch } from "./client";
 import type { KBChatRequest, StreamEvent } from "../types/chat";
 import type { Source } from "../types/conversation";
 
-/** 用途：负责 startKbChat 的界面或数据处理职责。 */
+/** 向后端 /kb_chat 发起 RAG 请求，响应体随后交给 readSSE() 按事件读取。 */
 export async function startKbChat(request: KBChatRequest, signal?: AbortSignal) {
   const response = await authFetch("/kb_chat", {
     method: "POST",
@@ -20,7 +20,7 @@ export async function startKbChat(request: KBChatRequest, signal?: AbortSignal) 
   return response;
 }
 
-/** 用途：负责 debugKbChat 的界面或数据处理职责。 */
+/** 以非流式方式请求同一 RAG 入口，供检索调试界面查看完整结果。 */
 export async function debugKbChat(request: KBChatRequest) {
   const response = await authFetch("/kb_chat", {
     method: "POST",
@@ -44,7 +44,7 @@ export async function debugKbChat(request: KBChatRequest) {
   }>;
 }
 
-/** 用途：负责 uploadTempFile 的界面或数据处理职责。 */
+/** 上传临时问答文件并取得 temp_kb_id，后续 temp_kb 模式用该编号定位隔离索引。 */
 export async function uploadTempFile(file: File) {
   const formData = new FormData();
   formData.append("file", file);
@@ -69,7 +69,10 @@ export async function uploadTempFile(file: File) {
   }>;
 }
 
-/** 用途：负责 readSSE 的界面或数据处理职责。 */
+/**
+ * 把 /kb_chat 返回的字节流按 SSE 空行边界拆成事件。
+ * 解析后的 sources/token/error/done 交回 useChatStream；AbortSignal 会同时停止网络读取。
+ */
 export async function readSSE(
   response: Response,
   onEvent: (event: StreamEvent) => void,
@@ -89,7 +92,6 @@ export async function readSSE(
   signal?.throwIfAborted();
   signal?.addEventListener("abort", cancelReader, { once: true });
 
-  /** 用途：负责 parseEvent 的界面或数据处理职责。 */
   function parseEvent(rawEvent: string) {
     const data = rawEvent
       .split("\n")
@@ -99,7 +101,6 @@ export async function readSSE(
       .trim();
 
     if (!data || data === "[DONE]") return;
-    /** 用途：负责 onEvent 的界面或数据处理职责。 */
     onEvent(JSON.parse(data) as StreamEvent);
   }
 

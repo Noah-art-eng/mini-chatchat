@@ -14,7 +14,6 @@ type DocumentTableProps = {
   selectedDocument: KnowledgeFile | null;
 };
 
-/** 用途：负责 DocumentTable 的界面或数据处理职责。 */
 export function DocumentTable({
   activeDocumentAction,
   documents,
@@ -30,7 +29,6 @@ export function DocumentTable({
     return <EmptyKnowledgeState hasKnowledgeBase={hasKnowledgeBase} />;
   }
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div className="document-list grid max-h-[calc(100vh-260px)] min-w-0 gap-[10px] overflow-y-auto [grid-area:documents]" data-testid="documents" id="documents">
       {documents.map(file => (

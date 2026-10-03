@@ -17,7 +17,6 @@ type AgentThoughtProps = {
   planner: PlannerState;
 };
 
-/** 用途：负责 getPlannerStatusIcon 的界面或数据处理职责。 */
 function getPlannerStatusIcon(status: string) {
   if (status === "running") return LoaderCircle;
   if (status === "completed") return CircleCheck;
@@ -27,7 +26,6 @@ function getPlannerStatusIcon(status: string) {
   return Square;
 }
 
-/** 用途：负责 getPlannerStatusTone 的界面或数据处理职责。 */
 function getPlannerStatusTone(status: string) {
   if (status === "completed") return "success";
   if (status === "failed") return "danger";
@@ -35,11 +33,9 @@ function getPlannerStatusTone(status: string) {
   return "muted";
 }
 
-/** 用途：负责 AgentThought 的界面或数据处理职责。 */
 export function AgentThought({ planner }: AgentThoughtProps) {
   const { t } = useI18n();
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <article
       className={cx(agentStyles.card, "planner-card")}

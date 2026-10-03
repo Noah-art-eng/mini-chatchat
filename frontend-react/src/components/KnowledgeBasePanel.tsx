@@ -5,7 +5,6 @@ import { KnowledgeWorkspace } from "./kb";
 import { useToast } from "./ui";
 import { ConfirmDialog } from "./ConfirmDialog";
 
-/** 用途：负责 KnowledgeBasePanel 的界面或数据处理职责。 */
 export function KnowledgeBasePanel() {
   const { t } = useI18n();
   const { showToast } = useToast();
@@ -40,7 +39,6 @@ export function KnowledgeBasePanel() {
     uploadStatus
   } = useKbPanel();
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <>
     <KnowledgeWorkspace
@@ -84,20 +82,16 @@ export function KnowledgeBasePanel() {
         });
       }}
       onImportKb={() => {
-        /** 用途：负责 void 的界面或数据处理职责。 */
         void (async () => {
           const didImport = await importKnowledgeBaseFile(selectedImportFile);
 
           if (didImport) {
-            /** 用途：负责 showToast 的界面或数据处理职责。 */
             showToast({ message: t("kb.importSuccess"), variant: "success" });
-            /** 用途：负责 setSelectedImportFile 的界面或数据处理职责。 */
             setSelectedImportFile(null);
             if (importInputRef.current) {
               importInputRef.current.value = "";
             }
           } else {
-            /** 用途：负责 showToast 的界面或数据处理职责。 */
             showToast({ message: t("kb.importFailed"), variant: "error" });
           }
         })();
@@ -107,7 +101,6 @@ export function KnowledgeBasePanel() {
           .then(() => showToast({ message: t("kb.refreshSuccess"), variant: "success" }))
           .catch(error => {
             console.error(error);
-            /** 用途：负责 showToast 的界面或数据处理职责。 */
             showToast({ message: t("kb.refreshFailed"), variant: "error" });
           });
       }}
@@ -125,20 +118,16 @@ export function KnowledgeBasePanel() {
         void selectKnowledgeBase(nextKbName);
       }}
       onUploadDocument={() => {
-        /** 用途：负责 void 的界面或数据处理职责。 */
         void (async () => {
           const didUpload = await uploadKnowledgeFile(selectedFile);
 
           if (didUpload) {
-            /** 用途：负责 showToast 的界面或数据处理职责。 */
             showToast({ message: t("kb.uploadSuccess"), variant: "success" });
-            /** 用途：负责 setSelectedFile 的界面或数据处理职责。 */
             setSelectedFile(null);
             if (fileInputRef.current) {
               fileInputRef.current.value = "";
             }
           } else {
-            /** 用途：负责 showToast 的界面或数据处理职责。 */
             showToast({ message: t("kb.uploadFailed"), variant: "error" });
           }
         })();

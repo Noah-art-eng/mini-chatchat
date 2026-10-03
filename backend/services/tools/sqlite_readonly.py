@@ -17,7 +17,7 @@ FORBIDDEN_SQL = re.compile(
 
 
 def normalize_limit(value) -> int:
-    """负责 normalize_limit 的函数职责。"""
+    """限制 SQL 工具最多返回 50 行，控制数据库和模型上下文开销。"""
     try:
         limit = int(value)
     except (TypeError, ValueError):
@@ -27,7 +27,7 @@ def normalize_limit(value) -> int:
 
 
 def validate_select_sql(sql: str) -> str | None:
-    """负责 validate_select_sql 的函数职责。"""
+    """只接受单条 SELECT，并拒绝写入、改表和 PRAGMA 等语句。"""
     stripped = sql.strip()
 
     if not stripped:
@@ -48,7 +48,11 @@ def validate_select_sql(sql: str) -> str | None:
 
 
 def execute_sqlite_readonly_query(arguments: dict) -> ToolResult:
-    """负责 execute_sqlite_readonly_query 的函数职责。"""
+    """通过 SQLite 只读连接执行受限查询。
+
+    语句检查和数据库 `mode=ro` 是两层保护：即使文本校验遗漏了特殊写法，连接
+    本身也不能修改数据库。多取一行只用于判断结果是否被 limit 截断。
+    """
     sql = arguments.get("sql")
     limit = normalize_limit(arguments.get("limit", MAX_ROWS))
 
@@ -111,7 +115,7 @@ def execute_sqlite_readonly_query(arguments: dict) -> ToolResult:
 
 
 def get_sqlite_readonly_query_tool() -> ToolSpec:
-    """负责 get_sqlite_readonly_query_tool 的函数职责。"""
+    """声明只读数据库查询工具，供 Agent 查看项目业务数据而不能修改它。"""
     return ToolSpec(
         name="sqlite_readonly_query",
         description=(

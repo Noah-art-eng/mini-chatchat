@@ -1,10 +1,8 @@
 import { useI18n, type LanguageCode } from "../i18n";
 
-/** 用途：负责 LanguageSwitcher 的界面或数据处理职责。 */
 export function LanguageSwitcher() {
   const { language, setLanguage, t } = useI18n();
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <label className="flex min-w-max items-center gap-mc-2 text-mc-caption font-mc-bold text-mc-secondary">
       <span>{t("language.label")}</span>

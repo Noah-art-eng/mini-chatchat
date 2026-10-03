@@ -23,7 +23,6 @@ const variantClasses: Record<SkeletonVariant, string> = {
   table: "min-h-[var(--table-row-height)]",
 };
 
-/** 用途：负责 Skeleton 的界面或数据处理职责。 */
 export function Skeleton({
   className,
   count = 1,
@@ -31,7 +30,6 @@ export function Skeleton({
   variant = "text",
   ...props
 }: SkeletonProps) {
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div
       aria-hidden="true"

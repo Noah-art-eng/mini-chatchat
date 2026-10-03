@@ -5,7 +5,6 @@ type BrandLogoProps = {
   title?: string;
 } & Omit<SVGProps<SVGSVGElement>, "children" | "height" | "viewBox" | "width">;
 
-/** 用途：负责 BrandLogo 的界面或数据处理职责。 */
 export function BrandLogo({
   size = 40,
   title = "Mini ChatChat",
@@ -13,7 +12,6 @@ export function BrandLogo({
 }: BrandLogoProps) {
   const titleId = "mini-chatchat-logo-title";
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <svg
       aria-labelledby={title ? titleId : undefined}

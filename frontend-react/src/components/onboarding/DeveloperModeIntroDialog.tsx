@@ -8,7 +8,6 @@ type DeveloperModeIntroDialogProps = {
   onConfirm: () => void;
 };
 
-/** 用途：负责 DeveloperModeIntroDialog 的界面或数据处理职责。 */
 export function DeveloperModeIntroDialog({
   isOpen,
   onCancel,
@@ -16,7 +15,6 @@ export function DeveloperModeIntroDialog({
 }: DeveloperModeIntroDialogProps) {
   const { t } = useI18n();
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <Dialog
       actions={[

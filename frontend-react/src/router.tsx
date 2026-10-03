@@ -22,13 +22,12 @@ type RouterContextValue = {
 
 const RouterContext = createContext<RouterContextValue | null>(null);
 
-/** 用途：负责 normalizePath 的界面或数据处理职责。 */
 function normalizePath(path: string) {
+  // 所有内部路由统一成以 / 开头的 pathname，避免 history 和界面状态出现两种写法。
   if (!path) return "/";
   return path.startsWith("/") ? path : `/${path}`;
 }
 
-/** 用途：负责 AppRouter 的界面或数据处理职责。 */
 export function AppRouter({
   children,
   initialPath
@@ -36,28 +35,24 @@ export function AppRouter({
   children: ReactNode;
   initialPath?: string;
 }) {
+  // 这个轻量路由只管理 pathname，不引入额外路由库；浏览器前进/后退仍由 popstate 同步。
   const [pathname, setPathname] = useState(() =>
-    /** 用途：负责 normalizePath 的界面或数据处理职责。 */
     normalizePath(initialPath ?? window.location.pathname)
   );
 
-  /** 用途：负责 useEffect 的界面或数据处理职责。 */
   useEffect(() => {
-    /** 用途：负责 handlePopState 的界面或数据处理职责。 */
     function handlePopState() {
-      /** 用途：负责 setPathname 的界面或数据处理职责。 */
       setPathname(normalizePath(window.location.pathname));
     }
 
     window.addEventListener("popstate", handlePopState);
-    /** 用途：负责 return 的界面或数据处理职责。 */
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
   const navigate = useCallback((to: string, options: NavigateOptions = {}) => {
+    // 先写浏览器 history，再更新 React 状态，让地址栏和当前页面始终指向同一路由。
     const nextPath = normalizePath(to);
     if (nextPath === window.location.pathname) {
-      /** 用途：负责 setPathname 的界面或数据处理职责。 */
       setPathname(nextPath);
       return;
     }
@@ -67,7 +62,6 @@ export function AppRouter({
     } else {
       window.history.pushState({}, "", nextPath);
     }
-    /** 用途：负责 setPathname 的界面或数据处理职责。 */
     setPathname(nextPath);
   }, []);
 
@@ -79,13 +73,11 @@ export function AppRouter({
     [navigate, pathname]
   );
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <RouterContext.Provider value={value}>{children}</RouterContext.Provider>
   );
 }
 
-/** 用途：负责 useLocation 的界面或数据处理职责。 */
 export function useLocation() {
   const context = useContext(RouterContext);
   if (!context) {
@@ -94,7 +86,6 @@ export function useLocation() {
   return context.location;
 }
 
-/** 用途：负责 useNavigate 的界面或数据处理职责。 */
 export function useNavigate() {
   const context = useContext(RouterContext);
   if (!context) {
@@ -103,7 +94,6 @@ export function useNavigate() {
   return context.navigate;
 }
 
-/** 用途：负责 Link 的界面或数据处理职责。 */
 export function Link({
   children,
   className,
@@ -115,8 +105,8 @@ export function Link({
 }) {
   const navigate = useNavigate();
 
-  /** 用途：负责 handleClick 的界面或数据处理职责。 */
   function handleClick(event: MouseEvent<HTMLAnchorElement>) {
+    // 只接管普通左键点击；新标签页和组合键继续使用浏览器原生链接行为。
     if (
       event.defaultPrevented ||
       event.button !== 0 ||
@@ -129,11 +119,9 @@ export function Link({
     }
 
     event.preventDefault();
-    /** 用途：负责 navigate 的界面或数据处理职责。 */
     navigate(to);
   }
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <a className={className} href={to} onClick={handleClick}>
       {children}

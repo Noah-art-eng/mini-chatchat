@@ -9,7 +9,7 @@ SALT_BYTES = 16
 
 
 def hash_password(password: str):
-    """负责 hash_password 的函数职责。"""
+    """使用随机盐和 PBKDF2 生成密码摘要，数据库不保存明文密码。"""
     salt = os.urandom(SALT_BYTES)
     digest = hashlib.pbkdf2_hmac(
         PBKDF2_ALGORITHM,
@@ -25,7 +25,7 @@ def hash_password(password: str):
 
 
 def verify_password(password: str, password_hash: str | None):
-    """负责 verify_password 的函数职责。"""
+    """用摘要中的盐和迭代参数校验密码，并使用恒定时间比较结果。"""
     if not password_hash:
         return False
 

@@ -34,7 +34,6 @@ const pageTitles: Record<AppPage, string> = {
   settings: "Mini ChatChat · System"
 };
 
-/** 用途：负责 getPageFromPath 的界面或数据处理职责。 */
 function getPageFromPath(pathname: string): AppPage {
   if (pathname.startsWith("/knowledge")) return "kb";
   if (pathname.startsWith("/agent")) return "agent";
@@ -43,7 +42,10 @@ function getPageFromPath(pathname: string): AppPage {
   return "chat";
 }
 
-/** 用途：负责 App 的界面或数据处理职责。 */
+/**
+ * React 应用的页面装配入口。
+ * 这里根据路由和当前权限选择工作区；具体聊天、知识库和系统业务留给各 feature 处理。
+ */
 export function App() {
   const { t } = useI18n();
   const location = useLocation();
@@ -55,7 +57,6 @@ export function App() {
     [location.pathname]
   );
   const [isConversationSidebarOpen, setIsConversationSidebarOpen] =
-    /** 用途：负责 useState 的界面或数据处理职责。 */
     useState(false);
   const [isModeGuideOpen, setIsModeGuideOpen] = useState(false);
   const [isWelcomeOpen, setIsWelcomeOpen] = useState(false);
@@ -71,7 +72,6 @@ export function App() {
     (activePage === "kb" && auth.can("can_manage_kb")) ||
     (activePage === "agent" && auth.can("can_use_agent"));
 
-  /** 用途：负责 useEffect 的界面或数据处理职责。 */
   useEffect(() => {
     if (auth.isLoading) return;
 
@@ -80,24 +80,19 @@ export function App() {
       : isOnboardingCompleted();
 
     if (!completed) {
-      /** 用途：负责 setIsWelcomeOpen 的界面或数据处理职责。 */
       setIsWelcomeOpen(true);
     }
   }, [auth.isAuthenticated, auth.isLoading, auth.preferences?.onboarding_completed]);
 
-  /** 用途：负责 useEffect 的界面或数据处理职责。 */
   useEffect(() => {
     if (auth.isLoading) return;
-    /** 用途：负责 startNewConversation 的界面或数据处理职责。 */
+    // 登录身份变化后清掉上一用户的会话状态，再按新 user scope 重新读取侧栏列表。
     startNewConversation();
-    /** 用途：负责 refreshConversations 的界面或数据处理职责。 */
     refreshConversations().catch(() => undefined);
   }, [auth.isLoading, auth.session.id, refreshConversations, startNewConversation]);
 
-  /** 用途：负责 useLayoutEffect 的界面或数据处理职责。 */
   useLayoutEffect(() => {
     if (location.pathname === "/") {
-      /** 用途：负责 navigate 的界面或数据处理职责。 */
       navigate(pagePaths.chat, { replace: true });
       return;
     }
@@ -105,15 +100,12 @@ export function App() {
     document.title = pageTitles[activePage];
   }, [activePage, location.pathname, navigate]);
 
-  /** 用途：负责 completeWelcomeGuide 的界面或数据处理职责。 */
   function completeWelcomeGuide() {
     if (auth.isAuthenticated) {
       auth.updatePreferences({ onboarding_completed: true }).catch(() => undefined);
     } else {
-      /** 用途：负责 setOnboardingCompleted 的界面或数据处理职责。 */
       setOnboardingCompleted(true);
     }
-    /** 用途：负责 setIsWelcomeOpen 的界面或数据处理职责。 */
     setIsWelcomeOpen(false);
   }
 
@@ -136,7 +128,6 @@ export function App() {
     );
   }
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <>
       <AppShell
@@ -148,19 +139,14 @@ export function App() {
       }
       isConversationSidebarOpen={isConversationSidebarOpen}
       onSelectPage={page => {
-        /** 用途：负责 navigate 的界面或数据处理职责。 */
         navigate(pagePaths[page]);
-        /** 用途：负责 setIsConversationSidebarOpen 的界面或数据处理职责。 */
         setIsConversationSidebarOpen(false);
       }}
       onGoHome={() => {
-        /** 用途：负责 navigate 的界面或数据处理职责。 */
         navigate(pagePaths.chat);
-        /** 用途：负责 setIsConversationSidebarOpen 的界面或数据处理职责。 */
         setIsConversationSidebarOpen(false);
       }}
       onToggleConversationSidebar={() =>
-        /** 用途：负责 setIsConversationSidebarOpen 的界面或数据处理职责。 */
         setIsConversationSidebarOpen(isOpen => !isOpen)
       }
     >

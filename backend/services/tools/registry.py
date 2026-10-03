@@ -9,7 +9,7 @@ from .types import ToolResult, ToolSpec
 
 
 def get_local_tool_registry() -> dict[str, ToolSpec]:
-    """负责 get_local_tool_registry 的函数职责。"""
+    """建立进程内本地工具表，供 Agent 查询和执行。"""
     tools = [
         get_current_time_tool(),
         get_calculator_tool(),
@@ -26,12 +26,12 @@ def get_local_tool_registry() -> dict[str, ToolSpec]:
 
 
 def get_tool_registry() -> dict[str, ToolSpec]:
-    """负责 get_tool_registry 的函数职责。"""
+    """返回兼容旧调用的本地工具表，不触发可选 MCP 初始化。"""
     return get_local_tool_registry()
 
 
 def list_all_tools() -> list[dict]:
-    """负责 list_all_tools 的函数职责。"""
+    """合并本地工具与当前可用的 MCP 工具，供 Agent 做选择。"""
     from services.mcp_registry import get_mcp_tool_registry
 
     registry = {
@@ -45,7 +45,7 @@ def list_all_tools() -> list[dict]:
 
 
 def resolve_tool(name: str) -> ToolSpec | None:
-    """负责 resolve_tool 的函数职责。"""
+    """按名称先查本地工具，再查允许暴露的 MCP 工具。"""
     if name in get_local_tool_registry():
         return get_local_tool_registry()[name]
 
@@ -55,12 +55,12 @@ def resolve_tool(name: str) -> ToolSpec | None:
 
 
 def get_tool(name: str) -> ToolSpec | None:
-    """负责 get_tool 的函数职责。"""
+    """只从进程内本地工具注册表按名称查找工具。"""
     return get_local_tool_registry().get(name)
 
 
 def list_tools() -> list[dict]:
-    """负责 list_tools 的函数职责。"""
+    """返回本地与 MCP 工具的统一公开描述。"""
     return [
         tool.public_dict()
         for tool in get_tool_registry().values()
@@ -68,7 +68,7 @@ def list_tools() -> list[dict]:
 
 
 def run_tool(name: str, arguments: dict | None = None) -> ToolResult:
-    """负责 run_tool 的函数职责。"""
+    """执行已注册工具，并把异常统一转换成 Agent 可记录的 ToolResult。"""
     tool = resolve_tool(name)
 
     if tool is None:

@@ -24,7 +24,6 @@ type PendingAction =
   | { kind: "unlink-oauth"; provider: OAuthProviderStatus }
   | null;
 
-/** 用途：负责 formatDate 的界面或数据处理职责。 */
 function formatDate(value: string | null) {
   if (!value) return "Never";
 
@@ -35,7 +34,6 @@ function formatDate(value: string | null) {
   }
 }
 
-/** 用途：负责 AccountPage 的界面或数据处理职责。 */
 export function AccountPage() {
   const auth = useAuth();
   const { t } = useI18n();
@@ -56,93 +54,68 @@ export function AccountPage() {
   );
 
   const refreshSessions = useCallback(async () => {
-    /** 用途：负责 setIsLoadingSessions 的界面或数据处理职责。 */
     setIsLoadingSessions(true);
-    /** 用途：负责 setError 的界面或数据处理职责。 */
     setError(null);
 
     try {
       const response = await listAuthSessions();
-      /** 用途：负责 setSessions 的界面或数据处理职责。 */
       setSessions(response.sessions);
     } catch {
-      /** 用途：负责 setError 的界面或数据处理职责。 */
       setError(t("account.sessionsLoadFailed"));
     } finally {
-      /** 用途：负责 setIsLoadingSessions 的界面或数据处理职责。 */
       setIsLoadingSessions(false);
     }
   }, [t]);
 
   const refreshOAuthProviders = useCallback(async () => {
-    /** 用途：负责 setIsLoadingProviders 的界面或数据处理职责。 */
     setIsLoadingProviders(true);
-    /** 用途：负责 setError 的界面或数据处理职责。 */
     setError(null);
 
     try {
       const response = await listOAuthProviders();
-      /** 用途：负责 setOAuthProviders 的界面或数据处理职责。 */
       setOAuthProviders(response.providers);
     } catch {
-      /** 用途：负责 setError 的界面或数据处理职责。 */
       setError(t("account.oauthLoadFailed"));
     } finally {
-      /** 用途：负责 setIsLoadingProviders 的界面或数据处理职责。 */
       setIsLoadingProviders(false);
     }
   }, [t]);
 
-  /** 用途：负责 useEffect 的界面或数据处理职责。 */
   useEffect(() => {
-    /** 用途：负责 setDisplayName 的界面或数据处理职责。 */
     setDisplayName(auth.session.displayName);
   }, [auth.session.displayName]);
 
-  /** 用途：负责 useEffect 的界面或数据处理职责。 */
   useEffect(() => {
     if (!auth.session.isGuest) {
-      /** 用途：负责 refreshSessions 的界面或数据处理职责。 */
       refreshSessions().catch(() => undefined);
-      /** 用途：负责 refreshOAuthProviders 的界面或数据处理职责。 */
       refreshOAuthProviders().catch(() => undefined);
     }
   }, [auth.session.isGuest, refreshOAuthProviders, refreshSessions]);
 
-  /** 用途：负责 handleProfileSubmit 的界面或数据处理职责。 */
   async function handleProfileSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    /** 用途：负责 setIsSavingProfile 的界面或数据处理职责。 */
     setIsSavingProfile(true);
-    /** 用途：负责 setError 的界面或数据处理职责。 */
     setError(null);
 
     try {
       await auth.updateAccount({ displayName });
-      /** 用途：负责 showToast 的界面或数据处理职责。 */
       showToast({ message: t("account.profileUpdated"), variant: "success" });
     } catch {
-      /** 用途：负责 setError 的界面或数据处理职责。 */
       setError(t("account.profileUpdateFailed"));
     } finally {
-      /** 用途：负责 setIsSavingProfile 的界面或数据处理职责。 */
       setIsSavingProfile(false);
     }
   }
 
-  /** 用途：负责 confirmPendingAction 的界面或数据处理职责。 */
   async function confirmPendingAction() {
     if (!pendingAction) return;
 
-    /** 用途：负责 setIsActionLoading 的界面或数据处理职责。 */
     setIsActionLoading(true);
-    /** 用途：负责 setError 的界面或数据处理职责。 */
     setError(null);
 
     try {
       if (pendingAction.kind === "revoke") {
         const response = await revokeAuthSession(pendingAction.session.session_id);
-        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast({ message: t("account.sessionRevoked"), variant: "success" });
         if (response.revoked_current) {
           auth.resetToGuest();
@@ -152,13 +125,11 @@ export function AccountPage() {
 
       if (pendingAction.kind === "logout-others") {
         await logoutOtherSessions();
-        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast({ message: t("account.otherSessionsRevoked"), variant: "success" });
       }
 
       if (pendingAction.kind === "logout-all") {
         await logoutAllSessions();
-        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast({ message: t("account.allSessionsRevoked"), variant: "success" });
         auth.resetToGuest();
         return;
@@ -166,39 +137,30 @@ export function AccountPage() {
 
       if (pendingAction.kind === "unlink-oauth") {
         await unlinkOAuthProvider(pendingAction.provider.provider);
-        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast({ message: t("account.oauthUnlinked"), variant: "success" });
         await refreshOAuthProviders();
       }
 
       await refreshSessions();
     } catch {
-      /** 用途：负责 setError 的界面或数据处理职责。 */
       setError(t("account.sessionActionFailed"));
     } finally {
-      /** 用途：负责 setIsActionLoading 的界面或数据处理职责。 */
       setIsActionLoading(false);
-      /** 用途：负责 setPendingAction 的界面或数据处理职责。 */
       setPendingAction(null);
     }
   }
 
-  /** 用途：负责 handleOAuthLink 的界面或数据处理职责。 */
   async function handleOAuthLink(provider: OAuthProviderStatus) {
-    /** 用途：负责 setError 的界面或数据处理职责。 */
     setError(null);
     try {
       const response = await startOAuthLink(provider.provider);
       window.location.assign(response.authorization_url);
     } catch {
-      /** 用途：负责 setError 的界面或数据处理职责。 */
       setError(t("account.oauthLinkFailed"));
     }
   }
 
-  /** 用途：负责 providerIcon 的界面或数据处理职责。 */
   function providerIcon(provider: string) {
-    /** 用途：负责 return 的界面或数据处理职责。 */
     return (
       <span
         className="oauth-provider-mark inline-grid h-[18px] w-[18px] place-items-center rounded-mc-circle bg-mc-selected text-mc-caption font-mc-bold text-mc-brand"
@@ -210,7 +172,6 @@ export function AccountPage() {
   }
 
   if (auth.session.isGuest) {
-    /** 用途：负责 return 的界面或数据处理职责。 */
     return (
       <section className="account-page mx-auto grid max-w-[1120px] gap-mc-6 px-mc-6 py-mc-8 max-[720px]:px-mc-3 max-[720px]:py-mc-5">
         <div className="account-hero">
@@ -226,7 +187,6 @@ export function AccountPage() {
     );
   }
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <section
       className="account-page mx-auto grid max-w-[1120px] gap-mc-6 px-mc-6 py-mc-8 max-[720px]:px-mc-3 max-[720px]:py-mc-5"

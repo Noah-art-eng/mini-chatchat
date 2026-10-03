@@ -51,18 +51,14 @@ const recommendedIds = new Set([
   "current_time"
 ]);
 
-/** 用途：负责 getToolId 的界面或数据处理职责。 */
 function getToolId(tool: ToolSpecResponse) {
   return tool.qualified_name || tool.name;
 }
 
-/** 用途：负责 normalizeToolName 的界面或数据处理职责。 */
 function normalizeToolName(tool: ToolSpecResponse) {
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (tool.tool_name || tool.name || tool.qualified_name || "").toLowerCase();
 }
 
-/** 用途：负责 humanizeToolName 的界面或数据处理职责。 */
 function humanizeToolName(name: string) {
   return name
     .split(".")
@@ -72,12 +68,10 @@ function humanizeToolName(name: string) {
     .replace(/\b\w/g, char => char.toUpperCase()) || name;
 }
 
-/** 用途：负责 getToolCategory 的界面或数据处理职责。 */
 function getToolCategory(tool: ToolSpecResponse): ToolCatalogItem["category"] {
   return inferToolVisualCategory(tool);
 }
 
-/** 用途：负责 translateMappedValue 的界面或数据处理职责。 */
 function translateMappedValue(
   key: string | undefined,
   translate?: (key: string) => string
@@ -87,7 +81,6 @@ function translateMappedValue(
   return value === key ? null : value;
 }
 
-/** 用途：负责 getExampleKey 的界面或数据处理职责。 */
 function getExampleKey(name: string) {
   if (name === "browser_search") return "toolExamples.browserSearch";
   if (name === "browser_read") return "toolExamples.browserRead";
@@ -103,7 +96,6 @@ function getExampleKey(name: string) {
   return "toolExamples.generic";
 }
 
-/** 用途：负责 toToolCatalogItem 的界面或数据处理职责。 */
 export function toToolCatalogItem(
   tool: ToolSpecResponse,
   translate?: (key: string) => string
@@ -113,18 +105,14 @@ export function toToolCatalogItem(
   const category = getToolCategory(tool);
   const visual = getToolVisual(tool);
   const displayName =
-    /** 用途：负责 translateMappedValue 的界面或数据处理职责。 */
     translateMappedValue(visual.displayNameKey, translate) ||
-    /** 用途：负责 humanizeToolName 的界面或数据处理职责。 */
     humanizeToolName(name || id);
   const shortDescription =
-    /** 用途：负责 translateMappedValue 的界面或数据处理职责。 */
     translateMappedValue(visual.descriptionKey, translate) ||
     tool.description ||
     "Use this tool as part of an agent workflow.";
   const fullDescription = tool.description || shortDescription;
   const example =
-    /** 用途：负责 translateMappedValue 的界面或数据处理职责。 */
     translateMappedValue(getExampleKey(name), translate) ||
     "Ask the agent to use this capability when it is relevant.";
   const providerLabel =
@@ -160,7 +148,6 @@ export function toToolCatalogItem(
   };
 }
 
-/** 用途：负责 isRecommendedTool 的界面或数据处理职责。 */
 export function isRecommendedTool(tool: ToolCatalogItem) {
   return recommendedIds.has(normalizeToolName(tool.spec));
 }

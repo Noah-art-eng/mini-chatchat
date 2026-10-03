@@ -23,7 +23,7 @@ def chat_feedback(
     request: FeedbackRequest,
     current_user: CurrentUser = Depends(get_current_user_optional),
 ):
-    """负责 chat_feedback 的函数职责。"""
+    """保存用户对一条助手消息的赞或踩，且只能修改当前用户的消息。"""
     if request.score not in [1, -1]:
         return {
             "error": "score must be 1 or -1"
@@ -49,7 +49,7 @@ def chat_feedback(
 
 @router.get("/conversations")
 def get_conversations(current_user: CurrentUser = Depends(get_current_user_optional)):
-    """负责 get_conversations 的函数职责。"""
+    """返回当前用户的会话列表，供前端侧栏刷新。"""
     return {
         "conversations": list_conversations(user_id=get_request_user_id(current_user))
     }
@@ -60,7 +60,7 @@ def get_conversation_history(
     conversation_id: int,
     current_user: CurrentUser = Depends(get_current_user_optional),
 ):
-    """负责 get_conversation_history 的函数职责。"""
+    """校验会话归属后返回历史消息，防止通过编号读取其他用户的数据。"""
     user_id = get_request_user_id(current_user)
 
     if get_conversation(conversation_id, user_id=user_id) is None:
@@ -81,7 +81,7 @@ def update_conversation(
     request: ConversationUpdateRequest,
     current_user: CurrentUser = Depends(get_current_user_optional),
 ):
-    """负责 update_conversation 的函数职责。"""
+    """修改当前用户会话标题；不存在或不属于当前用户时统一返回 404。"""
     title = request.title.strip()
 
     if not title:
@@ -112,7 +112,7 @@ def remove_conversation(
     conversation_id: int,
     current_user: CurrentUser = Depends(get_current_user_optional),
 ):
-    """负责 remove_conversation 的函数职责。"""
+    """删除当前用户的一条会话及其关联消息。"""
     deleted = delete_conversation(
         conversation_id,
         user_id=get_request_user_id(current_user),

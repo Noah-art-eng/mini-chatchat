@@ -15,7 +15,6 @@ type TopBarProps = {
   activePage: AppPage;
 };
 
-/** 用途：负责 TopBar 的界面或数据处理职责。 */
 export function TopBar({ activePage }: TopBarProps) {
   const { t } = useI18n();
   const navigate = useNavigate();
@@ -23,26 +22,21 @@ export function TopBar({ activePage }: TopBarProps) {
   const { chatMode, kbName } = useConversationStore();
   const [health, setHealth] = useState<HealthResponse | null>(null);
 
-  /** 用途：负责 useEffect 的界面或数据处理职责。 */
   useEffect(() => {
     let ignore = false;
 
-    /** 用途：负责 getHealth 的界面或数据处理职责。 */
     getHealth()
       .then(result => {
         if (ignore) return;
-        /** 用途：负责 setHealth 的界面或数据处理职责。 */
         setHealth(result);
       })
       .catch(() => undefined);
 
-    /** 用途：负责 return 的界面或数据处理职责。 */
     return () => {
       ignore = true;
     };
   }, []);
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <header className={shellStyles.topBar}>
       <div className={cx(shellStyles.topBarGroup, shellStyles.topBarStatus)}>

@@ -34,7 +34,6 @@ const categoryFilters: ToolCategory[] = [
   "system"
 ];
 
-/** 用途：负责 getCategoryLabelKey 的界面或数据处理职责。 */
 function getCategoryLabelKey(category: ToolCategory) {
   if (category === "all") return "tools.filterAll";
   if (category === "recommended") return "tools.filterRecommended";
@@ -46,7 +45,6 @@ function getCategoryLabelKey(category: ToolCategory) {
   return "tools.categorySystem";
 }
 
-/** 用途：负责 getCategoryDescriptionKey 的界面或数据处理职责。 */
 function getCategoryDescriptionKey(category: ToolCatalogItem["category"]) {
   if (category === "knowledge") return "tools.categoryKnowledgeDescription";
   if (category === "files") return "tools.categoryFilesDescription";
@@ -56,7 +54,6 @@ function getCategoryDescriptionKey(category: ToolCatalogItem["category"]) {
   return "tools.categorySystemDescription";
 }
 
-/** 用途：负责 dedupeTools 的界面或数据处理职责。 */
 function dedupeTools(tools: ToolSpecResponse[]) {
   const seen = new Set<string>();
   return tools.filter(tool => {
@@ -67,12 +64,10 @@ function dedupeTools(tools: ToolSpecResponse[]) {
   });
 }
 
-/** 用途：负责 getSchema 的界面或数据处理职责。 */
 function getSchema(tool: ToolCatalogItem) {
   return tool.spec.args_schema || tool.spec.input_schema || {};
 }
 
-/** 用途：负责 ToolList 的界面或数据处理职责。 */
 export function ToolList({ mcpTools = [], tools }: ToolListProps) {
   const { t } = useI18n();
   const [activeFilter, setActiveFilter] = useState<ToolCategory>("all");
@@ -112,35 +107,26 @@ export function ToolList({ mcpTools = [], tools }: ToolListProps) {
     return <p className="muted">{t("settings.noTools")}</p>;
   }
 
-  /** 用途：负责 toggleDeveloperMode 的界面或数据处理职责。 */
   function toggleDeveloperMode() {
     if (isDeveloperMode) {
-      /** 用途：负责 setIsDeveloperMode 的界面或数据处理职责。 */
       setIsDeveloperMode(false);
       return;
     }
 
     if (isDeveloperModeIntroSeen()) {
-      /** 用途：负责 setIsDeveloperMode 的界面或数据处理职责。 */
       setIsDeveloperMode(true);
       return;
     }
 
-    /** 用途：负责 setIsDeveloperIntroOpen 的界面或数据处理职责。 */
     setIsDeveloperIntroOpen(true);
   }
 
-  /** 用途：负责 confirmDeveloperMode 的界面或数据处理职责。 */
   function confirmDeveloperMode() {
-    /** 用途：负责 setDeveloperModeIntroSeen 的界面或数据处理职责。 */
     setDeveloperModeIntroSeen(true);
-    /** 用途：负责 setIsDeveloperMode 的界面或数据处理职责。 */
     setIsDeveloperMode(true);
-    /** 用途：负责 setIsDeveloperIntroOpen 的界面或数据处理职责。 */
     setIsDeveloperIntroOpen(false);
   }
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div className="tool-center relative grid min-w-0 gap-mc-6">
       <section className="tool-center-intro grid gap-mc-2 rounded-mc-xl border border-solid border-mc-border-subtle bg-[color-mix(in_srgb,var(--color-brand-soft)_48%,var(--color-bg-surface))] p-mc-5 [&_h3]:m-0 [&_p]:m-0">

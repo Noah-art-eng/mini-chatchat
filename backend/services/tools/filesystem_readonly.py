@@ -34,7 +34,11 @@ ALLOWED_EXTENSIONS = {
 
 
 def validate_relative_path(path: str) -> str | None:
-    """负责 validate_relative_path 的函数职责。"""
+    """确认模型给出的文件路径只能读取项目内允许类型的普通文件。
+
+    相对路径和扩展名是第一层限制，解析后的绝对路径检查是第二层限制。两层一起
+    防止 `..`、绝对路径或路径变形把只读工具带到项目目录之外。
+    """
     if not path.strip():
         return "path is required"
 
@@ -60,7 +64,11 @@ def validate_relative_path(path: str) -> str | None:
 
 
 def execute_filesystem_readonly_read(arguments: dict) -> ToolResult:
-    """负责 execute_filesystem_readonly_read 的函数职责。"""
+    """按字符上限读取项目文本文件，并遮盖常见密钥环境变量名称。
+
+    即使是只读工具也限制路径和返回长度，避免 Agent 读取任意主机文件或把过大
+    内容塞回模型上下文。
+    """
     path = arguments.get("path")
 
     if not isinstance(path, str):
@@ -115,7 +123,7 @@ def execute_filesystem_readonly_read(arguments: dict) -> ToolResult:
 
 
 def get_filesystem_readonly_read_tool() -> ToolSpec:
-    """负责 get_filesystem_readonly_read_tool 的函数职责。"""
+    """向工具注册表提供项目内只读文件工具及其参数说明。"""
     return ToolSpec(
         name="filesystem_readonly_read",
         description=(

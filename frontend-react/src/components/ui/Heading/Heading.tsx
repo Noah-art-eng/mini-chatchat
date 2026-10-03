@@ -21,7 +21,6 @@ type HeadingProps = {
   variant?: HeadingVariant;
 } & Omit<ComponentPropsWithoutRef<"h1">, "children" | "className">;
 
-/** 用途：负责 Heading 的界面或数据处理职责。 */
 export function Heading({
   children,
   className,
@@ -33,7 +32,6 @@ export function Heading({
 }: HeadingProps) {
   const Component = `h${level}` as const;
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <div className={cx("grid gap-mc-2", className)}>
       {eyebrow && (

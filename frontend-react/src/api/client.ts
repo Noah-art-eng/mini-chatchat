@@ -1,4 +1,4 @@
-/** 用途：负责 getDefaultApiBase 的界面或数据处理职责。 */
+/** 根据开发或部署环境选择后端地址；Vite 开发环境直连 8000，部署后走同源 /api。 */
 function getDefaultApiBase() {
   if (typeof window === "undefined") {
     return "http://127.0.0.1:8000";
@@ -18,29 +18,24 @@ const AUTH_EXPIRED_EVENT = "mini-chatchat:auth-expired";
 let accessToken: string | null = null;
 let refreshPromise: Promise<string | null> | null = null;
 
-/** 用途：负责 getStoredAccessToken 的界面或数据处理职责。 */
 export function getStoredAccessToken() {
   return accessToken;
 }
 
-/** 用途：负责 setStoredAccessToken 的界面或数据处理职责。 */
 export function setStoredAccessToken(token: string | null) {
   accessToken = token;
 }
 
-/** 用途：负责 clearLegacyStoredAccessToken 的界面或数据处理职责。 */
 export function clearLegacyStoredAccessToken() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(TOKEN_KEY);
 }
 
-/** 用途：负责 hasStoredAuthSessionHint 的界面或数据处理职责。 */
 export function hasStoredAuthSessionHint() {
   if (typeof window === "undefined") return false;
   return localStorage.getItem(SESSION_HINT_KEY) === "true";
 }
 
-/** 用途：负责 setStoredAuthSessionHint 的界面或数据处理职责。 */
 export function setStoredAuthSessionHint(enabled: boolean) {
   if (typeof window === "undefined") return;
 
@@ -51,22 +46,22 @@ export function setStoredAuthSessionHint(enabled: boolean) {
   }
 }
 
-/** 用途：负责 hasLegacyStoredAccessToken 的界面或数据处理职责。 */
 export function hasLegacyStoredAccessToken() {
   if (typeof window === "undefined") return false;
   return localStorage.getItem(TOKEN_KEY) !== null;
 }
 
-/** 用途：负责 clearAuthSession 的界面或数据处理职责。 */
+/** 清除内存中的访问令牌和浏览器里的会话提示，让前端回到未登录状态。 */
 export function clearAuthSession() {
   accessToken = null;
-  /** 用途：负责 clearLegacyStoredAccessToken 的界面或数据处理职责。 */
   clearLegacyStoredAccessToken();
-  /** 用途：负责 setStoredAuthSessionHint 的界面或数据处理职责。 */
   setStoredAuthSessionHint(false);
 }
 
-/** 用途：负责 refreshAccessToken 的界面或数据处理职责。 */
+/**
+ * 使用 HttpOnly refresh cookie 换取新的访问令牌。
+ * 多个请求同时遇到 401 时共享同一个 Promise，避免并发刷新和令牌轮换互相冲突。
+ */
 async function refreshAccessToken() {
   if (!refreshPromise) {
     refreshPromise = fetch(`${API_BASE}/auth/refresh`, {
@@ -77,7 +72,6 @@ async function refreshAccessToken() {
         if (!response.ok) return null;
         const data = (await response.json()) as { access_token?: string };
         accessToken = data.access_token || null;
-        /** 用途：负责 setStoredAuthSessionHint 的界面或数据处理职责。 */
         setStoredAuthSessionHint(Boolean(accessToken));
         return accessToken;
       })
@@ -89,20 +83,20 @@ async function refreshAccessToken() {
   return refreshPromise;
 }
 
-/** 用途：负责 notifyAuthExpired 的界面或数据处理职责。 */
 export function notifyAuthExpired() {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
 }
 
-/** 用途：负责 onAuthExpired 的界面或数据处理职责。 */
 export function onAuthExpired(listener: () => void) {
   window.addEventListener(AUTH_EXPIRED_EVENT, listener);
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return () => window.removeEventListener(AUTH_EXPIRED_EVENT, listener);
 }
 
-/** 用途：负责 authFetch 的界面或数据处理职责。 */
+/**
+ * 所有需要认证的前端 API 都从这里发出。
+ * 请求收到 401 时只尝试刷新并重放一次；再次失败就清理会话并通知 AuthContext 跳回登录态。
+ */
 export async function authFetch(path: string, init?: RequestInit) {
   const retry = (init as RequestInit & { __authRetry?: boolean } | undefined)?.__authRetry;
   const token = accessToken;
@@ -138,16 +132,14 @@ export async function authFetch(path: string, init?: RequestInit) {
       } as RequestInit & { __authRetry: boolean });
     }
 
-    /** 用途：负责 clearAuthSession 的界面或数据处理职责。 */
     clearAuthSession();
-    /** 用途：负责 notifyAuthExpired 的界面或数据处理职责。 */
     notifyAuthExpired();
   }
 
   return response;
 }
 
-/** 用途：负责 requestJson 的界面或数据处理职责。 */
+/** 在 authFetch 之上处理普通 JSON API；流式接口会直接使用 authFetch 读取响应体。 */
 export async function requestJson<T>(
   path: string,
   init?: RequestInit

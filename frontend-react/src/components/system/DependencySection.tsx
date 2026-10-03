@@ -10,11 +10,9 @@ type DependencySectionProps = {
   status: "loading" | "ready" | "error";
 };
 
-/** 用途：负责 DependencySection 的界面或数据处理职责。 */
 export function DependencySection({ deps, status }: DependencySectionProps) {
   const { t } = useI18n();
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <article className={systemCardClassName}>
       <span className={`${systemBadgeClassName} status-${deps?.status || status}`}>

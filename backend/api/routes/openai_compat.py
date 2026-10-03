@@ -14,7 +14,7 @@ from chat_service import RAG_STREAM_ERROR_MESSAGE, run_kb_chat
 
 
 def get_last_user_message(messages):
-    """负责 get_last_user_message 的函数职责。"""
+    """从 OpenAI messages 中取得最后一条用户输入，作为内部 RAG query。"""
     for message in reversed(messages):
         if message.get("role") == "user":
             return message.get("content", "")
@@ -23,7 +23,7 @@ def get_last_user_message(messages):
 
 
 def build_kb_chat_request_from_openai(request: OpenAIChatCompletionRequest):
-    """负责 build_kb_chat_request_from_openai 的函数职责。"""
+    """把 OpenAI Chat Completions 请求转换为项目内部的 KBChatRequest。"""
     extra_body = request.extra_body or {}
     query = get_last_user_message(request.messages)
 
@@ -54,7 +54,7 @@ def build_kb_chat_request_from_openai(request: OpenAIChatCompletionRequest):
 
 
 def build_openai_completion_response(completion_id, model, result):
-    """负责 build_openai_completion_response 的函数职责。"""
+    """把 run_kb_chat() 的非流式结果包装成 OpenAI-compatible JSON。"""
     return {
         "id": completion_id,
         "object": "chat.completion",
@@ -75,9 +75,9 @@ def build_openai_completion_response(completion_id, model, result):
 
 
 def build_openai_streaming_response(completion_id, model, internal_response):
-    """负责 build_openai_streaming_response 的函数职责。"""
+    """把内部 RAG SSE 事件转换成 OpenAI Chat Completions 的流式格式。"""
     async def event_stream():
-        """负责 event_stream 的函数职责。"""
+        """逐个转译 token/error/done，同时保留内部流式错误约定。"""
         buffer = ""
         stream_failed = False
 
@@ -144,9 +144,9 @@ def build_openai_streaming_response(completion_id, model, internal_response):
 
 
 def build_openai_static_streaming_response(completion_id, model, result):
-    """负责 build_openai_static_streaming_response 的函数职责。"""
+    """把已完成的非流式结果包装成一条 chunk 和最终 [DONE]。"""
     async def event_stream():
-        """负责 event_stream 的函数职责。"""
+        """输出兼容客户端期望的最小 SSE 序列。"""
         content = result.get("answer", "")
 
         if content:
@@ -183,7 +183,7 @@ def create_openai_compat_router(client):
         request: OpenAIChatCompletionRequest,
         current_user: CurrentUser = Depends(get_current_user_optional),
     ):
-        """负责 chat_completions 的函数职责。"""
+        """接收 OpenAI-compatible 请求，复用 run_kb_chat() 完成实际 RAG 问答。"""
         query = get_last_user_message(request.messages)
 
         if not query:

@@ -9,7 +9,6 @@ import { useConversationStore } from "../../stores/conversationStore";
 import type { Conversation } from "../../types/conversation";
 import { conversationStyles } from "./conversationStyles";
 
-/** 用途：负责 formatConversationTime 的界面或数据处理职责。 */
 function formatConversationTime(value?: string) {
   if (!value) return "-";
   const date = new Date(value);
@@ -23,7 +22,6 @@ function formatConversationTime(value?: string) {
   }).format(date);
 }
 
-/** 用途：负责 getConversationGroupKey 的界面或数据处理职责。 */
 function getConversationGroupKey(value?: string) {
   const date = value ? new Date(value) : new Date(0);
   const now = new Date();
@@ -41,7 +39,6 @@ function getConversationGroupKey(value?: string) {
   return "older";
 }
 
-/** 用途：负责 getConversationGroupLabelKey 的界面或数据处理职责。 */
 function getConversationGroupLabelKey(key: string) {
   if (key === "today") return "conversations.groupToday";
   if (key === "yesterday") return "conversations.groupYesterday";
@@ -50,7 +47,6 @@ function getConversationGroupLabelKey(key: string) {
   return "conversations.groupOlder";
 }
 
-/** 用途：负责 ConversationSidebar 的界面或数据处理职责。 */
 export function ConversationSidebar({
   onStartNewConversation
 }: {
@@ -76,27 +72,21 @@ export function ConversationSidebar({
   const [isDeleteAllOpen, setIsDeleteAllOpen] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
 
-  /** 用途：负责 useEffect 的界面或数据处理职责。 */
   useEffect(() => {
-    /** 用途：负责 refreshConversations 的界面或数据处理职责。 */
     refreshConversations().catch(() => undefined);
   }, [refreshConversations]);
 
-  /** 用途：负责 useEffect 的界面或数据处理职责。 */
   useEffect(() => {
-    /** 用途：负责 handleNewConversationShortcut 的界面或数据处理职责。 */
     function handleNewConversationShortcut(event: KeyboardEvent) {
       if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "n") {
         return;
       }
 
       event.preventDefault();
-      /** 用途：负责 startNewConversation 的界面或数据处理职责。 */
       onStartNewConversation();
     }
 
     window.addEventListener("keydown", handleNewConversationShortcut);
-    /** 用途：负责 return 的界面或数据处理职责。 */
     return () => {
       window.removeEventListener("keydown", handleNewConversationShortcut);
     };
@@ -145,16 +135,13 @@ export function ConversationSidebar({
       .filter(group => group.conversations.length > 0);
   }, [filteredConversations, t]);
 
-  /** 用途：负责 getTitle 的界面或数据处理职责。 */
   function getTitle(conversation: Conversation) {
     return conversation.title || `${t("chat.conversation")} ${conversation.id}`;
   }
 
-  /** 用途：负责 renameConversationItem 的界面或数据处理职责。 */
   function renameConversationItem(conversation: Conversation) {
     const title = getTitle(conversation);
     const nextTitle = window.prompt(t("conversations.renamePrompt"), title);
-    /** 用途：负责 setOpenMenuId 的界面或数据处理职责。 */
     setOpenMenuId(null);
     if (nextTitle === null) return;
     if (!nextTitle.trim()) {
@@ -162,20 +149,16 @@ export function ConversationSidebar({
       return;
     }
 
-    /** 用途：负责 renameConversationById 的界面或数据处理职责。 */
     renameConversationById(conversation.id, nextTitle)
       .then(() => {
-        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast({ message: t("conversations.renameSuccess"), variant: "success" });
       })
       .catch(error => {
         console.error(error);
-        /** 用途：负责 showToast 的界面或数据处理职责。 */
         showToast({ message: t("conversations.renameFailed"), variant: "error" });
       });
   }
 
-  /** 用途：负责 confirmDeleteConversation 的界面或数据处理职责。 */
   async function confirmDeleteConversation() {
     if (!conversationToDelete) return;
 
@@ -184,15 +167,12 @@ export function ConversationSidebar({
       conversation => conversation.id !== deletedConversationId
     );
 
-    /** 用途：负责 setConversationToDelete 的界面或数据处理职责。 */
     setConversationToDelete(null);
     try {
       await deleteConversationById(deletedConversationId);
-      /** 用途：负责 showToast 的界面或数据处理职责。 */
       showToast({ message: t("conversations.deleteSuccess"), variant: "success" });
     } catch (error) {
       console.error(error);
-      /** 用途：负责 showToast 的界面或数据处理职责。 */
       showToast({ message: t("conversations.deleteFailed"), variant: "error" });
       return;
     }
@@ -202,28 +182,21 @@ export function ConversationSidebar({
     }
   }
 
-  /** 用途：负责 confirmDeleteAllConversations 的界面或数据处理职责。 */
   async function confirmDeleteAllConversations() {
     const conversationIds = conversations.map(conversation => conversation.id);
-    /** 用途：负责 setIsDeletingAll 的界面或数据处理职责。 */
     setIsDeletingAll(true);
     try {
       await deleteConversationsByIds(conversationIds);
-      /** 用途：负责 showToast 的界面或数据处理职责。 */
       showToast({ message: t("conversations.clearAllSuccess"), variant: "success" });
     } catch (error) {
       console.error(error);
-      /** 用途：负责 showToast 的界面或数据处理职责。 */
       showToast({ message: t("conversations.clearAllFailed"), variant: "error" });
     } finally {
-      /** 用途：负责 setIsDeletingAll 的界面或数据处理职责。 */
       setIsDeletingAll(false);
-      /** 用途：负责 setIsDeleteAllOpen 的界面或数据处理职责。 */
       setIsDeleteAllOpen(false);
     }
   }
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <section className={conversationStyles.sidebar} aria-label={t("conversations.title")}>
       <div className={conversationStyles.header}>
@@ -284,7 +257,6 @@ export function ConversationSidebar({
               aria-expanded={!collapsedGroups.has(group.key)}
               className={conversationStyles.groupLabel}
               onClick={() =>
-                /** 用途：负责 setCollapsedGroups 的界面或数据处理职责。 */
                 setCollapsedGroups(current => {
                   const next = new Set(current);
                   if (next.has(group.key)) {
@@ -306,7 +278,6 @@ export function ConversationSidebar({
                 conversation.updated_time || conversation.create_time
               );
 
-              /** 用途：负责 return 的界面或数据处理职责。 */
               return (
                 <article
                   className={cx(
@@ -338,7 +309,6 @@ export function ConversationSidebar({
                       className={conversationStyles.menuTrigger}
                       data-testid={`conversation-menu-${conversation.id}`}
                       onClick={() =>
-                        /** 用途：负责 setOpenMenuId 的界面或数据处理职责。 */
                         setOpenMenuId(current =>
                           current === conversation.id ? null : conversation.id
                         )
@@ -362,9 +332,7 @@ export function ConversationSidebar({
                           className={cx(conversationStyles.popoverButton, conversationStyles.dangerButton)}
                           data-testid={`delete-conversation-${conversation.id}`}
                           onClick={() => {
-                            /** 用途：负责 setOpenMenuId 的界面或数据处理职责。 */
                             setOpenMenuId(null);
-                            /** 用途：负责 setConversationToDelete 的界面或数据处理职责。 */
                             setConversationToDelete(conversation);
                           }}
                           type="button"
@@ -390,7 +358,6 @@ export function ConversationSidebar({
         isOpen={Boolean(conversationToDelete)}
         onCancel={() => setConversationToDelete(null)}
         onConfirm={() => {
-          /** 用途：负责 confirmDeleteConversation 的界面或数据处理职责。 */
           confirmDeleteConversation().catch(console.error);
         }}
         title={t("conversations.deleteTitle")}
@@ -404,7 +371,6 @@ export function ConversationSidebar({
           if (!isDeletingAll) setIsDeleteAllOpen(false);
         }}
         onConfirm={() => {
-          /** 用途：负责 confirmDeleteAllConversations 的界面或数据处理职责。 */
           confirmDeleteAllConversations().catch(console.error);
         }}
         title={t("conversations.clearAllTitle")}

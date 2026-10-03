@@ -63,32 +63,26 @@ export type McpToolsResponse = {
   provider?: string;
 };
 
-/** 用途：负责 getModels 的界面或数据处理职责。 */
 export function getModels() {
   return requestJson<ModelsResponse>("/models");
 }
 
-/** 用途：负责 getHealth 的界面或数据处理职责。 */
 export function getHealth() {
   return requestJson<HealthResponse>("/health");
 }
 
-/** 用途：负责 getHealthDeps 的界面或数据处理职责。 */
 export function getHealthDeps() {
   return requestJson<HealthDepsResponse>("/health/deps");
 }
 
-/** 用途：负责 getAgentTools 的界面或数据处理职责。 */
 export function getAgentTools() {
   return requestJson<ToolsResponse>("/agent/tools");
 }
 
-/** 用途：负责 getMcpServers 的界面或数据处理职责。 */
 export function getMcpServers() {
   return requestJson<McpServersResponse>("/agent/mcp/servers");
 }
 
-/** 用途：负责 getMcpTools 的界面或数据处理职责。 */
 export function getMcpTools() {
   return requestJson<McpToolsResponse>("/agent/mcp/tools");
 }

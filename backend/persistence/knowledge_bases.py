@@ -376,12 +376,19 @@ def sync_kb_file_mappings(
     files,
     user_id=None,
 ):
-    """在一个事务内重建当前 KB 的 file_doc，并同步每个文件的 chunk 数。"""
+    """在一个事务内用最终文本块结果刷新知识库文件映射。
+
+    索引重建可能让 chunk_id 整体变化，因此不能只增补新记录。这里先读取旧文件状态，
+    再删除当前知识库全部 file_doc，按最终 chunks 重新写入 knowledge_file 和映射。
+    任一步失败都会回滚，避免文件统计和 chunk_id 只更新一半。
+    """
     resolved_user_id = resolve_user_id(user_id)
     conn = get_connection()
 
     try:
         cursor = conn.cursor()
+        # 先保留上传状态、分块参数和路径等文件元数据；下面重建映射时会把未覆盖字段
+        # 合并回来，避免一次索引同步丢失文件处理状态。
         cursor.execute(
             """
             SELECT
@@ -409,6 +416,7 @@ def sync_kb_file_mappings(
             for row in cursor.fetchall()
         }
 
+        # chunk_id 由最终索引顺序重新生成，所以旧映射必须整体替换。
         cursor.execute(
             "DELETE FROM file_doc WHERE kb_name = ? AND user_id = ?",
             (kb_name, resolved_user_id),
@@ -481,6 +489,7 @@ def sync_kb_file_mappings(
                     (kb_name, filename, int(chunk_id), resolved_user_id),
                 )
 
+        # 所有文件记录和 file_doc 映射写完后一次提交，保证 SQLite 内部原子性。
         conn.commit()
     except Exception:
         conn.rollback()

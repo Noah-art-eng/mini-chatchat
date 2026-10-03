@@ -35,27 +35,27 @@ from .jwt import (
 
 
 def hash_refresh_token(token: str):
-    """负责 hash_refresh_token 的函数职责。"""
+    """只把 refresh token 的摘要写入数据库，避免数据库泄露时直接得到令牌。"""
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
 def refresh_expiry_datetime():
-    """负责 refresh_expiry_datetime 的函数职责。"""
+    """计算 refresh token 与数据库会话共用的过期时间。"""
     return datetime.now() + timedelta(days=get_refresh_token_expire_days())
 
 
 def format_db_time(value: datetime):
-    """负责 format_db_time 的函数职责。"""
+    """把会话时间转成 SQLite 保存的稳定格式。"""
     return value.strftime("%Y-%m-%d %H:%M:%S")
 
 
 def parse_db_time(value: str):
-    """负责 parse_db_time 的函数职责。"""
+    """把 SQLite 时间恢复为 datetime，供过期判断使用。"""
     return datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
 
 
 def mask_ip_address(ip_address: str | None):
-    """负责 mask_ip_address 的函数职责。"""
+    """隐藏 IP 的精确主机部分，账户页只展示足够识别设备的范围。"""
     if not ip_address:
         return None
 
@@ -71,7 +71,7 @@ def mask_ip_address(ip_address: str | None):
 
 
 def summarize_user_agent(user_agent: str | None):
-    """负责 summarize_user_agent 的函数职责。"""
+    """把冗长 User-Agent 压缩成账户页可读的设备摘要。"""
     if not user_agent:
         return "Unknown device"
 
@@ -104,7 +104,7 @@ def summarize_user_agent(user_agent: str | None):
 
 
 def public_auth_session(session: dict, current_session_id: str | None = None):
-    """负责 public_auth_session 的函数职责。"""
+    """移除 refresh 摘要等内部字段，返回账户页可展示的会话信息。"""
     is_active = bool(session.get("is_active")) and not session.get("revoked_at")
     return {
         "session_id": session["session_id"],
@@ -120,7 +120,7 @@ def public_auth_session(session: dict, current_session_id: str | None = None):
 
 
 def get_request_ip(request: Request):
-    """负责 get_request_ip 的函数职责。"""
+    """从 FastAPI 请求中取得客户端地址并做最小规范化。"""
     forwarded_for = request.headers.get("x-forwarded-for")
     if forwarded_for:
         return forwarded_for.split(",", 1)[0].strip()
@@ -129,7 +129,7 @@ def get_request_ip(request: Request):
 
 
 def build_access_token(user: dict, session_id: str):
-    """负责 build_access_token 的函数职责。"""
+    """生成短期 access token，并绑定当前数据库 Session ID。"""
     expires_in = get_access_token_expire_minutes() * 60
     token = create_access_token(
         subject=str(user["id"]),
@@ -143,7 +143,7 @@ def build_access_token(user: dict, session_id: str):
 
 
 def build_refresh_token(user: dict, session_id: str):
-    """负责 build_refresh_token 的函数职责。"""
+    """生成长期 refresh token；数据库只保存其摘要，不保存原 token。"""
     expires_at = refresh_expiry_datetime()
     token = create_refresh_token(
         subject=str(user["id"]),
@@ -157,7 +157,7 @@ def build_refresh_token(user: dict, session_id: str):
 
 
 def set_refresh_cookie(response: Response, refresh_token: str):
-    """负责 set_refresh_cookie 的函数职责。"""
+    """把 refresh token 写入 HttpOnly Cookie，前端脚本不能直接读取。"""
     response.set_cookie(
         get_auth_cookie_name(),
         refresh_token,
@@ -171,7 +171,7 @@ def set_refresh_cookie(response: Response, refresh_token: str):
 
 
 def clear_refresh_cookie(response: Response):
-    """负责 clear_refresh_cookie 的函数职责。"""
+    """使用与写入时相同的属性删除 refresh Cookie，保证退出真正生效。"""
     response.delete_cookie(
         get_auth_cookie_name(),
         domain=get_auth_cookie_domain(),
@@ -183,7 +183,11 @@ def clear_refresh_cookie(response: Response):
 
 
 def create_login_session(user: dict, request: Request, response: Response):
-    """负责 create_login_session 的函数职责。"""
+    """登录成功后建立数据库 Session，并把 refresh token 写入 HttpOnly cookie。
+
+    access token 返回给前端用于 API 请求；refresh token 只由浏览器 cookie 携带，
+    后续 `/auth/refresh` 会校验并轮换它。
+    """
     session_id = str(uuid.uuid4())
     refresh_token, expires_at = build_refresh_token(user, session_id)
     create_auth_session(
@@ -200,7 +204,7 @@ def create_login_session(user: dict, request: Request, response: Response):
 
 
 def get_refresh_token_from_request(request: Request):
-    """负责 get_refresh_token_from_request 的函数职责。"""
+    """从 HttpOnly Cookie 取得 refresh token；缺失时返回统一 401。"""
     token = request.cookies.get(get_auth_cookie_name())
     if not token:
         raise HTTPException(status_code=401, detail="refresh token missing")
@@ -208,7 +212,10 @@ def get_refresh_token_from_request(request: Request):
 
 
 def validate_refresh_session(refresh_token: str):
-    """负责 validate_refresh_session 的函数职责。"""
+    """同时校验 refresh JWT、数据库 Session、token 摘要和用户状态。
+
+    摘要不一致表示旧 token 可能被重复使用，此时立即撤销 Session，不能继续轮换。
+    """
     try:
         payload = decode_refresh_token(refresh_token)
     except JWTError as exc:
@@ -246,7 +253,9 @@ def validate_refresh_session(refresh_token: str):
 
 
 def refresh_login_session(refresh_token: str, response: Response):
-    """负责 refresh_login_session 的函数职责。"""
+    """验证并轮换 refresh token，同时签发新的短期 access token。"""
+    # validate_refresh_session() 同时检查 JWT 与数据库记录。通过后立即替换数据库中的
+    # token 摘要，使旧 refresh token 再次使用时会触发重用检测。
     payload, session, user = validate_refresh_session(refresh_token)
     session_id = session["session_id"]
     new_refresh_token, expires_at = build_refresh_token(user, session_id)
@@ -260,6 +269,7 @@ def refresh_login_session(refresh_token: str, response: Response):
     if not updated:
         raise HTTPException(status_code=401, detail="session expired or revoked")
 
+    # 数据库轮换成功后才覆盖 HttpOnly cookie，最后把新的 access token 返回前端。
     set_refresh_cookie(response, new_refresh_token)
     access_token, expires_in = build_access_token(user, session_id)
 
@@ -273,7 +283,7 @@ def refresh_login_session(refresh_token: str, response: Response):
 
 
 def logout_refresh_session(request: Request, response: Response):
-    """负责 logout_refresh_session 的函数职责。"""
+    """撤销当前 refresh token 对应的数据库会话，并清除 Cookie。"""
     token = request.cookies.get(get_auth_cookie_name())
 
     if token:
@@ -289,14 +299,14 @@ def logout_refresh_session(request: Request, response: Response):
 
 
 def logout_all_sessions(user_id: int, response: Response):
-    """负责 logout_all_sessions 的函数职责。"""
+    """撤销用户全部数据库会话，并清除当前浏览器 Cookie。"""
     revoked = revoke_user_auth_sessions(user_id)
     clear_refresh_cookie(response)
     return revoked
 
 
 def list_public_user_sessions(user_id: int, current_session_id: str | None):
-    """负责 list_public_user_sessions 的函数职责。"""
+    """返回经过脱敏的用户会话列表。"""
     cleanup_expired_auth_sessions()
     return [
         public_auth_session(session, current_session_id=current_session_id)
@@ -305,10 +315,10 @@ def list_public_user_sessions(user_id: int, current_session_id: str | None):
 
 
 def revoke_user_session(user_id: int, session_id: str):
-    """负责 revoke_user_session 的函数职责。"""
+    """撤销当前用户指定的设备会话。"""
     return revoke_auth_session_for_user(user_id, session_id)
 
 
 def logout_other_sessions(user_id: int, current_session_id: str):
-    """负责 logout_other_sessions 的函数职责。"""
+    """保留当前 session_id，撤销同一用户的其他会话。"""
     return revoke_other_auth_sessions(user_id, current_session_id)

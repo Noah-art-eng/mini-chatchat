@@ -18,7 +18,6 @@ const navItems: Array<{ page: AppPage; labelKey: string; icon: typeof MessageSqu
   { page: "settings", labelKey: "nav.settings", icon: Settings }
 ];
 
-/** 用途：负责 SidebarNavigation 的界面或数据处理职责。 */
 export function SidebarNavigation({
   activePage,
   onSelectPage
@@ -26,16 +25,13 @@ export function SidebarNavigation({
   const { t } = useI18n();
   const auth = useAuth();
 
-  /** 用途：负责 isLocked 的界面或数据处理职责。 */
   function isLocked(page: AppPage) {
-    /** 用途：负责 return 的界面或数据处理职责。 */
     return (
       (page === "kb" && !auth.can("can_manage_kb")) ||
       (page === "agent" && !auth.can("can_use_agent"))
     );
   }
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <nav className={shellStyles.navigation} aria-label="Primary navigation">
       {navItems.map(item => (

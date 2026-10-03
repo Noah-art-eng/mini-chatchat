@@ -4,7 +4,7 @@ from typing import Any
 
 @dataclass(frozen=True)
 class MCPToolSpec:
-    """负责 MCPToolSpec 的类职责。"""
+    """MCP 服务发现结果转换后的统一工具描述。"""
     server_name: str
     tool_name: str
     qualified_name: str
@@ -15,7 +15,6 @@ class MCPToolSpec:
     risk_level: str = "low"
 
     def public_dict(self) -> dict:
-        """负责 public_dict 的函数职责。"""
         return {
             "server_name": self.server_name,
             "tool_name": self.tool_name,
@@ -32,14 +31,13 @@ class MCPToolSpec:
 
 @dataclass(frozen=True)
 class MCPToolResult:
-    """负责 MCPToolResult 的类职责。"""
+    """MCP 调用在超时、清理和错误归一化后的统一结果。"""
     ok: bool
     result: Any = None
     error: str | None = None
     metadata: dict | None = None
 
     def to_dict(self) -> dict:
-        """负责 to_dict 的函数职责。"""
         return {
             "ok": self.ok,
             "result": self.result,

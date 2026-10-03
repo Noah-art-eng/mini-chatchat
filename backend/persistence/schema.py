@@ -4,7 +4,7 @@ from datetime import datetime
 
 
 def has_unique_index(cursor, table_name, expected_columns):
-    """负责 has_unique_index 的函数职责。"""
+    """检查旧数据库是否已经具有目标唯一约束，避免重复迁移。"""
     cursor.execute(f"PRAGMA index_list({table_name})")
     indexes = cursor.fetchall()
 
@@ -25,7 +25,10 @@ def has_unique_index(cursor, table_name, expected_columns):
 
 
 def ensure_user_scoped_unique_constraints(cursor, demo_user_id):
-    """负责 ensure_user_scoped_unique_constraints 的函数职责。"""
+    """把旧版全局唯一约束迁移为 user_id 范围内唯一。
+
+    旧记录缺少 user_id 时归入 demo 用户，使升级后的知识库和文件查询仍能找到原数据。
+    """
     if not has_unique_index(cursor, "knowledge_base", ["user_id", "kb_name"]):
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS knowledge_base_new (
@@ -120,10 +123,14 @@ def ensure_user_scoped_unique_constraints(cursor, demo_user_id):
 
 
 def init_db(get_connection, demo_user_email):
-    """负责 init_db 的函数职责。"""
+    """初始化 SQLite schema，并按顺序执行兼容迁移和默认 demo 用户创建。
+
+    入口可重复执行。所有建表、迁移和索引更新使用同一连接提交，失败时由连接层回滚。
+    """
     conn = get_connection()
     cursor = conn.cursor()
 
+    # 第一阶段建立全新数据库需要的业务表。IF NOT EXISTS 让启动时重复调用保持安全。
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS knowledge_base (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -247,6 +254,7 @@ CREATE TABLE IF NOT EXISTS oauth_accounts (
 )
 """)
 
+    # 第二阶段检查旧数据库缺少的列并就地补齐，保留用户已有数据。
     cursor.execute("PRAGMA table_info(message)")
     message_columns = [
         row[1]
@@ -357,6 +365,7 @@ CREATE TABLE IF NOT EXISTS oauth_accounts (
             WHERE updated_time IS NULL
         """)
 
+    # 早期版本的数据没有 user_id。先补列，后面统一归到 demo 用户，避免升级后失联。
     ownership_migrations = {
         "conversation": "INTEGER DEFAULT NULL",
         "message": "INTEGER DEFAULT NULL",
@@ -401,6 +410,7 @@ CREATE TABLE IF NOT EXISTS oauth_accounts (
             """)
 
 
+    # 第三阶段确保兼容用的 demo 用户和偏好存在，再迁移旧的无归属记录。
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     cursor.execute("""
@@ -475,6 +485,7 @@ CREATE TABLE IF NOT EXISTS oauth_accounts (
             demo_user_id,
         ))
 
+    # 最后把旧的全局唯一约束迁成用户范围唯一约束，提交后业务 CRUD 才开始使用。
     ensure_user_scoped_unique_constraints(cursor, demo_user_id)
 
     conn.commit()

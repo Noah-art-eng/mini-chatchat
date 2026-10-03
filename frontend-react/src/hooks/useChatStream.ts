@@ -16,6 +16,11 @@ function isAbortError(error: unknown) {
 }
 
 export function useChatStream() {
+  /**
+   * 管理一次 RAG 流式问答从发出请求到写回界面的完整过程。
+   * Hook 会解析后端的 sources/token/error/done 事件，并用请求编号、会话归属和
+   * AbortController 阻止旧请求在切换会话或开始新请求后继续修改当前界面。
+   */
   const {
     appendStreamingMessage,
     chatMode,
@@ -37,6 +42,8 @@ export function useChatStream() {
   const nextRunIdRef = useRef(0);
 
   function isCurrentRun(run: ChatRun) {
+    // 只有仍持有执行权、未取消，并且属于当前会话的请求才能更新界面。
+    // 新会话第一次请求会由后端创建 conversation_id，因此也接受服务端刚返回的会话编号。
     const currentConversationId = conversationIdRef.current;
     return (
       activeRunRef.current?.id === run.id &&
@@ -62,6 +69,7 @@ export function useChatStream() {
   }
 
   useEffect(() => {
+    // 切换会话会立即撤销旧流的界面写入权，避免迟到的 token、Sources 或错误串到新会话。
     conversationIdRef.current = conversationId;
     const run = activeRunRef.current;
     if (run && !isCurrentRun(run)) {
@@ -88,6 +96,7 @@ export function useChatStream() {
     }
 
     const previousRun = activeRunRef.current;
+    // 同一个聊天工作区只允许最新请求继续更新状态；新请求开始前先取消旧请求。
     if (previousRun) abortRun(previousRun);
 
     const run: ChatRun = {
@@ -137,6 +146,8 @@ export function useChatStream() {
 
       const response = await startKbChat(payload, run.controller.signal);
 
+      // 这里进入 api/chat.ts 的 SSE 解析器。每个事件回到当前回调后，先确认请求仍属于当前会话，
+      // 再分别更新来源、增量回答、错误状态或最终消息编号。
       await readSSE(response, event => {
         if (!isCurrentRun(run)) return;
 
@@ -161,6 +172,8 @@ export function useChatStream() {
 
         if (event.type === "error") {
           setError(event.message);
+          // 后端若已生成部分回答，会把同一段内容保存进数据库并标记 partial_response。
+          // 此时保留界面已有文本，只记录失败状态，保证刷新前后的消息内容一致。
           const keepPartialAnswer =
             "partial_response" in event &&
             event.partial_response === true &&
@@ -185,6 +198,7 @@ export function useChatStream() {
 
       if (!isCurrentRun(run)) return;
 
+      // 流结束后才把临时累积的回答写入正式消息列表；过期请求会在上面的归属检查处退出。
       const assistantMessage: ChatMessage = {
         id: assistantMessageId,
         role: "assistant",

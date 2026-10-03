@@ -9,11 +9,9 @@ type UserMessageProps = {
   message: ChatMessage;
 };
 
-/** 用途：负责 UserMessage 的界面或数据处理职责。 */
 export function UserMessage({ message }: UserMessageProps) {
   const { t } = useI18n();
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <article className={`${chatStyles.message} ${chatStyles.userMessage}`}>
       <div className={`${chatStyles.avatar} order-2`} aria-hidden="true">

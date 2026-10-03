@@ -31,12 +31,12 @@ EXPORT_VERSION = 1
 
 
 def _kb_path(kb_name, user_id=None):
-    """负责 _kb_path 的函数职责。"""
+    """取得当前用户的知识库目录，并再次确认 kb_name 没有越出用户目录。"""
     return safe_join(get_user_kb_root(user_id), kb_name, field_name="kb_name")
 
 
 def _build_metadata(kb_name, user_id=None):
-    """负责 _build_metadata 的函数职责。"""
+    """收集导出包需要的知识库和文件记录，供导入后恢复数据库元数据。"""
     return {
         "version": EXPORT_VERSION,
         "kb_name": kb_name,
@@ -60,7 +60,11 @@ def _build_metadata(kb_name, user_id=None):
 
 
 def export_kb(kb_name, user_id=None):
-    """负责 export_kb 的函数职责。"""
+    """把一个用户知识库导出为临时 ZIP 文件。
+
+    导出包同时保存文件、解析文本、索引快照和数据库元数据。这里仍先检查名称
+    和用户目录，避免导出接口借 kb_name 读取其他路径。
+    """
     migrate_legacy_demo_files()
 
     if not is_safe_kb_name(kb_name):
@@ -107,7 +111,7 @@ def export_kb(kb_name, user_id=None):
 
 
 def _validate_zip_member(member_name):
-    """负责 _validate_zip_member 的函数职责。"""
+    """拒绝 ZIP 中的绝对路径和 `..`，防止解压文件跑出目标目录。"""
     normalized = os.path.normpath(member_name)
     return (
         member_name
@@ -118,7 +122,11 @@ def _validate_zip_member(member_name):
 
 
 def _safe_extract(zip_file, destination):
-    """负责 _safe_extract 的函数职责。"""
+    """在真正解压前一次完成路径和 ZIP Bomb 检查。
+
+    条目数、单文件大小、总解压大小和压缩比都先验证完，避免解压到一半才发现
+    超限并留下大量文件。验证通过后才调用 extractall()。
+    """
     destination_abs = os.path.abspath(destination)
     member_count = 0
     total_uncompressed_bytes = 0
@@ -163,7 +171,7 @@ def _safe_extract(zip_file, destination):
 
 
 def _copy_kb_directories(extracted_root, target_root):
-    """负责 _copy_kb_directories 的函数职责。"""
+    """把已验证的上传文件、解析文本和索引目录复制到目标知识库。"""
     os.makedirs(target_root, exist_ok=True)
 
     for dirname in ("uploads", "content", "vector_store"):
@@ -180,14 +188,14 @@ def _copy_kb_directories(extracted_root, target_root):
 
 
 def _reset_kb_records(kb_name, user_id=None):
-    """负责 _reset_kb_records 的函数职责。"""
+    """覆盖导入前删除该用户旧知识库的文件映射和知识库记录。"""
     delete_file_docs_by_kb(kb_name, user_id=user_id)
     delete_files_by_kb(kb_name, user_id=user_id)
     delete_kb_record(kb_name, user_id=user_id)
 
 
 def _restore_file_metadata(kb_name, files, user_id=None):
-    """负责 _restore_file_metadata 的函数职责。"""
+    """按新用户目录重建导入文件的路径，并恢复数据库中的文件记录。"""
     for file in files:
         file_name = file.get("file_name")
         if not file_name:
@@ -224,7 +232,11 @@ def _restore_file_metadata(kb_name, files, user_id=None):
 
 
 def import_kb(zip_path, override=False, user_id=None):
-    """负责 import_kb 的函数职责。"""
+    """导入知识库 ZIP，并从可信文本重新建立索引和数据库映射。
+
+    ZIP 先在临时目录完成全部安全校验。进入用户级知识库锁以后才覆盖旧目录和
+    数据库记录，防止同一进程内的上传、删除或重建同时修改同一个知识库。
+    """
     migrate_legacy_demo_files()
 
     if not zip_path.endswith(".zip"):
@@ -232,6 +244,7 @@ def import_kb(zip_path, override=False, user_id=None):
             "error": "only .zip files are supported"
         }
 
+    # 所有验证先在临时目录完成；失败不会碰目标知识库。
     with tempfile.TemporaryDirectory() as temp_dir:
         extract_root = os.path.join(temp_dir, "extract")
         os.makedirs(extract_root, exist_ok=True)
@@ -254,6 +267,7 @@ def import_kb(zip_path, override=False, user_id=None):
                 "error": "invalid knowledge base name in metadata"
             }
 
+        # 从这里开始修改正式目录和数据库，因此与其他知识库写操作共用同一把锁。
         with get_kb_mutation_lock(user_id, kb_name):
             target_root = _kb_path(kb_name, user_id=user_id)
 
@@ -283,6 +297,8 @@ def import_kb(zip_path, override=False, user_id=None):
             except Exception:
                 pass
 
+            # 恢复文件记录后重新解析当前 content 快照。rebuild_and_sync() 会让
+            # chunks、FAISS、BM25 和 file_doc 映射重新对应同一批文本块。
             _restore_file_metadata(kb_name, metadata.get("files", []), user_id=user_id)
             service = MiniKBService(kb_name, user_id=user_id)
             service.rebuild_and_sync()

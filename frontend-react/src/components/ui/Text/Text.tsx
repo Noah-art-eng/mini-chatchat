@@ -35,7 +35,6 @@ type TextProps<T extends ElementType> = {
   variant?: TextVariant;
 } & Omit<ComponentPropsWithoutRef<T>, "as" | "children" | "className">;
 
-/** 用途：负责 Text 的界面或数据处理职责。 */
 export function Text<T extends ElementType = "p">({
   as,
   children,
@@ -53,7 +52,6 @@ export function Text<T extends ElementType = "p">({
         : "text-mc-text"
       : toneClasses[tone];
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <Component
       className={cx(

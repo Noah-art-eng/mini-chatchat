@@ -30,6 +30,11 @@ function isAbortError(error: unknown) {
 }
 
 export function useAgentRun() {
+  /**
+   * 管理 Agent 从规划、工具执行到最终回答的流式界面状态。
+   * 后端事件提供步骤进度和工具结果；请求编号、会话归属和 AbortController 共同保证
+   * 已停止或已切换会话的 Agent 不再修改当前界面。
+   */
   const { t } = useI18n();
   const {
     conversationId,
@@ -50,6 +55,7 @@ export function useAgentRun() {
   const nextRunIdRef = useRef(0);
 
   function isCurrentRun(run: AgentRun) {
+    // Agent 可能在首个请求中由后端创建会话，因此同时接受请求开始时和服务端返回的会话编号。
     const currentConversationId = conversationIdRef.current;
     return (
       activeRunRef.current?.id === run.id &&
@@ -77,6 +83,7 @@ export function useAgentRun() {
   }
 
   useEffect(() => {
+    // 用户切换会话后，旧 Agent 即使仍有网络事件到达，也会失去界面写入权并被取消。
     conversationIdRef.current = conversationId;
     const run = activeRunRef.current;
     if (run && !isCurrentRun(run)) {
@@ -108,6 +115,8 @@ export function useAgentRun() {
   }
 
   function applyStreamEvent(event: AgentStreamEvent) {
+    // 这里把后端 Agent SSE 事件还原成界面可展示的规划、步骤、工具调用和执行结果。
+    // token 事件来自后端对已生成最终回答的分段回放，不代表模型正在原生逐 token 输出。
     if (event.type === "planning") {
       setStreamStatus(t("agent.planning"));
       setAgentResult({
@@ -242,6 +251,7 @@ export function useAgentRun() {
     if (!trimmedQuery) return;
 
     const previousRun = activeRunRef.current;
+    // 新任务接管当前 Agent 工作区前先取消旧任务，防止两个执行过程交叉写入状态。
     if (previousRun) abortRun(previousRun);
 
     const run: AgentRun = {

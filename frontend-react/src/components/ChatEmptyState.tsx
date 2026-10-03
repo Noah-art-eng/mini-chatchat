@@ -40,7 +40,6 @@ const actionCopyKeys = {
   temp_kb: "Temp"
 } as const;
 
-/** 用途：负责 ChatEmptyState 的界面或数据处理职责。 */
 export function ChatEmptyState({
   mode,
   onStartMode,
@@ -48,17 +47,12 @@ export function ChatEmptyState({
 }: ChatEmptyStateProps) {
   const { t } = useI18n();
   const agentExamples = [
-    /** 用途：负责 t 的界面或数据处理职责。 */
     t("onboarding.agentExampleTime"),
-    /** 用途：负责 t 的界面或数据处理职责。 */
     t("onboarding.agentExampleNews"),
-    /** 用途：负责 t 的界面或数据处理职责。 */
     t("onboarding.agentExampleReadme"),
-    /** 用途：负责 t 的界面或数据处理职责。 */
     t("onboarding.agentExampleKnowledge")
   ];
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <section className={chatStyles.empty} data-testid="chat-empty-state">
       <div className={chatStyles.emptyBrand} aria-hidden="true">

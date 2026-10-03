@@ -10,11 +10,9 @@ type ModelCardProps = {
   models: ModelsResponse | null;
 };
 
-/** 用途：负责 ModelCard 的界面或数据处理职责。 */
 export function ModelCard({ chatMode, models }: ModelCardProps) {
   const { t } = useI18n();
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <article className={systemCardClassName}>
       <span className={`${systemBadgeClassName} provider-badge`}>

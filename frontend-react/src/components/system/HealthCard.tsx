@@ -10,12 +10,10 @@ type HealthCardProps = {
   status: "loading" | "ready" | "error";
 };
 
-/** 用途：负责 HealthCard 的界面或数据处理职责。 */
 export function HealthCard({ health, status }: HealthCardProps) {
   const { t } = useI18n();
   const isOk = (health?.status || status) === "ok" || status === "ready";
 
-  /** 用途：负责 return 的界面或数据处理职责。 */
   return (
     <article className={systemCardClassName}>
       <span className={`${systemBadgeClassName} status-${health?.status || status}`}>
